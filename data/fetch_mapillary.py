@@ -34,13 +34,21 @@ API = "https://graph.mapillary.com/images"
 TOKEN_ENV = "MAPILLARY_TOKEN"
 
 REGIONS: list[dict] = [
-    # Reliably snowy in DJF, drivable streets, decent Mapillary coverage
-    {"name": "ostersund_se", "lat": 63.1792, "lng": 14.6357, "radius_m": 600},
-    {"name": "tromso_no", "lat": 69.6489, "lng": 18.9551, "radius_m": 600},
-    {"name": "rovaniemi_fi", "lat": 66.5039, "lng": 25.7294, "radius_m": 600},
+    # Reliably snowy in DJF, drivable streets. Widened bboxes for under-covered
+    # regions; do NOT relax the per-pair distance/heading thresholds — those
+    # are not the bottleneck (audit confirmed). Mapillary's bbox max is 0.01
+    # sq degrees, comfortably above any radius below ~2.5 km at these latitudes.
     {"name": "kiruna_se", "lat": 67.8558, "lng": 20.2253, "radius_m": 600},
-    {"name": "anchorage_ak", "lat": 61.2181, "lng": -149.9003, "radius_m": 600},
-    {"name": "yellowknife_ca", "lat": 62.4540, "lng": -114.3718, "radius_m": 600},
+    {"name": "rovaniemi_fi", "lat": 66.5039, "lng": 25.7294, "radius_m": 600},
+    {"name": "ostersund_se", "lat": 63.1792, "lng": 14.6357, "radius_m": 1500},
+    {"name": "ostersund_e45_se", "lat": 63.8512, "lng": 15.5543, "radius_m": 1500},  # user's flagship
+    {"name": "tromso_no", "lat": 69.6489, "lng": 18.9551, "radius_m": 1500},
+    {"name": "anchorage_ak", "lat": 61.2181, "lng": -149.9003, "radius_m": 1500},
+    {"name": "sundsvall_se", "lat": 62.3908, "lng": 17.3069, "radius_m": 1500},
+    {"name": "gallivare_se", "lat": 67.1354, "lng": 20.6543, "radius_m": 1500},
+    {"name": "lulea_se", "lat": 65.5848, "lng": 22.1547, "radius_m": 1500},
+    {"name": "trondheim_no", "lat": 63.4305, "lng": 10.3951, "radius_m": 1500},
+    {"name": "bodo_no", "lat": 67.2804, "lng": 14.4049, "radius_m": 1500},
 ]
 
 WINTER_MONTHS = {12, 1, 2, 3}
@@ -49,7 +57,7 @@ YEARS = (2018, 2026)  # inclusive range to scan
 
 DIST_M_THRESH = 5.0
 HEADING_DEG_THRESH = 20.0
-TARGET_PAIRS_PER_REGION = 8
+TARGET_PAIRS_PER_REGION = 12
 
 OUT_DIR = Path("data/pairs")
 

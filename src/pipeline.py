@@ -13,13 +13,25 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .homography import HomographyResult, estimate
+from .homography import HomographyResult, estimate, refine_iteratively
 from .matching import Matcher, MatchResult, draw_matches
 from .overlay import alpha_blend, three_panel_figure, warp_mask
 from .segmentation import RoadSegmenter
 
+# When the initial homography has fewer than this many inliers, run a
+# segmentation-guided refinement pass before generating overlays. Below this
+# we are likely in a tunnel / off-road / drift situation where the generic
+# lower-image-half ground-plane bias is too coarse.
+REFINEMENT_INLIER_TRIGGER = 25
+
 DATA_PAIRS_DIR = Path("data/pairs")
 OUT_DIR = Path("outputs/heroes")
+
+# Content-level curation threshold. Pairs below this are considered
+# content-mismatched (different scenes despite tight GPS+heading) and are
+# excluded from the curated demo set. They remain on disk and are visible in
+# `outputs/heroes/summary.json` with `accept=false`.
+ACCEPT_INLIER_MIN = 15
 
 
 @dataclass
@@ -95,6 +107,19 @@ def run_pair(
     # 3. Road mask on the *clear* prior (the model knows clear-weather roads)
     road_mask_clear = segmenter.segment_road(clear)
 
+    # 3b. If the initial fit is shaky, run iterative segmentation-guided
+    #     refinement. This rescues drift cases where the lower-image-half
+    #     ground-plane bias was too coarse to dominate (tunnels, scenes where
+    #     most of the lower half is wall, not road).
+    refined = False
+    if homo.n_inliers < REFINEMENT_INLIER_TRIGGER:
+        refined_homo = refine_iteratively(
+            matches, homo.H, snow.shape[:2], clear.shape[:2], road_mask_clear,
+        )
+        if refined_homo.H is not None and refined_homo.n_inliers > homo.n_inliers:
+            homo = refined_homo
+            refined = True
+
     # 4. Warp the road mask: clear -> snow.
     # We have H: snow -> clear. We need H^-1: clear -> snow.
     H_inv = np.linalg.inv(homo.H)
@@ -108,7 +133,11 @@ def run_pair(
     figure_path = out_dir / f"{pair_id}__panel.png"
     three_panel_figure(
         snow, clear, road_mask_clear, snow_overlay,
-        title=f"{pair_id}    inliers={homo.n_inliers}    ground-plane bias={homo.used_ground_plane_restriction}",
+        title=(
+            f"{pair_id}    inliers={homo.n_inliers}    "
+            f"ground-plane bias={homo.used_ground_plane_restriction}    "
+            f"refined={refined}"
+        ),
         out_path=figure_path,
     )
 
@@ -152,17 +181,20 @@ def run_all(
             print(f"  ! {d.name}: {e}")
             continue
         results.append(res)
+        accept = res.n_inliers >= ACCEPT_INLIER_MIN
         summary.append(
             {
                 "pair_id": res.pair_id,
                 "n_matches": int(res.n_matches),
                 "n_inliers": int(res.n_inliers),
                 "ground_plane_used": bool(res.used_ground_plane_restriction),
+                "accept": bool(accept),
                 "figure": str(res.figure_path) if res.figure_path else None,
                 "naive_baseline": str(res.naive_baseline_path) if res.naive_baseline_path else None,
             }
         )
-        print(f"  {res.pair_id}: matches={res.n_matches} inliers={res.n_inliers} (ground-plane={res.used_ground_plane_restriction})")
+        verdict = "ACCEPT" if accept else "reject"
+        print(f"  [{verdict}] {res.pair_id}: matches={res.n_matches} inliers={res.n_inliers} (ground-plane={res.used_ground_plane_restriction})")
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     return results
