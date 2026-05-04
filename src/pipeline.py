@@ -194,14 +194,37 @@ def run_pair(
     )
 
 
+MANUAL_CURATION_PATH = Path("data/manual_snow_curation.json")
+
+
+def _load_manual_curation() -> dict[str, str]:
+    """pair_id -> verdict ('accept'|'reject'|'skip'). Empty if file missing."""
+    if not MANUAL_CURATION_PATH.exists():
+        return {}
+    try:
+        raw = json.loads(MANUAL_CURATION_PATH.read_text())
+    except json.JSONDecodeError:
+        return {}
+    return {k: v.get("verdict", "skip") for k, v in raw.items() if isinstance(v, dict)}
+
+
 def run_all(
     pairs_dir: Path = DATA_PAIRS_DIR,
     out_dir: Path = OUT_DIR,
     max_dim: int = 1024,
+    *,
+    use_manual_curation: bool = True,
 ) -> list[PairResult]:
     pair_dirs = sorted(p for p in pairs_dir.iterdir() if p.is_dir())
     if not pair_dirs:
         raise SystemExit(f"No pairs under {pairs_dir}. Run `uv run python -m data.fetch_mapillary` first.")
+
+    manual = _load_manual_curation() if use_manual_curation else {}
+    if manual:
+        before = len(pair_dirs)
+        pair_dirs = [d for d in pair_dirs if manual.get(d.name) == "accept"]
+        print(f"manual curation active: {len(pair_dirs)} / {before} pairs (accept-only)")
+
     matcher = Matcher()
     segmenter = RoadSegmenter()
     results: list[PairResult] = []
@@ -221,6 +244,7 @@ def run_all(
                 "n_inliers": int(res.n_inliers),
                 "ground_plane_used": bool(res.used_ground_plane_restriction),
                 "refined": bool(res.refined),
+                "manual_verdict": manual.get(res.pair_id, "—"),
                 "iou_overlay_vs_naive": (
                     None if res.iou_overlay_vs_naive is None else round(res.iou_overlay_vs_naive, 4)
                 ),

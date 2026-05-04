@@ -34,21 +34,31 @@ API = "https://graph.mapillary.com/images"
 TOKEN_ENV = "MAPILLARY_TOKEN"
 
 REGIONS: list[dict] = [
-    # Reliably snowy in DJF, drivable streets. Widened bboxes for under-covered
-    # regions; do NOT relax the per-pair distance/heading thresholds — those
-    # are not the bottleneck (audit confirmed). Mapillary's bbox max is 0.01
+    # Cold-climate cities with both winter and summer Mapillary uploads.
+    # Geographic restriction has been deliberately broadened — quality of the
+    # snow query frame matters more than place. Mapillary bbox max is 0.01
     # sq degrees, comfortably above any radius below ~2.5 km at these latitudes.
     {"name": "kiruna_se", "lat": 67.8558, "lng": 20.2253, "radius_m": 600},
     {"name": "rovaniemi_fi", "lat": 66.5039, "lng": 25.7294, "radius_m": 600},
-    {"name": "ostersund_se", "lat": 63.1792, "lng": 14.6357, "radius_m": 1500},
-    {"name": "ostersund_e45_se", "lat": 63.8512, "lng": 15.5543, "radius_m": 1500},  # user's flagship
+    {"name": "ostersund_e45_se", "lat": 63.8512, "lng": 15.5543, "radius_m": 1500},
     {"name": "tromso_no", "lat": 69.6489, "lng": 18.9551, "radius_m": 1500},
-    {"name": "anchorage_ak", "lat": 61.2181, "lng": -149.9003, "radius_m": 1500},
-    {"name": "sundsvall_se", "lat": 62.3908, "lng": 17.3069, "radius_m": 1500},
-    {"name": "gallivare_se", "lat": 67.1354, "lng": 20.6543, "radius_m": 1500},
     {"name": "lulea_se", "lat": 65.5848, "lng": 22.1547, "radius_m": 1500},
+    {"name": "gallivare_se", "lat": 67.1354, "lng": 20.6543, "radius_m": 1500},
     {"name": "trondheim_no", "lat": 63.4305, "lng": 10.3951, "radius_m": 1500},
     {"name": "bodo_no", "lat": 67.2804, "lng": 14.4049, "radius_m": 1500},
+    {"name": "stockholm_se", "lat": 59.3293, "lng": 18.0686, "radius_m": 1500},
+    {"name": "helsinki_fi", "lat": 60.1699, "lng": 24.9384, "radius_m": 1500},
+    {"name": "oslo_no", "lat": 59.9139, "lng": 10.7522, "radius_m": 1500},
+    {"name": "reykjavik_is", "lat": 64.1466, "lng": -21.9426, "radius_m": 1500},
+    {"name": "boston_us", "lat": 42.3601, "lng": -71.0589, "radius_m": 1500},
+    {"name": "minneapolis_us", "lat": 44.9778, "lng": -93.2650, "radius_m": 1500},
+    {"name": "buffalo_us", "lat": 42.8864, "lng": -78.8784, "radius_m": 1500},
+    {"name": "quebec_ca", "lat": 46.8139, "lng": -71.2080, "radius_m": 1500},
+    {"name": "edmonton_ca", "lat": 53.5461, "lng": -113.4938, "radius_m": 1500},
+    {"name": "calgary_ca", "lat": 51.0447, "lng": -114.0719, "radius_m": 1500},
+    {"name": "sapporo_jp", "lat": 43.0618, "lng": 141.3545, "radius_m": 1500},
+    {"name": "innsbruck_at", "lat": 47.2692, "lng": 11.4041, "radius_m": 1500},
+    {"name": "vladivostok_ru", "lat": 43.1198, "lng": 131.8869, "radius_m": 1500},
 ]
 
 WINTER_MONTHS = {12, 1, 2, 3}
@@ -57,7 +67,7 @@ YEARS = (2018, 2026)  # inclusive range to scan
 
 DIST_M_THRESH = 5.0
 HEADING_DEG_THRESH = 20.0
-TARGET_PAIRS_PER_REGION = 12
+TARGET_PAIRS_PER_REGION = 20
 
 OUT_DIR = Path("data/pairs")
 

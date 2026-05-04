@@ -30,7 +30,7 @@ def estimate(
     img1_shape: tuple[int, int],
     *,
     ground_plane_y_frac: float = 0.5,
-    dashboard_y_frac: float = 0.85,
+    dashboard_y_frac: float = 1.0,
     min_matches: int = 8,
     ransac_thresh_px: float = 3.0,
     confidence_thresh: float = 0.0,
