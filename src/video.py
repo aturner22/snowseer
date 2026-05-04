@@ -165,9 +165,15 @@ def _render_title_card(card: TitleCard, out: Path) -> Path:
         ax.text(8, 80, card.title, fontfamily="Inter", fontsize=size,
                 color=TEXT, fontweight=500, va="top", linespacing=1.2)
     if card.body:
-        # Body sized so the slide can be read in 6-10 s.
-        ax.text(8, 38, card.body, fontfamily="EB Garamond",
-                fontsize=28, color=TEXT, va="top", linespacing=1.4)
+        # Wrap body so it doesn't run off the right edge. Preserves explicit
+        # newlines, only wraps within paragraphs.
+        import textwrap
+        wrapped_paras = []
+        for para in card.body.split("\n"):
+            wrapped_paras.append(textwrap.fill(para, width=78))
+        wrapped = "\n".join(wrapped_paras)
+        ax.text(8, 38, wrapped, fontfamily="EB Garamond",
+                fontsize=26, color=TEXT, va="top", linespacing=1.42)
     if card.subnote:
         ax.text(8, 7, card.subnote, fontfamily="EB Garamond",
                 fontsize=18, color=MUTE, va="bottom", style="italic")
