@@ -125,54 +125,54 @@ def panel_figure(
 
     If `snowy_naive` is None the figure falls back to 3 columns.
     """
-    n_cols = 4 if snowy_naive is not None else 3
-    # Figure proportions: wider panels + meaningful top header band so title
-    # + subtitle don't fight with the column labels below.
-    fig = plt.figure(figsize=(5.0 * n_cols, 5.0), facecolor=BG)
-    gs = fig.add_gridspec(2, n_cols, height_ratios=[0.22, 1.0], hspace=0.18, wspace=0.04,
-                          top=0.95, bottom=0.04, left=0.025, right=0.975)
+    # 2x2 layout (the user's preferred):
+    #   top-left  snow query             top-right  naive direct on snow (red)
+    #   bot-left  clear prior + green    bot-right  cross-season overlay (green, rust frame)
+    fig = plt.figure(figsize=(13.0, 9.0), facecolor=BG)
+    gs = fig.add_gridspec(3, 2, height_ratios=[0.22, 1.0, 1.0], hspace=0.18, wspace=0.04,
+                          top=0.96, bottom=0.03, left=0.04, right=0.96)
     header_ax = fig.add_subplot(gs[0, :])
     header_ax.set_facecolor(BG)
     header_ax.set_axis_off()
     if title:
-        header_ax.text(0.0, 0.92, title, fontfamily="Inter", fontweight=500,
-                       fontsize=18, color=TEXT, ha="left", va="top",
+        header_ax.text(0.0, 0.85, title, fontfamily="Inter", fontweight=500,
+                       fontsize=22, color=TEXT, ha="left", va="top",
                        transform=header_ax.transAxes)
     if subtitle:
-        header_ax.text(0.0, 0.46, subtitle, fontfamily="EB Garamond",
-                       fontsize=13, color=MUTE, ha="left", va="top",
+        header_ax.text(0.0, 0.32, subtitle, fontfamily="EB Garamond",
+                       fontsize=15, color=MUTE, ha="left", va="top",
                        style="italic", transform=header_ax.transAxes)
 
-    axes = [fig.add_subplot(gs[1, i]) for i in range(n_cols)]
-    for ax in axes:
+    label_kwargs = dict(fontfamily="Inter", fontsize=14, color=TEXT, pad=10, loc="left")
+
+    ax_snow = fig.add_subplot(gs[1, 0])
+    ax_naive = fig.add_subplot(gs[1, 1])
+    ax_clear = fig.add_subplot(gs[2, 0])
+    ax_overlay = fig.add_subplot(gs[2, 1])
+    for ax in (ax_snow, ax_naive, ax_clear, ax_overlay):
         ax.set_facecolor(BG)
         ax.set_xticks([]); ax.set_yticks([])
-        for spine in ax.spines.values():
-            spine.set_visible(False)
+        for s in ax.spines.values():
+            s.set_visible(False)
 
-    label_kwargs = dict(
-        fontfamily="Inter", fontsize=11.5, color=TEXT, pad=10, loc="left"
-    )
-
-    axes[0].imshow(snowy)
-    axes[0].set_title("Snow query", **label_kwargs)
-
-    # Same green on the clear prior road mask and on the cross-season overlay —
-    # signals 'this is the road, transferred from the prior to the snow frame'.
-    axes[1].imshow(alpha_blend(clear, clear_road_mask, color=(46, 156, 86), alpha=0.50))
-    axes[1].set_title("Clear prior  ·  road mask", **label_kwargs)
-
-    axes[2].imshow(snowy_overlay)
-    axes[2].set_title("Cross-season overlay", **label_kwargs)
-    # Rust-accent frame on the load-bearing column.
-    for spine_pos in ("top", "bottom", "left", "right"):
-        axes[2].spines[spine_pos].set_visible(True)
-        axes[2].spines[spine_pos].set_color(ACCENT)
-        axes[2].spines[spine_pos].set_linewidth(2.2)
+    ax_snow.imshow(snowy)
+    ax_snow.set_title("Snow query", **label_kwargs)
 
     if snowy_naive is not None:
-        axes[3].imshow(snowy_naive)
-        axes[3].set_title("Naive  ·  direct on snow", **label_kwargs)
+        ax_naive.imshow(snowy_naive)
+        ax_naive.set_title("Naive  ·  direct on snow  (red = predicted road)", **label_kwargs)
+    else:
+        ax_naive.set_axis_off()
+
+    ax_clear.imshow(alpha_blend(clear, clear_road_mask, color=(46, 156, 86), alpha=0.50))
+    ax_clear.set_title("Clear prior  ·  road mask in green", **label_kwargs)
+
+    ax_overlay.imshow(snowy_overlay)
+    ax_overlay.set_title("Cross-season overlay  ·  same road, transferred", **label_kwargs)
+    for spine_pos in ("top", "bottom", "left", "right"):
+        ax_overlay.spines[spine_pos].set_visible(True)
+        ax_overlay.spines[spine_pos].set_color(ACCENT)
+        ax_overlay.spines[spine_pos].set_linewidth(2.4)
     if out_path is not None:
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out_path, dpi=140, bbox_inches="tight", facecolor=BG, pad_inches=0.35)

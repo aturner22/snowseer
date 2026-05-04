@@ -49,6 +49,73 @@ The plough now knows where the road is, and where it isn't, even though it canno
 
 Every learned component is frozen. Nothing is trained, nothing is fine-tuned. Snowy imagery enters the system only at inference time.
 
+## How it works (the inner workings, step by step)
+
+The system is one Python pipeline (`src/pipeline.py`) that takes a `pair_dir` containing `snow.jpg`, `clear.jpg`, and `meta.json` and produces a 4-panel figure plus a JSON summary. Each step below corresponds to one chunk of `pipeline.run_pair()`.
+
+### 1. Pair sourcing — `data/fetch_mapillary.py`
+
+The fetcher operates in two modes:
+- **`--curated-only`** (the canonical reproducibility path, what `make demo` calls): reads `data/curated_pairs.json`, which contains the 14 pair IDs of the v1 demo set. For each pair it issues a single Mapillary Graph API call per image (`GET /<image_id>?fields=id,geometry,captured_at,thumb_2048_url,…`) to get a fresh signed thumbnail URL (Mapillary URLs expire), downloads `snow.jpg` + `clear.jpg`, writes `meta.json`. Idempotent — skips a pair if its files are already on disk.
+- **Exploration mode** (no flag): used when curating a *new* demo set. For each region in `REGIONS` it queries by `bbox + start_captured_at + end_captured_at`, splits the results into a winter set (Dec–Mar) and a summer set (May–Sep), and pairs each winter image with its nearest summer neighbour by lat/lng (`BallTree` + haversine, ≤ 5 m) and heading (≤ ±20°).
+
+### 2. Snow-quality filter — `src/snow_quality.py`
+
+Mapillary contributors upload a lot of motion-blurred night drives and windshield-blocked frames that aren't representative of a snow plough's operating regime. Before any user time is spent, three cheap metrics are computed on the lower 70 % of each snow image (the road region):
+
+- **Sharpness** = variance of the Laplacian. Higher = sharper. Drops blurred frames.
+- **Brightness** = median of the V channel of HSV. Drops near-black night frames.
+- **Edge density** = fraction of pixels lit by Canny on the lower half. Drops featureless / windshield-obscured frames.
+
+Each metric is rank-normalised across the candidate pool to a percentile in `[0, 1]`; the three percentiles are averaged into a `composite` score and persisted to `data/pairs/<id>/snow_quality.json`.
+
+### 3. Manual snow curation — `demo/curate_snow.py`
+
+The user reviews the auto-passed snow frames in a Streamlit app sorted by composite quality (best first). Spatial+heading dedup (50 m / 40°) collapses sequential frames from the same drive so the user sees one representative per cluster. Decisions persist to `data/manual_snow_curation.json`.
+
+### 4. Feature matching — `src/matching.py`
+
+For each accepted pair, both images are resized to a common max-dimension of 1024 px and converted to an RGB tensor. **DISK** (`KF.DISK.from_pretrained("depth")`) extracts up to 2048 keypoints + 128-dim descriptors per image. **LightGlue** (`KF.LightGlueMatcher("disk")`) then matches the two descriptor sets, producing `(idx_a, idx_b)` pairs and per-match distances. The output is paired pixel coordinates `(N, 2)` for both images plus a per-match confidence in `[0, 1]`.
+
+### 5. Homography estimation — `src/homography.py`
+
+The matches are filtered to **ground-plane candidates only**: keypoints whose `y` coordinate is in `[0.5 H, 1.0 H]` of their respective image. This prevents matches on building façades from dominating the homography fit, which would align the buildings rather than the road plane.
+
+`cv2.findHomography(src, dst, cv2.USAC_MAGSAC, ransacReprojThreshold=3.0)` fits the homography by RANSAC. Output: a `3×3` matrix `H` mapping snow → clear, plus an inlier mask. If fewer than 8 ground-plane matches survive, the restriction is dropped and we fit on all matches; if that fails too, the pair is rejected.
+
+**Iterative refinement** (`refine_iteratively`): if initial inliers < 25, the pipeline computes the road mask on the clear prior (next step), warps it into snow image space, and re-fits the homography only on matches whose snow keypoint sits inside the warped road region. This is the user-original-intuition "wiggle features until they line up" loop, with explicit semantic gating instead of pixel-level optimisation.
+
+### 6. Road segmentation — `src/segmentation.py`
+
+`facebook/mask2former-swin-tiny-cityscapes-semantic` is run on the **clear** prior only (never on the snow frame). The Hugging Face `Mask2FormerImageProcessor`'s `post_process_semantic_segmentation` returns the per-pixel argmax over Cityscapes' 19 classes; we keep `class == 0` (road).
+
+The resulting binary mask is reduced to its single largest 8-connected component (`overlay.keep_largest_component`, ≥ 500 px). A snow plough cares about the *one* drivable surface in front of it, not the long tail of disconnected sidewalks, distant road patches, or warp-aliased islands.
+
+### 7. Mask transfer — `src/overlay.py`
+
+The road mask is warped from the clear-prior image into the snow image space via `cv2.warpPerspective(mask, np.linalg.inv(H), snow.shape)`. The result is reduced to its largest component again (warp aliasing can leave a few pixels of road outside the main blob). The result is alpha-blended onto the snow frame in **green** (`#2e9c56`) — the same green used on the prior road mask, signalling *same road, transferred*.
+
+### 8. Naive baseline (the contrast condition)
+
+The same Mask2Former segmenter is run **directly on the snow frame**, producing a road mask in red (`#dc3c32`). The contrast in the 2×2 panel is the demonstration: the segmenter trained on dry asphalt either predicts road on the wrong region (visible red on snow piles, façades, sky) or predicts nothing at all. Either reads as failure.
+
+### 9. Result curation — `demo/curate_results.py`
+
+The user rates each overlay panel on a 4-point scale: GREAT / OKAY / NOT_GOOD / AWFUL. Decisions persist to `data/manual_result_curation.json`. The GREAT+OKAY survivors are baked into `data/curated_pairs.json` and become the canonical demo set. The empirical finding behind this stage: **inlier count is not a reliable predictor of overlay quality** (a pair with 238 inliers landed NOT_GOOD because the inliers concentrated on building façades; a pair with 17 inliers landed GREAT because the few inliers it had hit the road plane). Automated metrics are insufficient; a final human pass is structural.
+
+### 10. Outputs and metrics
+
+For each pair the pipeline persists:
+- `outputs/heroes/<id>__panel.png` — the headline 2×2 figure (snow / naive ; clear+mask / overlay)
+- `outputs/heroes/<id>__overlay.png` — snow + green overlay only (for slides / video)
+- `outputs/heroes/<id>__naive_baseline.png` — snow + red naive prediction
+- `outputs/heroes/<id>__matches.png` — feature correspondences (green = inlier, red = rejected)
+- A row in `outputs/heroes/summary.json` with `n_matches`, `n_inliers`, `accept`, `iou_overlay_vs_naive`, `iou_overlay_vs_identity`, etc.
+
+The 4-panel contact sheet (`make audit` → `outputs/audit/contact_sheet.png`) stacks every pair's panels into a single tall image for comparison.
+
+The auto-rendered video (`make video` → `outputs/demo.mp4`) sequences title cards, two procedural diagrams (the *bridge* between regimes, and the 6-step pipeline), and a two-slide breakdown per hero (problem framing then solution), bedded with a procedural ambient pad in `assets/audio/music.mp3`. ~3 min, 1080p, 30 fps. The narrative beats live in `SCENES` at the top of `src/video.py`.
+
 ## Minimal-shot integrity
 
 | Claim | Status |
@@ -139,4 +206,4 @@ Constants as the bridge.
 
 ---
 
-*Acknowledgements.* The visual identity draws on [SOTA Letters](https://sotaletters.substack.com/) for tone and minimal-monochrome layout; the rust accent is our own. Imagery from [Mapillary](https://www.mapillary.com/) under the open-data license. Models pretrained by their respective authors and used frozen. Repository licensed under MIT.
+*Acknowledgements.* The visual identity draws on [SOTA Letters](https://sotaletters.substack.com/) for tone and minimal-monochrome layout; the rust accent is our own. Imagery from [Mapillary](https://www.mapillary.com/) under the open-data license. Demo video music: ["Slow Motion" by Bensound](https://www.bensound.com), free with attribution under their licence. Models pretrained by their respective authors and used frozen. Repository licensed under MIT.

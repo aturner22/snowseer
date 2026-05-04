@@ -178,34 +178,34 @@ def _render_title_card(card: TitleCard, out: Path) -> Path:
 def _draw_bridge_diagram(ax):
     """Two regime boxes connected by a 'constant' bridge."""
     # Domain A — data-rich
-    a = FancyBboxPatch((6, 28), 26, 32, boxstyle="round,pad=0.3",
+    a = FancyBboxPatch((4, 22), 28, 38, boxstyle="round,pad=0.3",
                        linewidth=1.2, edgecolor=TEXT, facecolor="white")
     ax.add_patch(a)
-    ax.text(19, 56, "Regime A", fontfamily="Inter", fontweight=700, fontsize=20,
+    ax.text(18, 55, "Regime A", fontfamily="Inter", fontweight=700, fontsize=28,
             ha="center", color=TEXT)
-    ax.text(19, 50, "data-rich", fontfamily="Inter", fontsize=16,
+    ax.text(18, 49, "data-rich", fontfamily="Inter", fontsize=20,
             ha="center", color=MUTE)
-    ax.text(19, 41, "summer asphalt\nlane markings\ndaytime", fontfamily="EB Garamond",
-            fontsize=18, ha="center", color=TEXT, linespacing=1.35)
+    ax.text(18, 38, "summer asphalt\nlane markings\ndaytime",
+            fontfamily="EB Garamond", fontsize=22, ha="center", color=TEXT, linespacing=1.45)
 
     # Domain B — data-poor
-    b = FancyBboxPatch((68, 28), 26, 32, boxstyle="round,pad=0.3",
+    b = FancyBboxPatch((68, 22), 28, 38, boxstyle="round,pad=0.3",
                        linewidth=1.2, edgecolor=TEXT, facecolor="white")
     ax.add_patch(b)
-    ax.text(81, 56, "Regime B", fontfamily="Inter", fontweight=700, fontsize=20,
+    ax.text(82, 55, "Regime B", fontfamily="Inter", fontweight=700, fontsize=28,
             ha="center", color=TEXT)
-    ax.text(81, 50, "data-poor", fontfamily="Inter", fontsize=16,
+    ax.text(82, 49, "data-poor", fontfamily="Inter", fontsize=20,
             ha="center", color=MUTE)
-    ax.text(81, 41, "snow-covered road\nlane markings hidden\nthe regime that fails", fontfamily="EB Garamond",
-            fontsize=18, ha="center", color=TEXT, linespacing=1.35)
+    ax.text(82, 38, "snow-covered road\nlane markings hidden\nthe regime that fails",
+            fontfamily="EB Garamond", fontsize=22, ha="center", color=TEXT, linespacing=1.45)
 
     # Arrow / bridge
-    arrow = FancyArrowPatch((33, 44), (67, 44), arrowstyle="-|>", mutation_scale=22,
-                            color=ACCENT, linewidth=2.5, zorder=4)
+    arrow = FancyArrowPatch((33, 42), (67, 42), arrowstyle="-|>", mutation_scale=24,
+                            color=ACCENT, linewidth=3.0, zorder=4)
     ax.add_patch(arrow)
-    ax.text(50, 50, "the constant", fontfamily="Inter", fontweight=500,
-            fontsize=20, ha="center", color=ACCENT)
-    ax.text(50, 38.5, "(buildings, signs, road position)", fontfamily="EB Garamond",
+    ax.text(50, 48, "the constant", fontfamily="Inter", fontweight=700,
+            fontsize=24, ha="center", color=ACCENT)
+    ax.text(50, 36.5, "(buildings, signs, road position)", fontfamily="EB Garamond",
             fontstyle="italic", fontsize=18, ha="center", color=MUTE)
 
 

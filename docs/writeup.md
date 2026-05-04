@@ -67,4 +67,4 @@ We are not going to label our way out of every long-tail regime. But for many of
 
 ---
 
-*Code, notebook, demo video, slides, and the curated demo set: see the [project repository](README.md). Reproducible from a clean clone with a Mapillary API token via `make demo`. Submitted to SoTA Commission I — Minimal-Shot Autonomy, May 2026.*
+*Code, notebook, demo video, slides, and the curated demo set: see the [project repository](README.md). Reproducible from a clean clone with a Mapillary API token via `make demo`. Demo video music: "Slow Motion" by Bensound. Submitted to SoTA Commission I — Minimal-Shot Autonomy, May 2026.*
