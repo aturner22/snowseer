@@ -108,31 +108,39 @@ def panel_figure(
 ) -> None:
     """Save the headline 4-column comparison.
 
+    Colour semantics:
+      - **Green** is the *road*. Used identically on the clear prior
+        (where the road mask is detected) and on the cross-season overlay
+        (where the same mask is warped onto the snow frame). The visual
+        message: the same road, transferred.
+      - **Red** is the naive direct-on-snow prediction — the failure
+        condition. Red is wrong; you can see it's wrong because it
+        either doesn't appear at all or covers the wrong region.
+
     Columns, left to right:
       1. Snowy query frame — what the plough's camera sees.
-      2. Clear prior + road mask — what we know about the same coordinates.
-      3. Snow frame with warped road overlay — the cross-season output (rust frame).
-      4. Snow frame with naive direct-on-snow segmentation — the failure
-         condition that motivates the cross-season approach.
+      2. Clear prior + road mask (green) — what we know.
+      3. Snow frame + warped road mask (green) — cross-season output.
+      4. Snow frame + naive direct-on-snow segmentation (red) — failure.
 
     If `snowy_naive` is None the figure falls back to 3 columns.
     """
     n_cols = 4 if snowy_naive is not None else 3
-    # Figure proportions: each panel ~16:9-ish in cell ratio. Wider panels +
-    # added top space for the two-line header.
-    fig = plt.figure(figsize=(5.0 * n_cols, 4.4), facecolor=BG)
-    # GridSpec with a slim header band.
-    gs = fig.add_gridspec(2, n_cols, height_ratios=[0.18, 1.0], hspace=0.05, wspace=0.04)
+    # Figure proportions: wider panels + meaningful top header band so title
+    # + subtitle don't fight with the column labels below.
+    fig = plt.figure(figsize=(5.0 * n_cols, 5.0), facecolor=BG)
+    gs = fig.add_gridspec(2, n_cols, height_ratios=[0.22, 1.0], hspace=0.18, wspace=0.04,
+                          top=0.95, bottom=0.04, left=0.025, right=0.975)
     header_ax = fig.add_subplot(gs[0, :])
     header_ax.set_facecolor(BG)
     header_ax.set_axis_off()
     if title:
-        header_ax.text(0.0, 0.85, title, fontfamily="Inter", fontweight=500,
-                       fontsize=14, color=TEXT, ha="left", va="top",
+        header_ax.text(0.0, 0.92, title, fontfamily="Inter", fontweight=500,
+                       fontsize=18, color=TEXT, ha="left", va="top",
                        transform=header_ax.transAxes)
     if subtitle:
-        header_ax.text(0.0, 0.18, subtitle, fontfamily="EB Garamond",
-                       fontsize=11, color=MUTE, ha="left", va="top",
+        header_ax.text(0.0, 0.46, subtitle, fontfamily="EB Garamond",
+                       fontsize=13, color=MUTE, ha="left", va="top",
                        style="italic", transform=header_ax.transAxes)
 
     axes = [fig.add_subplot(gs[1, i]) for i in range(n_cols)]
@@ -149,7 +157,9 @@ def panel_figure(
     axes[0].imshow(snowy)
     axes[0].set_title("Snow query", **label_kwargs)
 
-    axes[1].imshow(alpha_blend(clear, clear_road_mask, color=(80, 140, 170), alpha=0.42))
+    # Same green on the clear prior road mask and on the cross-season overlay —
+    # signals 'this is the road, transferred from the prior to the snow frame'.
+    axes[1].imshow(alpha_blend(clear, clear_road_mask, color=(46, 156, 86), alpha=0.50))
     axes[1].set_title("Clear prior  ·  road mask", **label_kwargs)
 
     axes[2].imshow(snowy_overlay)

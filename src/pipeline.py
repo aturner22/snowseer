@@ -26,6 +26,36 @@ REFINEMENT_INLIER_TRIGGER = 25
 
 DATA_PAIRS_DIR = Path("data/pairs")
 OUT_DIR = Path("outputs/heroes")
+CURATED_PAIRS_PATH = Path("data/curated_pairs.json")
+RESULT_RATINGS_PATH = Path("data/manual_result_curation.json")
+
+
+def _display_strings(pair_id: str) -> tuple[str, str]:
+    """(title, subtitle) for a pair_id, sourced from data/curated_pairs.json.
+
+    Title:    'Place, Country — condition phrase'
+    Subtitle: 'Snow capture (month yyyy)  ↔  Clear capture (month yyyy)'
+    """
+    if not CURATED_PAIRS_PATH.exists():
+        return (pair_id.replace("__", "  ·  "), "")
+    spec = json.loads(CURATED_PAIRS_PATH.read_text())
+    entry = next((p for p in spec.get("pairs", []) if p.get("pair_id") == pair_id), None)
+    if entry is None:
+        return (pair_id.replace("__", "  ·  "), "")
+    place = entry.get("place") or entry.get("region", "")
+    condition = entry.get("condition") or ""
+    title = f"{place} — {condition}" if condition else place
+    snow_t = entry.get("snow_captured", "")
+    clear_t = entry.get("clear_captured", "")
+    subtitle = f"{snow_t}  ↔  {clear_t}" if snow_t and clear_t else ""
+    return (title, subtitle)
+
+
+def _load_curated_pair_ids() -> set[str]:
+    if not CURATED_PAIRS_PATH.exists():
+        return set()
+    spec = json.loads(CURATED_PAIRS_PATH.read_text())
+    return {p["pair_id"] for p in spec.get("pairs", [])}
 
 # Content-level curation threshold. Pairs below this are considered
 # content-mismatched (different scenes despite tight GPS+heading) and are
@@ -147,28 +177,25 @@ def run_pair(
     road_mask_snow = keep_largest_component(road_mask_snow)
 
     # 5. Cross-season overlay: warp the prior mask onto the snow frame.
-    # Identity-tinted (rust) for the load-bearing column.
-    snow_overlay = alpha_blend(snow, road_mask_snow, color=(179, 74, 37), alpha=0.42)
+    # Tint matches the prior road mask (green) — same road, transferred.
+    snow_overlay = alpha_blend(snow, road_mask_snow, color=(46, 156, 86), alpha=0.50)
     snow_overlay_path = out_dir / f"{pair_id}__overlay.png"
     cv2.imwrite(str(snow_overlay_path), cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR))
 
     # 6. Naive baseline: run the same segmenter directly on the snow frame.
     #    Expected to produce a fragmented / shifted / collapsed road prediction
-    #    because the segmenter has never been trained on snow. We render this
-    #    *uncleaned* (no largest-component pass) — that's the contrast condition.
+    #    because the segmenter has never been trained on snow. Rendered
+    #    uncleaned (no largest-component pass) and red — failure visualisation.
     road_mask_snow_naive = segmenter.segment_road(snow)
-    snow_naive = alpha_blend(snow, road_mask_snow_naive, color=(140, 140, 140), alpha=0.45)
+    snow_naive = alpha_blend(snow, road_mask_snow_naive, color=(220, 60, 50), alpha=0.55)
     naive_path = out_dir / f"{pair_id}__naive_baseline.png"
     cv2.imwrite(str(naive_path), cv2.cvtColor(snow_naive, cv2.COLOR_RGB2BGR))
 
-    # 7. Headline figure: 4-panel snow / clear+mask / overlay / naive
+    # 7. Headline figure: 4-panel snow / clear+mask / overlay / naive.
+    # Title from data/curated_pairs.json if available — viewer-friendly place
+    # name + condition phrase + season pair. Falls back to the internal id.
     figure_path = out_dir / f"{pair_id}__panel.png"
-    title = pair_id.replace("__", "  ·  ")
-    subtitle = (
-        f"inliers={homo.n_inliers}    "
-        f"ground-plane bias={homo.used_ground_plane_restriction}    "
-        f"refined={refined}"
-    )
+    title, subtitle = _display_strings(pair_id)
     panel_figure(
         snow, clear, road_mask_clear, snow_overlay,
         snowy_naive=snow_naive,
@@ -229,40 +256,53 @@ def run_all(
     *,
     require_manual_curation: bool = True,
 ) -> list[PairResult]:
-    """Run the pipeline on all pairs accepted by manual snow-quality curation.
+    """Run the pipeline on the curated demo set.
+
+    The demo set is the 14 pair IDs in `data/curated_pairs.json`
+    (the GREAT+OKAY pairs from the user's overlay-quality rating).
+    If that file is missing, falls back to the manual snow-curation
+    `accept` set in `data/manual_snow_curation.json`.
 
     require_manual_curation (default True): the pipeline refuses to run unless
-    `data/manual_snow_curation.json` exists and has at least one accept. This
-    guards against accidentally producing overlays for the long tail of
-    motion-blurred / windshield-blocked snow frames that the user has already
-    decided not to demo. Pass False (or --allow-uncurated on the CLI) to
-    bypass.
+    one of these curation files exists with at least one accept. Pass False
+    (or --allow-uncurated on the CLI) to bypass and run on every pair on disk.
     """
     pair_dirs = sorted(p for p in pairs_dir.iterdir() if p.is_dir())
     if not pair_dirs:
         raise SystemExit(f"No pairs under {pairs_dir}. Run `uv run python -m data.fetch_mapillary` first.")
 
+    curated_ids = _load_curated_pair_ids()
     manual = _load_manual_curation()
     if require_manual_curation:
-        if not MANUAL_CURATION_PATH.exists():
+        if curated_ids:
+            before = len(pair_dirs)
+            pair_dirs = [d for d in pair_dirs if d.name in curated_ids]
+            print(f"curated demo set active: {len(pair_dirs)} / {before} pairs (data/curated_pairs.json)")
+        elif MANUAL_CURATION_PATH.exists():
+            accepted_ids = {pid for pid, v in manual.items() if v == "accept"}
+            if not accepted_ids:
+                raise SystemExit(
+                    f"{MANUAL_CURATION_PATH} has no accepts. Run the snow curator and "
+                    f"accept at least one pair, or pass --allow-uncurated."
+                )
+            before = len(pair_dirs)
+            pair_dirs = [d for d in pair_dirs if d.name in accepted_ids]
+            print(f"manual snow curation active: {len(pair_dirs)} / {before} pairs (manual_snow_curation.json)")
+        else:
             raise SystemExit(
-                f"{MANUAL_CURATION_PATH} not found. Run the snow curator first:\n"
-                f"  uv run streamlit run demo/curate_snow.py\n"
-                f"Or pass --allow-uncurated to run on every pair."
+                "No curation file found. Either:\n"
+                "  - put curated pair IDs in data/curated_pairs.json (the demo path), or\n"
+                "  - run the snow curator (`uv run streamlit run demo/curate_snow.py`) and accept at least one pair, or\n"
+                "  - pass --allow-uncurated to run on every pair on disk."
             )
-        accepted_ids = {pid for pid, v in manual.items() if v == "accept"}
-        if not accepted_ids:
-            raise SystemExit(
-                f"{MANUAL_CURATION_PATH} has no accepts. Run the snow curator and "
-                f"accept at least one pair, or pass --allow-uncurated."
-            )
+    elif curated_ids:
         before = len(pair_dirs)
-        pair_dirs = [d for d in pair_dirs if d.name in accepted_ids]
-        print(f"manual curation active: {len(pair_dirs)} / {before} pairs (manually accepted)")
+        pair_dirs = [d for d in pair_dirs if d.name in curated_ids]
+        print(f"curated demo set (advisory): {len(pair_dirs)} / {before} pairs")
     elif manual:
         before = len(pair_dirs)
         pair_dirs = [d for d in pair_dirs if manual.get(d.name) == "accept"]
-        print(f"manual curation present (advisory): {len(pair_dirs)} / {before} pairs")
+        print(f"manual snow curation (advisory): {len(pair_dirs)} / {before} pairs")
 
     matcher = Matcher()
     segmenter = RoadSegmenter()

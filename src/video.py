@@ -1,37 +1,42 @@
 """Auto-rendered submission video.
 
-Composes title cards + hero-panel scenes + dissolves into a ~3-min MP4.
-Optional audio: if `assets/audio/music.mp3` (or `.wav`) and/or
-`assets/audio/ambience.mp3` exist they are mixed under the captions; if
-not, the video ships silent and the README documents the drop-in path.
+Composes the narrative as a sequence of typographic title cards, principle
+diagrams, and per-hero slide pairs. ~3 min, 1080p, 30 fps.
 
-The script is deterministic: same inputs, same outputs. The narrative beats
-are defined in `SCENES` below; tweak there to re-cut.
+Per-hero structure (the user's requested layout):
+  · Slide A — 1x2: snow query  ·  naive direct on snow (red, the failure).
+  · Slide B — top row spans both columns with the matches viz (legend
+    explained); bottom row is clear-prior+road (green) and cross-season
+    overlay (green).
+
+Pacing is information-density-aware: title cards 5-7 s, text-heavy slides
+10-12 s, hero slides 8-12 s. Audio: any music.* and ambience.* in
+assets/audio/ are looped to the video duration and mixed under captions.
+
+Visual identity (charcoal · cream · rust; EB Garamond + Inter +
+JetBrains Mono) follows docs/style/style.md.
 
 Usage:
     uv run python -m src.video --out outputs/demo.mp4
-
-Visual identity (charcoal · cream · rust) and typography (EB Garamond +
-Inter + JetBrains Mono) follow `docs/style/style.md`.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-# Silence moviepy 'imageio' progress bars when run non-interactively.
 os.environ.setdefault("IMAGEIO_FFMPEG_NO_PROGRESS", "1")
 
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 from moviepy import (
     AudioFileClip,
     CompositeAudioClip,
-    CompositeVideoClip,
     ImageClip,
     afx,
     concatenate_videoclips,
@@ -43,18 +48,19 @@ ROOT = Path(__file__).resolve().parents[1]
 FONTS_DIR = ROOT / "assets/fonts"
 AUDIO_DIR = ROOT / "assets/audio"
 HEROES_DIR = ROOT / "outputs/heroes"
+PAIRS_DIR = ROOT / "data/pairs"
+CURATED = ROOT / "data/curated_pairs.json"
 
-# Identity
 BG = "#f6f3ee"
 TEXT = "#1c1c1c"
 ACCENT = "#b34a25"
 MUTE = "#8a8780"
+GREEN = "#2e9c56"
+RED = "#dc3c32"
 
-# Frame size: 1920x1080 (1080p) for upload clarity.
 W, H = 1920, 1080
 FPS = 30
 
-# Register fonts so matplotlib renders title cards in the chosen typography.
 for _f in FONTS_DIR.glob("*.ttf"):
     try:
         fm.fontManager.addfont(str(_f))
@@ -62,270 +68,443 @@ for _f in FONTS_DIR.glob("*.ttf"):
         pass
 
 
+# ─── Scene data ──────────────────────────────────────────────────────────────
+
+
 @dataclass
 class TitleCard:
-    """A typography-only scene."""
-    eyebrow: str = ""        # small uppercase label above the title
-    title: str = ""          # large headline
-    body: str = ""           # optional body sentence beneath
-    subnote: str = ""        # optional small italic note at the bottom
-    duration: float = 5.0    # seconds
+    eyebrow: str = ""
+    title: str = ""
+    body: str = ""
+    subnote: str = ""
+    duration: float = 6.0
 
 
 @dataclass
-class HeroScene:
-    """A panel image with a narrative caption."""
-    panel_filename: str      # filename in outputs/heroes/
+class DiagramCard:
+    """A slide whose main content is a procedural diagram drawn by `kind`."""
+    kind: str               # 'bridge' | 'pipeline'
     eyebrow: str = ""
+    title: str = ""
     caption: str = ""
-    duration: float = 5.0
+    duration: float = 10.0
 
 
-SCENES: list[object] = [
-    # 1 — opening hook
-    TitleCard(
-        eyebrow="SOTA COMMISSION I  ·  MINIMAL-SHOT AUTONOMY",
-        title="Constants as the bridge",
-        body="Minimal-shot autonomy, demonstrated on a snow plough.",
-        duration=6.0,
-    ),
-    TitleCard(
-        eyebrow="THE PROBLEM",
-        title="A snow plough's job is short.",
-        body="Keep the road clear. While the plough is doing it, the road is invisible.",
-        duration=5.5,
-    ),
-    TitleCard(
-        title="A self-driving stack trained on Cityscapes will report,\nwith calibrated confidence,\nthat the entire scene is sky.",
-        duration=5.0,
-    ),
-    # 2 — the move
-    TitleCard(
-        eyebrow="THE MOVE",
-        title="We are not going to label our way out.",
-        body="27 million miles of road. The long tail of conditions any of them can be in is longer than the road itself.",
-        duration=6.0,
-    ),
-    TitleCard(
-        title="For every regime where autonomy fails for lack of data,\nthere is an adjacent regime where data exists,\nand where the parts that matter are the same.",
-        duration=6.5,
-    ),
-    TitleCard(
-        title="The plough's road is the same road it was last July.",
-        body="The curb hasn't moved. The hydrant hasn't moved.\nThe road's appearance has changed completely; its position in space has not.",
-        duration=6.5,
-    ),
-    TitleCard(
-        eyebrow="THE PRINCIPLE",
-        title="Constants as the bridge.",
-        body="Identify what stays the same between the data-rich regime and the data-poor one. Transfer through the constants.",
-        duration=6.5,
-    ),
-    # 3 — the architecture (one slide)
-    TitleCard(
-        eyebrow="THE EXAMPLE",
-        title="Six steps.",
-        body=(
-            "1   Pull the live snowy frame.\n"
-            "2   Pull a clear-season prior of the same coordinates.\n"
-            "3   Match the two using a frozen feature matcher.\n"
-            "4   Estimate a homography, biased toward the ground plane.\n"
-            "5   Run a road segmenter on the clear prior — never on snow.\n"
-            "6   Warp the road mask onto the snowy frame."
-        ),
-        duration=12.0,
-    ),
-    # 4 — heroes
-    HeroScene(
-        panel_filename="gallivare_se__1113124103239974__202392698419785__panel.png",
-        eyebrow="HERO  ·  GÄLLIVARE",
-        caption="Snow-banked road. The cleared lane is invisible to a model trained on dry asphalt. The cross-season overlay tracks it precisely.",
-        duration=6.5,
-    ),
-    HeroScene(
-        panel_filename="lulea_se__1235981388376274__771512076886521__panel.png",
-        eyebrow="HERO  ·  LULEÅ",
-        caption="A residential street, fully snow-covered. The clear prior knows where the road sits; the matcher anchors on the houses.",
-        duration=6.5,
-    ),
-    HeroScene(
-        panel_filename="gallivare_se__724743419870843__1232870027145826__panel.png",
-        eyebrow="HERO  ·  GÄLLIVARE",
-        caption="Direct front-of-camera view, road buried in snow. The overlay holds.",
-        duration=6.5,
-    ),
-    HeroScene(
-        panel_filename="kiruna_se__173943764513956__2572648156371424__panel.png",
-        eyebrow="HERO  ·  KIRUNA",
-        caption="Falun-red houses. The matcher anchors on the buildings; the road is recovered through the homography.",
-        duration=6.5,
-    ),
-    # 5 — generalising
-    TitleCard(
-        eyebrow="THE STRUCTURE",
-        title="A model trained on regime A.\nAn inference target in regime B.\nA known correspondence between the two.",
-        body="Snow on a road is one instance.",
-        duration=8.0,
-    ),
-    TitleCard(
-        title="Low-light medical imaging without low-light training data.\nPolar earth observation without polar training data.\nA manipulator on Mars without Mars training data.",
-        body="Each admits the same structure.",
-        duration=8.0,
-    ),
-    # 6 — close
-    TitleCard(
-        title="Constants as the bridge.",
-        body="Find what stays the same and walk across.",
-        duration=6.0,
-    ),
-    TitleCard(
-        eyebrow="REPRODUCIBLE FROM A CLEAN CLONE  ·  uv run make demo",
-        title="Snow-Underlay",
-        subnote="Submission to SoTA Commission I — Minimal-Shot Autonomy. May 2026.",
-        duration=5.5,
-    ),
-]
+@dataclass
+class HeroSlideA:
+    """Problem framing for one pair: snow query | naive."""
+    pair_id: str
+    duration: float = 8.0
+
+
+@dataclass
+class HeroSlideB:
+    """Solution for one pair: matches above; clear+mask | cross-season below."""
+    pair_id: str
+    duration: float = 11.0
+
+
+# ─── Curated pair display strings ────────────────────────────────────────────
+
+
+def _curated_entry(pair_id: str) -> dict:
+    if not CURATED.exists():
+        return {"pair_id": pair_id, "place": "", "condition": "", "snow_captured": "", "clear_captured": ""}
+    spec = json.loads(CURATED.read_text())
+    for p in spec.get("pairs", []):
+        if p.get("pair_id") == pair_id:
+            return p
+    return {"pair_id": pair_id, "place": "", "condition": "", "snow_captured": "", "clear_captured": ""}
+
+
+def _hero_strings(pair_id: str) -> tuple[str, str]:
+    e = _curated_entry(pair_id)
+    place = e.get("place") or ""
+    cond = e.get("condition") or ""
+    snow_t = e.get("snow_captured") or ""
+    clear_t = e.get("clear_captured") or ""
+    title = f"{place} — {cond}" if cond else place
+    sub = f"{snow_t}  ↔  {clear_t}" if snow_t and clear_t else ""
+    return title, sub
 
 
 # ─── Frame renderers ─────────────────────────────────────────────────────────
 
 
 def _new_canvas() -> tuple[plt.Figure, plt.Axes]:
-    """Create a 16:9 canvas in identity colours."""
     fig = plt.figure(figsize=(W / 100, H / 100), dpi=100, facecolor=BG)
     ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
-    ax.set_facecolor(BG)
-    ax.set_axis_off()
+    ax.set_xlim(0, 100); ax.set_ylim(0, 100)
+    ax.set_facecolor(BG); ax.set_axis_off()
     return fig, ax
 
 
-def _render_title_card(card: TitleCard, out_path: Path) -> Path:
+def _eyebrow(ax, x, y, text):
+    if not text:
+        return
+    ax.text(x, y, text, fontfamily="Inter", fontsize=20,
+            color=MUTE, fontweight=400, va="top", letterspacing=2)
+    ax.plot([x, x + 6], [y - 1.4, y - 1.4], color=ACCENT, linewidth=2.0)
+
+
+def _save(fig, out: Path):
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=100, facecolor=BG)
+    plt.close(fig)
+
+
+def _render_title_card(card: TitleCard, out: Path) -> Path:
     fig, ax = _new_canvas()
-    # Eyebrow (small uppercase, sans, muted)
-    if card.eyebrow:
-        ax.text(8, 88, card.eyebrow, fontfamily="Inter", fontsize=11,
-                color=MUTE, fontweight=400)
-        # rust hairline under eyebrow
-        ax.plot([8, 14], [85.5, 85.5], color=ACCENT, linewidth=1.5)
-    # Title (Inter, large)
+    _eyebrow(ax, 8, 92, card.eyebrow)
     if card.title:
-        # Auto-size based on length
         n_lines = card.title.count("\n") + 1
-        size = 60 if n_lines == 1 and len(card.title) < 40 else 44 if n_lines <= 2 else 34
-        ax.text(8, 76 if card.eyebrow else 82, card.title, fontfamily="Inter",
-                fontsize=size, color=TEXT, fontweight=500, va="top",
-                linespacing=1.15)
-    # Body (Garamond)
+        size = 70 if n_lines == 1 and len(card.title) < 38 else 50 if n_lines <= 2 else 40
+        ax.text(8, 80, card.title, fontfamily="Inter", fontsize=size,
+                color=TEXT, fontweight=500, va="top", linespacing=1.2)
     if card.body:
-        ax.text(8, 32, card.body, fontfamily="EB Garamond", fontsize=24,
-                color=TEXT, va="top", linespacing=1.4)
-    # Subnote (tiny italic)
+        # Body sized so the slide can be read in 6-10 s.
+        ax.text(8, 38, card.body, fontfamily="EB Garamond",
+                fontsize=28, color=TEXT, va="top", linespacing=1.4)
     if card.subnote:
-        ax.text(8, 8, card.subnote, fontfamily="EB Garamond", fontsize=14,
-                color=MUTE, va="bottom", style="italic")
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=100, facecolor=BG)
-    plt.close(fig)
-    return out_path
+        ax.text(8, 7, card.subnote, fontfamily="EB Garamond",
+                fontsize=18, color=MUTE, va="bottom", style="italic")
+    _save(fig, out)
+    return out
 
 
-def _render_hero_scene(scene: HeroScene, out_path: Path) -> Path:
-    panel_path = HEROES_DIR / scene.panel_filename
-    if not panel_path.exists():
-        # Fallback to a title card noting the missing asset.
-        return _render_title_card(
-            TitleCard(eyebrow=scene.eyebrow, title="(missing panel)",
-                      subnote=str(panel_path), duration=scene.duration),
-            out_path,
-        )
+def _draw_bridge_diagram(ax):
+    """Two regime boxes connected by a 'constant' bridge."""
+    # Domain A — data-rich
+    a = FancyBboxPatch((6, 28), 26, 32, boxstyle="round,pad=0.3",
+                       linewidth=1.2, edgecolor=TEXT, facecolor="white")
+    ax.add_patch(a)
+    ax.text(19, 56, "Regime A", fontfamily="Inter", fontweight=700, fontsize=20,
+            ha="center", color=TEXT)
+    ax.text(19, 50, "data-rich", fontfamily="Inter", fontsize=16,
+            ha="center", color=MUTE)
+    ax.text(19, 41, "summer asphalt\nlane markings\ndaytime", fontfamily="EB Garamond",
+            fontsize=18, ha="center", color=TEXT, linespacing=1.35)
+
+    # Domain B — data-poor
+    b = FancyBboxPatch((68, 28), 26, 32, boxstyle="round,pad=0.3",
+                       linewidth=1.2, edgecolor=TEXT, facecolor="white")
+    ax.add_patch(b)
+    ax.text(81, 56, "Regime B", fontfamily="Inter", fontweight=700, fontsize=20,
+            ha="center", color=TEXT)
+    ax.text(81, 50, "data-poor", fontfamily="Inter", fontsize=16,
+            ha="center", color=MUTE)
+    ax.text(81, 41, "snow-covered road\nlane markings hidden\nthe regime that fails", fontfamily="EB Garamond",
+            fontsize=18, ha="center", color=TEXT, linespacing=1.35)
+
+    # Arrow / bridge
+    arrow = FancyArrowPatch((33, 44), (67, 44), arrowstyle="-|>", mutation_scale=22,
+                            color=ACCENT, linewidth=2.5, zorder=4)
+    ax.add_patch(arrow)
+    ax.text(50, 50, "the constant", fontfamily="Inter", fontweight=500,
+            fontsize=20, ha="center", color=ACCENT)
+    ax.text(50, 38.5, "(buildings, signs, road position)", fontfamily="EB Garamond",
+            fontstyle="italic", fontsize=18, ha="center", color=MUTE)
+
+
+def _draw_pipeline_diagram(ax):
+    """Six-step horizontal flow."""
+    steps = [
+        ("Snow query", "live frame"),
+        ("Clear prior", "Mapillary, same coords"),
+        ("Match", "DISK + LightGlue"),
+        ("Align", "RANSAC homography"),
+        ("Segment", "Mask2Former on prior only"),
+        ("Warp", "road mask onto snow"),
+    ]
+    n = len(steps)
+    box_w = 14
+    spacing = 1.2
+    total = n * box_w + (n - 1) * spacing
+    x0 = (100 - total) / 2
+    y_top = 50
+    y_bottom = 30
+
+    for i, (head, sub) in enumerate(steps):
+        x = x0 + i * (box_w + spacing)
+        rect = FancyBboxPatch((x, y_bottom), box_w, y_top - y_bottom,
+                              boxstyle="round,pad=0.15",
+                              linewidth=1.0, edgecolor=TEXT, facecolor="white")
+        ax.add_patch(rect)
+        ax.text(x + box_w / 2, y_top - 4, head,
+                fontfamily="Inter", fontweight=700, fontsize=14,
+                ha="center", va="top", color=TEXT)
+        ax.text(x + box_w / 2, y_top - 9, sub,
+                fontfamily="EB Garamond", fontstyle="italic", fontsize=12,
+                ha="center", va="top", color=MUTE, linespacing=1.2)
+        ax.text(x + box_w / 2, y_bottom + 3, str(i + 1),
+                fontfamily="Inter", fontweight=700, fontsize=22,
+                ha="center", color=ACCENT)
+        if i < n - 1:
+            ax.annotate("", xy=(x + box_w + spacing, 40), xytext=(x + box_w, 40),
+                        arrowprops=dict(arrowstyle="-|>", mutation_scale=12,
+                                        color=TEXT, linewidth=1.0))
+
+
+def _render_diagram_card(card: DiagramCard, out: Path) -> Path:
     fig, ax = _new_canvas()
-    img = np.array(Image.open(panel_path).convert("RGB"))
-    ih, iw = img.shape[:2]
+    _eyebrow(ax, 8, 92, card.eyebrow)
+    if card.title:
+        ax.text(8, 80, card.title, fontfamily="Inter", fontsize=50,
+                color=TEXT, fontweight=500, va="top")
+    if card.kind == "bridge":
+        _draw_bridge_diagram(ax)
+    elif card.kind == "pipeline":
+        _draw_pipeline_diagram(ax)
+    if card.caption:
+        ax.text(8, 18, card.caption, fontfamily="EB Garamond",
+                fontsize=22, color=TEXT, va="top", linespacing=1.4)
+    _save(fig, out)
+    return out
 
-    # Reserve top 18% for eyebrow + caption; bottom 0; image fills the rest.
-    img_left, img_right = 6, 94
-    img_top = 16
-    img_bottom = 95
 
-    # Compute image rect to fit aspect.
-    img_w_pct = img_right - img_left
-    img_h_pct = img_bottom - img_top
-    panel_aspect = iw / ih
-    canvas_aspect = (W * img_w_pct / 100) / (H * img_h_pct / 100)
-    if panel_aspect > canvas_aspect:
-        # Image is wider — fit to width
-        scale = (W * img_w_pct / 100) / iw
-    else:
-        scale = (H * img_h_pct / 100) / ih
-    rendered_w_px = iw * scale
-    rendered_h_px = ih * scale
-    rendered_w_pct = rendered_w_px / W * 100
-    rendered_h_pct = rendered_h_px / H * 100
-    cx = (img_left + img_right) / 2
-    img_x_left = cx - rendered_w_pct / 2
-    img_y_top = (img_top + img_bottom) / 2 - rendered_h_pct / 2
+def _annotate_image(ax, img: np.ndarray, label: str, *, accent: bool = False):
+    """Show an image with a short Inter label above and (optional) accent frame."""
+    ax.imshow(img)
+    ax.set_xticks([]); ax.set_yticks([])
+    for s in ax.spines.values():
+        s.set_visible(accent)
+        if accent:
+            s.set_color(ACCENT); s.set_linewidth(2.4)
+    ax.set_title(label, fontfamily="Inter", fontsize=22, color=TEXT,
+                 fontweight=500, pad=12, loc="left")
 
-    ax.imshow(img, extent=[img_x_left, img_x_left + rendered_w_pct,
-                            100 - (img_y_top + rendered_h_pct), 100 - img_y_top],
-              aspect="auto", interpolation="bilinear")
 
-    # Eyebrow + accent rule
-    if scene.eyebrow:
-        ax.text(6, 96, scene.eyebrow, fontfamily="Inter", fontsize=11,
-                color=MUTE, fontweight=400, va="top")
-        ax.plot([6, 12], [94.5, 94.5], color=ACCENT, linewidth=1.5)
+def _render_hero_slide_a(scene: HeroSlideA, out: Path) -> Path:
+    pair_id = scene.pair_id
+    snow_path = PAIRS_DIR / pair_id / "snow.jpg"
+    naive_path = HEROES_DIR / f"{pair_id}__naive_baseline.png"
+    if not snow_path.exists() or not naive_path.exists():
+        return _render_title_card(
+            TitleCard(title="(missing assets)", subnote=str(snow_path), duration=scene.duration), out)
 
-    # Caption
-    if scene.caption:
-        # Word-wrap caption to ~110 chars per line.
-        ax.text(6, 92, scene.caption, fontfamily="EB Garamond", fontsize=20,
-                color=TEXT, va="top", wrap=True, linespacing=1.35)
+    title, sub = _hero_strings(pair_id)
+    fig = plt.figure(figsize=(W/100, H/100), dpi=100, facecolor=BG)
+    gs = fig.add_gridspec(2, 2, height_ratios=[0.18, 1.0], hspace=0.04, wspace=0.04,
+                          left=0.04, right=0.96, top=0.97, bottom=0.04)
+    head = fig.add_subplot(gs[0, :]); head.set_facecolor(BG); head.set_axis_off()
+    head.text(0.0, 0.85, "THE PROBLEM  ·  SNOW QUERY VS NAIVE PREDICTION",
+              fontfamily="Inter", fontsize=18, color=MUTE, ha="left", va="top",
+              transform=head.transAxes, letterspacing=2)
+    head.plot([0, 0.04], [0.65, 0.65], color=ACCENT, linewidth=2.0,
+              transform=head.transAxes)
+    head.text(0.0, 0.55, title, fontfamily="Inter", fontsize=34,
+              fontweight=500, color=TEXT, ha="left", va="top",
+              transform=head.transAxes)
+    if sub:
+        head.text(0.0, 0.10, sub, fontfamily="EB Garamond", fontsize=20,
+                  color=MUTE, style="italic", ha="left", va="top",
+                  transform=head.transAxes)
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=100, facecolor=BG)
-    plt.close(fig)
-    return out_path
+    ax_snow = fig.add_subplot(gs[1, 0])
+    ax_naive = fig.add_subplot(gs[1, 1])
+    snow = np.array(Image.open(snow_path).convert("RGB"))
+    naive = np.array(Image.open(naive_path).convert("RGB"))
+    _annotate_image(ax_snow, snow, "Snow query")
+    _annotate_image(ax_naive, naive, "Naive direct on snow  (red = predicted road)")
+    _save(fig, out)
+    return out
+
+
+def _render_hero_slide_b(scene: HeroSlideB, out: Path) -> Path:
+    pair_id = scene.pair_id
+    matches_path = HEROES_DIR / f"{pair_id}__matches.png"
+    overlay_path = HEROES_DIR / f"{pair_id}__overlay.png"
+    clear_path = PAIRS_DIR / pair_id / "clear.jpg"
+    pair_dir = PAIRS_DIR / pair_id
+    if not (matches_path.exists() and overlay_path.exists() and clear_path.exists()):
+        return _render_title_card(
+            TitleCard(title="(missing assets)", subnote=pair_id, duration=scene.duration), out)
+
+    # Recompute the 'clear + green road mask' frame for display so we don't
+    # depend on a separately-cached PNG.
+    from .overlay import alpha_blend  # local to avoid circular import noise
+    from .pipeline import _load_rgb, _resize_to
+    clear = _resize_to(_load_rgb(clear_path))
+    road_mask = _segment_for_display(clear)
+    clear_with_mask = alpha_blend(clear, road_mask, color=(46, 156, 86), alpha=0.50)
+
+    title, sub = _hero_strings(pair_id)
+    fig = plt.figure(figsize=(W/100, H/100), dpi=100, facecolor=BG)
+    # Header band + 2-row body. Top body row is matches (full width); bottom
+    # row is clear+mask | overlay (two columns).
+    gs = fig.add_gridspec(3, 2, height_ratios=[0.16, 0.50, 0.50], hspace=0.18, wspace=0.04,
+                          left=0.04, right=0.96, top=0.97, bottom=0.04)
+    head = fig.add_subplot(gs[0, :]); head.set_facecolor(BG); head.set_axis_off()
+    head.text(0.0, 0.85, "THE SOLUTION  ·  MATCHES, MASK, OVERLAY",
+              fontfamily="Inter", fontsize=18, color=MUTE, ha="left", va="top",
+              transform=head.transAxes, letterspacing=2)
+    head.plot([0, 0.04], [0.65, 0.65], color=ACCENT, linewidth=2.0,
+              transform=head.transAxes)
+    head.text(0.0, 0.55, title, fontfamily="Inter", fontsize=34,
+              fontweight=500, color=TEXT, ha="left", va="top",
+              transform=head.transAxes)
+    if sub:
+        head.text(0.0, 0.10, sub, fontfamily="EB Garamond", fontsize=20,
+                  color=MUTE, style="italic", ha="left", va="top",
+                  transform=head.transAxes)
+
+    ax_matches = fig.add_subplot(gs[1, :])
+    matches_img = np.array(Image.open(matches_path).convert("RGB"))
+    _annotate_image(
+        ax_matches, matches_img,
+        "Feature correspondences  ·  green = RANSAC inlier (used for the homography fit)  ·  red = rejected outlier",
+    )
+
+    ax_clear = fig.add_subplot(gs[2, 0])
+    ax_overlay = fig.add_subplot(gs[2, 1])
+    overlay = np.array(Image.open(overlay_path).convert("RGB"))
+    _annotate_image(ax_clear, clear_with_mask, "Clear prior  ·  road mask in green")
+    _annotate_image(ax_overlay, overlay, "Cross-season overlay  ·  same road, transferred", accent=True)
+    _save(fig, out)
+    return out
+
+
+_seg_cache = {"obj": None}
+
+
+def _segment_for_display(rgb: np.ndarray) -> np.ndarray:
+    if _seg_cache["obj"] is None:
+        from .segmentation import RoadSegmenter
+        from .overlay import keep_largest_component
+        _seg_cache["obj"] = (RoadSegmenter(), keep_largest_component)
+    seg, klc = _seg_cache["obj"]
+    return klc(seg.segment_road(rgb))
+
+
+# ─── Scene script ────────────────────────────────────────────────────────────
+
+
+def _build_scenes() -> list[object]:
+    spec = json.loads(CURATED.read_text()) if CURATED.exists() else {"pairs": []}
+    hero_ids = [p["pair_id"] for p in spec.get("pairs", [])][:4]  # first four GREAT-rated
+    scenes: list[object] = []
+
+    # Open
+    scenes.append(TitleCard(
+        eyebrow="SOTA COMMISSION I  ·  MINIMAL-SHOT AUTONOMY",
+        title="Constants as the bridge",
+        body="A demonstration of cross-season visual prior transfer\nfor autonomous snow ploughs.",
+        duration=7.0,
+    ))
+
+    # Problem
+    scenes.append(TitleCard(
+        eyebrow="THE PROBLEM",
+        title="A snow plough's job is short:\nkeep the road clear.",
+        body="While the plough is working, the road is invisible.\nCurbs are buried. Lane markings are gone. The seam between asphalt and garden is no longer drawn.",
+        duration=10.0,
+    ))
+    scenes.append(TitleCard(
+        eyebrow="THE GAP",
+        title="Self-driving systems are trained on\ndry roads, deliberately.",
+        body="Cityscapes, KITTI, nuScenes, Waymo Open — every canonical training corpus is dominated by clear-weather highways under daylight.\nA stack trained on this data, asked to operate when the road is buried, has been asked the wrong question.",
+        duration=12.0,
+    ))
+
+    # Why not more data
+    scenes.append(TitleCard(
+        eyebrow="THE SCALING ARGUMENT",
+        title="We are not going to label our way out.",
+        body="27 million miles of road. The long tail of conditions any of them can be in is longer than the road itself.\nAnnotating snowy roads, dust storms, fog, washouts — none of these scale.",
+        duration=11.0,
+    ))
+
+    # Principle (with diagram)
+    scenes.append(DiagramCard(
+        kind="bridge",
+        eyebrow="THE PRINCIPLE",
+        title="Find the constant.",
+        caption="For every regime where autonomy fails for lack of data, there is an adjacent regime where data exists. Identify what stays the same — and transfer through the constant.",
+        duration=12.0,
+    ))
+
+    scenes.append(TitleCard(
+        eyebrow="THE EXAMPLE",
+        title="The plough's road is the same road\nit was last July.",
+        body="The curb hasn't moved. The hydrant hasn't moved.\nThe road's appearance has changed completely. Its position in space has not.",
+        duration=10.0,
+    ))
+
+    # Architecture (with diagram)
+    scenes.append(DiagramCard(
+        kind="pipeline",
+        eyebrow="THE ARCHITECTURE  ·  SIX STEPS",
+        title="",
+        caption="Frozen pretrained components throughout. The segmenter is applied to the clear prior only — never to the snow frame. Snow appears at inference time as the runtime input.",
+        duration=14.0,
+    ))
+
+    # Heroes — two slides each
+    for pid in hero_ids:
+        scenes.append(HeroSlideA(pair_id=pid, duration=8.0))
+        scenes.append(HeroSlideB(pair_id=pid, duration=12.0))
+
+    # Generalising
+    scenes.append(TitleCard(
+        eyebrow="THE STRUCTURE GENERALISES",
+        title="Where the data is missing,\nfind the regime where it isn't.",
+        body="Low-light medical imaging without low-light training data.\nPolar earth observation without polar training data.\nA manipulator on Mars without Mars training data.\nEach admits the same structure.",
+        duration=12.0,
+    ))
+
+    # Close
+    scenes.append(TitleCard(
+        eyebrow="REPRODUCIBLE  ·  uv run make demo",
+        title="Snow-Underlay",
+        subnote="Submission to SoTA Commission I — Minimal-Shot Autonomy. May 2026.",
+        duration=6.5,
+    ))
+    return scenes
 
 
 # ─── Video assembly ──────────────────────────────────────────────────────────
 
 
 def _scene_clip(scene: object, frame_path: Path):
-    duration = getattr(scene, "duration", 5.0)
+    duration = getattr(scene, "duration", 6.0)
     clip = ImageClip(str(frame_path)).with_duration(duration)
-    # Soft fade in/out for the dissolve feel
-    fade = min(0.6, duration / 6)
+    fade = min(0.7, duration / 7)
     return clip.with_effects([vfx.FadeIn(fade), vfx.FadeOut(fade)])
 
 
 def _audio_track(total_duration: float):
-    """Mix music + ambience under the visuals, if files are present."""
     pieces = []
-    music_files = list(AUDIO_DIR.glob("music.*"))
-    ambience_files = list(AUDIO_DIR.glob("ambience.*"))
-    for mf in music_files:
+    for mf in AUDIO_DIR.glob("music.*"):
         try:
             ac = AudioFileClip(str(mf))
-            # Loop or trim to fit total_duration
             ac = ac.with_effects([afx.AudioLoop(duration=total_duration)])
             ac = ac.with_effects([afx.MultiplyVolume(0.55)])
             pieces.append(ac)
         except Exception as e:
-            print(f"  ! could not load music {mf.name}: {e}")
-    for af in ambience_files:
+            print(f"  ! music {mf.name}: {e}")
+    for af in AUDIO_DIR.glob("ambience.*"):
         try:
             ac = AudioFileClip(str(af))
             ac = ac.with_effects([afx.AudioLoop(duration=total_duration)])
             ac = ac.with_effects([afx.MultiplyVolume(0.30)])
             pieces.append(ac)
         except Exception as e:
-            print(f"  ! could not load ambience {af.name}: {e}")
+            print(f"  ! ambience {af.name}: {e}")
     if not pieces:
         return None
     return CompositeAudioClip(pieces).with_duration(total_duration)
+
+
+def _render_scene(scene: object, frame_path: Path) -> Path:
+    if isinstance(scene, TitleCard):
+        return _render_title_card(scene, frame_path)
+    if isinstance(scene, DiagramCard):
+        return _render_diagram_card(scene, frame_path)
+    if isinstance(scene, HeroSlideA):
+        return _render_hero_slide_a(scene, frame_path)
+    if isinstance(scene, HeroSlideB):
+        return _render_hero_slide_b(scene, frame_path)
+    raise TypeError(f"unknown scene: {type(scene)}")
 
 
 def main() -> None:
@@ -334,21 +513,15 @@ def main() -> None:
     ap.add_argument("--cache", default="outputs/_video_frames")
     args = ap.parse_args()
 
-    cache = Path(args.cache)
-    cache.mkdir(parents=True, exist_ok=True)
-    out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cache = Path(args.cache); cache.mkdir(parents=True, exist_ok=True)
+    out_path = Path(args.out); out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    scenes = _build_scenes()
+    print(f"rendering {len(scenes)} scenes...")
     clips = []
-    print(f"rendering {len(SCENES)} scenes...")
-    for i, scene in enumerate(SCENES):
+    for i, scene in enumerate(scenes):
         frame_path = cache / f"scene_{i:02d}.png"
-        if isinstance(scene, TitleCard):
-            _render_title_card(scene, frame_path)
-        elif isinstance(scene, HeroScene):
-            _render_hero_scene(scene, frame_path)
-        else:
-            raise TypeError(f"unknown scene type: {type(scene)}")
+        _render_scene(scene, frame_path)
         clips.append(_scene_clip(scene, frame_path))
 
     video = concatenate_videoclips(clips, method="chain")
@@ -356,11 +529,11 @@ def main() -> None:
     audio = _audio_track(total)
     if audio is not None:
         video = video.with_audio(audio)
-        print(f"audio: {AUDIO_DIR}/* mixed under {total:.1f}s of video")
+        print(f"audio: mixed under {total:.1f}s of video")
     else:
-        print("audio: silent (drop assets/audio/music.* and/or ambience.* for a music bed)")
+        print("audio: silent (drop assets/audio/music.* or ambience.* for a music bed)")
 
-    print(f"writing {out_path} ({total:.1f}s, {FPS} fps)...")
+    print(f"writing {out_path} ({total:.1f}s)...")
     video.write_videofile(str(out_path), fps=FPS, codec="libx264",
                           audio_codec="aac" if audio is not None else None,
                           preset="medium", logger=None)
