@@ -13,15 +13,34 @@ import streamlit as st
 OUT_DIR = Path("outputs/heroes")
 PAIRS_DIR = Path("data/pairs")
 
-st.set_page_config(page_title="Snow-Underlay", layout="wide")
+st.set_page_config(page_title="Snow-Underlay  ·  Constants as the bridge", layout="wide")
 
-st.title("Snow-Underlay")
+# Identity styling — charcoal · cream · rust; EB Garamond + Inter via Google Fonts CDN
 st.markdown(
-    "**Cross-season image matching for snow-plough autonomy.** "
-    "Match a live snowy frame against a clear-season prior of the same coordinates, "
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;700&display=swap');
+    .stApp { background-color: #f6f3ee; }
+    .stApp, .stMarkdown, p, li { font-family: 'EB Garamond', Georgia, serif; color: #1c1c1c; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Inter', sans-serif; color: #1c1c1c; font-weight: 700; letter-spacing: -0.01em; }
+    h1 { font-size: 2.2rem !important; }
+    .eyebrow { font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.18em; color: #8a8780; text-transform: uppercase; }
+    .accent-rule { display: block; width: 56px; height: 2px; background: #b34a25; margin: 0.25rem 0 1rem 0; }
+    [data-testid="stMetricValue"] { font-family: 'Inter', sans-serif; color: #1c1c1c; }
+    [data-testid="stMetricLabel"] { font-family: 'Inter', sans-serif; color: #8a8780; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown('<span class="eyebrow">SoTA Commission I  ·  Minimal-Shot Autonomy</span>', unsafe_allow_html=True)
+st.markdown('<span class="accent-rule"></span>', unsafe_allow_html=True)
+st.title("Constants as the bridge")
+st.markdown(
+    "*Minimal-shot autonomy, demonstrated on a snow plough.* "
+    "Match a live snowy frame against a clear-season prior of the same coordinates; "
     "transfer the road segmentation through the alignment. "
-    "*Zero snowy frames touch any model weights — snow appears only at inference time, "
-    "as the runtime input.*"
+    "**Zero snowy frames touch any model weights** — snow appears only at inference, as the runtime input."
 )
 
 summary_path = OUT_DIR / "summary.json"
