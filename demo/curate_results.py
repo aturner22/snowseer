@@ -54,6 +54,10 @@ def _load_results():
             "panel_path": str(panel),
             "naive_path": str(HEROES / f"{pid}__naive_baseline.png"),
             "matches_path": str(HEROES / f"{pid}__matches.png"),
+            "priors_path": str(HEROES / f"{pid}__priors.png"),
+            "overlay_union": str(HEROES / f"{pid}__overlay_union.png"),
+            "overlay_weighted": str(HEROES / f"{pid}__overlay_weighted.png"),
+            "overlay_majority": str(HEROES / f"{pid}__overlay_majority.png"),
             "summary": s,
             "meta": meta,
         })
@@ -77,9 +81,17 @@ def _save_decisions(d: dict[str, dict]) -> None:
 
 def _decide(pair_id: str, rating: str, note: str = "") -> None:
     decisions = st.session_state.decisions
-    decisions[pair_id] = {"rating": rating, "note": note}
+    prior = decisions.get(pair_id, {})
+    decisions[pair_id] = {**prior, "rating": rating, "note": note}
     _save_decisions(decisions)
     st.session_state.idx = min(st.session_state.idx + 1, len(st.session_state.results) - 1)
+
+
+def _pick_fusion(pair_id: str, fusion: str) -> None:
+    decisions = st.session_state.decisions
+    prior = decisions.get(pair_id, {})
+    decisions[pair_id] = {**prior, "best_fusion": fusion}
+    _save_decisions(decisions)
 
 
 # --- Initial state ---
@@ -191,6 +203,29 @@ with ncols[1]:
 with st.expander("Feature correspondences (DISK + LightGlue, RANSAC inliers in green)"):
     if Path(pair["matches_path"]).exists():
         _img(pair["matches_path"])
+
+# Multi-prior fusion comparison
+st.markdown("##### Compare fusion strategies  ·  pick the best for this pair")
+fcols = st.columns(3)
+fusion_paths = [
+    ("union", "Union + edge-erosion", pair.get("overlay_union")),
+    ("weighted", "Weighted soft-average  (current primary)", pair.get("overlay_weighted")),
+    ("majority", "Hard majority vote", pair.get("overlay_majority")),
+]
+existing_best = existing.get("best_fusion")
+for i, (key, label, path_str) in enumerate(fusion_paths):
+    with fcols[i]:
+        marker = "  ✓" if existing_best == key else ""
+        st.markdown(f"**{label}{marker}**")
+        if path_str and Path(path_str).exists():
+            _img(path_str)
+        if st.button(f"Best is: {key}", key=f"best_{key}", use_container_width=True):
+            _pick_fusion(pair_id, key)
+            st.rerun()
+
+with st.expander("Per-prior overlay strip (shows what each prior contributes individually)"):
+    if Path(pair.get("priors_path", "")).exists():
+        _img(pair["priors_path"])
 
 note = st.text_input("Optional note (one line)", value=existing.get("note", ""))
 
