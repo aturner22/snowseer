@@ -94,9 +94,11 @@ def main() -> None:
     summary_path = HEROES / "summary.json"
     summary = json.loads(summary_path.read_text()) if summary_path.exists() else []
 
-    # Optional: pull manual curation labels.
+    # Optional: pull manual snow-quality + result-rating labels.
     manual_path = Path("data/manual_snow_curation.json")
     manual = json.loads(manual_path.read_text()) if manual_path.exists() else {}
+    ratings_path = Path("data/manual_result_curation.json")
+    ratings = json.loads(ratings_path.read_text()) if ratings_path.exists() else {}
 
     rows: list[np.ndarray] = []
     target_w: int | None = None
@@ -124,15 +126,16 @@ def main() -> None:
         meta_path = PAIRS / pair_id / "meta.json"
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
         manual_verdict = (manual.get(pair_id) or {}).get("verdict", "—")
+        rating = (ratings.get(pair_id) or {}).get("rating", "—")
 
         label = (
             f"{pair_id}    "
             f"region={meta.get('region','?')}    "
             f"inliers={entry.get('n_inliers','?')}    "
             f"refined={entry.get('refined', False)}    "
-            f"auto={'accept' if entry.get('accept') else 'reject'}    "
-            f"manual={manual_verdict}    "
-            f"snow_q={(sq.get('composite') or 0):.2f}"
+            f"snow_q={(sq.get('composite') or 0):.2f}    "
+            f"manual_snow={manual_verdict}    "
+            f"rating={rating.upper()}"
         )
         bar = _label_strip(target_w, label)
         rows.append(np.vstack([bar, row]))

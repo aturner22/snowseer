@@ -21,13 +21,66 @@ import streamlit as st
 PAIRS_DIR = Path("data/pairs")
 DECISIONS_PATH = Path("data/manual_snow_curation.json")
 TARGET_ACCEPTS = 12
+DEDUP_RADIUS_M = 50.0          # cluster pairs whose snow images are within this radius
+DEDUP_HEADING_DEG = 40.0       # …and whose snow headings are within this delta
+                               # (so opposite-direction views of the same road stay distinct)
+
+
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in metres."""
+    import math
+    R = 6_371_008.8
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return float(2 * R * math.asin(math.sqrt(a)))
+
+
+def _heading_delta(a: float, b: float) -> float:
+    d = abs((a - b) % 360.0)
+    return min(d, 360.0 - d)
+
+
+def _dedup_spatial(pairs: list[dict], radius_m: float, heading_deg: float) -> list[dict]:
+    """Greedy spatial+heading dedup: walk pairs in quality order, drop any whose
+    snow image is within `radius_m` of an already-kept pair AND whose heading
+    delta is below `heading_deg`. Same coords with opposite-direction views
+    remain distinct."""
+    kept: list[dict] = []
+    for p in pairs:
+        snow = (p.get("meta") or {}).get("snow") or {}
+        lat, lng, h = snow.get("lat"), snow.get("lng"), snow.get("heading")
+        if lat is None or lng is None:
+            kept.append(p)
+            continue
+        too_close = False
+        for k in kept:
+            ks = (k.get("meta") or {}).get("snow") or {}
+            klat, klng, kh = ks.get("lat"), ks.get("lng"), ks.get("heading")
+            if klat is None or klng is None:
+                continue
+            if _haversine_m(lat, lng, klat, klng) >= radius_m:
+                continue
+            # within radius — also check heading similarity
+            if h is not None and kh is not None:
+                if _heading_delta(float(h), float(kh)) >= heading_deg:
+                    continue  # similar location, different direction — keep
+            too_close = True
+            break
+        if not too_close:
+            kept.append(p)
+    return kept
+
 
 st.set_page_config(page_title="Snow curator", layout="wide")
 
 
 @st.cache_data
-def _load_pairs():
-    """All pairs ordered by composite snow-quality score (highest first)."""
+def _load_pairs(dedup: bool = True):
+    """All pairs ordered by composite snow-quality score (highest first).
+    With dedup=True, near-spatial-duplicates are dropped (Mapillary contributors
+    upload sequential frames from the same drive)."""
     out = []
     for d in sorted(PAIRS_DIR.iterdir() if PAIRS_DIR.exists() else []):
         if not d.is_dir():
@@ -58,6 +111,8 @@ def _load_pairs():
             "meta": meta_data,
         })
     out.sort(key=lambda p: -(p["snow_quality"].get("composite") or 0))
+    if dedup:
+        out = _dedup_spatial(out, DEDUP_RADIUS_M, DEDUP_HEADING_DEG)
     return out
 
 
@@ -148,12 +203,28 @@ mcols[4].metric("edges", f"{(sq.get('edge_density') or 0):.3f}")
 if existing:
     st.info(f"Previously decided: **{existing.get('verdict')}** — {existing.get('note','')}")
 
-# Snow first, big.
+# Sidebar size controls (defined later in sidebar block but read here).
+img_max_h = st.session_state.get("img_max_h", 700)
+
+# Snow first, big — but sized to fit the user's viewport.
 st.markdown("##### Snow query frame  *(this is what the plough's camera would feed in)*")
-st.image(pair["snow_path"], use_column_width=True)
+try:
+    from PIL import Image as _PIL
+    _w, _h = _PIL.open(pair["snow_path"]).size
+    _scale = img_max_h / _h if _h > img_max_h else 1.0
+    _render_w = int(round(_w * _scale))
+    st.image(pair["snow_path"], width=_render_w)
+except Exception:
+    st.image(pair["snow_path"], use_column_width=True)
 
 with st.expander("Compare with the clear-season prior of the same coordinates", expanded=False):
-    st.image(pair["clear_path"], use_column_width=True)
+    try:
+        _w, _h = _PIL.open(pair["clear_path"]).size
+        _scale = img_max_h / _h if _h > img_max_h else 1.0
+        _render_w = int(round(_w * _scale))
+        st.image(pair["clear_path"], width=_render_w)
+    except Exception:
+        st.image(pair["clear_path"], use_column_width=True)
 
 note = st.text_input("Optional note (one line)", value=existing.get("note", ""))
 
@@ -182,6 +253,9 @@ with bcols[4]:
 
 # Sidebar: jumper to any pair_id, plus accepted list.
 with st.sidebar:
+    st.header("Display")
+    img_max_h = st.slider("Image max height (px)", min_value=300, max_value=1400, value=st.session_state.get("img_max_h", 700), step=50, key="img_max_h")
+
     st.header("Jump to")
     jump_to = st.selectbox("pair_id", options=[p["pair_id"] for p in pairs], index=idx)
     if jump_to != pairs[idx]["pair_id"]:

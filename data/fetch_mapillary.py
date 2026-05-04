@@ -258,6 +258,10 @@ def _save_pair(
     region_name: str, winter: ImageMeta, summer: ImageMeta, dist_m: float
 ) -> Path:
     pair_dir = OUT_DIR / f"{region_name}__{winter.id}__{summer.id}"
+    # Skip download if we've already pulled this pair (allows re-running the
+    # fetcher to pick up new regions without re-downloading existing pairs).
+    if (pair_dir / "snow.jpg").exists() and (pair_dir / "clear.jpg").exists() and (pair_dir / "meta.json").exists():
+        return pair_dir
     pair_dir.mkdir(parents=True, exist_ok=True)
     _download_image(winter.thumb_url, pair_dir / "snow.jpg")
     _download_image(summer.thumb_url, pair_dir / "clear.jpg")
@@ -298,7 +302,15 @@ def main() -> None:
     summary: list[dict] = []
 
     for region in REGIONS:
-        print(f"\n[{region['name']}] querying...")
+        # Skip API queries entirely if we already have TARGET pairs for this region.
+        existing = sum(
+            1 for d in OUT_DIR.iterdir()
+            if d.is_dir() and d.name.startswith(region["name"] + "__")
+        ) if OUT_DIR.exists() else 0
+        if existing >= TARGET_PAIRS_PER_REGION:
+            print(f"\n[{region['name']}] skipping — already have {existing} pairs")
+            continue
+        print(f"\n[{region['name']}] querying... (have {existing}, target {TARGET_PAIRS_PER_REGION})")
         winter = _collect_images(region, token, WINTER_MONTHS)
         summer = _collect_images(region, token, SUMMER_MONTHS)
         print(f"  winter candidates: {len(winter)}   summer candidates: {len(summer)}")

@@ -48,21 +48,44 @@ A naive baseline — applying the same Cityscapes segmenter directly to the snow
 
 ## Outcomes
 
-The fetcher pulled **39 paired snowy/clear frames** from open Mapillary contributor imagery across Kiruna (Sweden), Rovaniemi (Finland), Östersund-E45 (Sweden — the brief's reference location), and Tromsø (Norway). Five further candidate regions (Östersund city centre, Sundsvall, Anchorage, Yellowknife, Sundsvall) had no usable winter imagery within a 5 m / ±20° heading window despite live Mapillary coverage in summer — a real-world contributor-coverage gap, not a code defect. The pipeline runs end-to-end on CPU; the full notebook is `notebooks/01_walkthrough.ipynb`, cached panel images per pair are in `outputs/heroes/`, and the Streamlit demo is `demo/streamlit_app.py`. A 17-frame traversal video sampled at 0.5 fps is in `outputs/demo.mp4`.
+The fetcher pulled **125 candidate pairs** from open Mapillary contributor imagery across 6 cold-climate regions (Kiruna, Rovaniemi, Östersund-E45, Tromsø, Luleå, Gällivare, Bodø). 14 further candidate cities returned 0 pairs — a mixture of Mapillary HTTP 500s and contributor coverage gaps in winter months for southern-Nordic and North-American urban locations.
 
-A **content-level curation step** (`data/curate_pairs.py`) — RANSAC inlier count under the ground-plane-biased homography, threshold 15 — accepts **15 / 39** pairs (38 %). The remainder are largely Mapillary heading-metadata false positives (opposing carriageways of a divided road, different streets at the same lat/lng) plus a long-tail of motion-blurred night captures and snow-at-night graceful failures. The audit (`docs/audit.md`) documents this honestly.
+The pipeline runs end-to-end on CPU. The full notebook is `notebooks/01_walkthrough.ipynb`, cached panel images per pair are in `outputs/heroes/`, the 4-panel contact sheet is `outputs/audit/contact_sheet.png`, the Streamlit demo is `demo/streamlit_app.py`, and a 20-frame traversal video sampled at 0.5 fps is in `outputs/demo.mp4`.
 
-The accepted pairs split into:
+### Five-stage human-in-the-loop curation funnel
 
-- **Clean wins (12 pairs, 26–238 inliers):** Kiruna wide-curved-intersection (238 inliers, road fully buried, overlay tracks the rightward sweep — the new poster); Kiruna red-Falun-houses (47 inliers, road fully buried); Kiruna brick residential (74 inliers); Kiruna snow-banked residential (43 inliers); residential street with parked car (83 inliers, overlay threads past the obstacle); three Rovaniemi tunnel interiors (55, 98, 101 inliers); Rovaniemi night-vs-day intersection (73 inliers, dramatic lighting change); Rovaniemi highway-under-bridge (47 inliers).
-- **Borderline mid-quality (3 pairs, 19–33 inliers):** content-borderline pairs where the inlier count clears the threshold but the visual is from a slightly different lane / approach — included to be honest about the limit of automated curation.
+| Stage | Count | What it does |
+| --- | ---:| --- |
+| 0. Mapillary candidates | 125 | Open-API winter+summer pairs at matched coordinates |
+| 1. Auto snow-quality filter | 95 (76 %) | Laplacian sharpness + brightness + lower-half edge density |
+| 2. Spatial+heading dedup (50 m / 40°) | 63 | Drops sequential frames from the same drive |
+| 3. Manual snow curation (Streamlit) | 27 | User accepts only plough-realistic snow frames |
+| 4. Pipeline + auto post-curation | 19 | RANSAC inliers ≥ 15, iterative refinement, largest-component cleanup |
+| 5. Manual result rating | 14 demo | User rates each overlay GREAT / OKAY / NOT_GOOD / AWFUL; demo = GREAT + OKAY |
 
-Two pairs were retained as **deliberate honest-limit exhibits**:
+The two manual stages are not optional — the system needs a human in the loop both at the snow-input gate (Stage 3) and at the final overlay-quality gate (Stage 5). Why: even a clean snow frame and a high RANSAC inlier count can still produce a visually wrong overlay if the inliers concentrate on building façades. The headline finding from the user-rating pass is **inlier count alone is not a reliable predictor of overlay quality**: a pair with 238 inliers was rated NOT_GOOD (homography aligned the buildings, not the road plane), while a pair with 17 inliers was rated GREAT (few but well-distributed road-plane correspondences).
 
-- **Drift case (Rovaniemi Revontuli tunnel-entrance, 6 inliers):** Feb 2026 snow ↔ Jul 2020 clear, 0.45 m apart — the visually most-compelling pair, but only 6 lower-half matches survived RANSAC; iterative segmentation-guided refinement does not help (the snow side has no usable road-surface features), so the overlay drifts ~10 % laterally. Honest about the planar-scene homography limit.
-- **Graceful failure (Kiruna snow-at-night, 0 inliers):** matcher finds 4 candidate matches, RANSAC rejects all, **no overlay produced**. Safety-positive failure mode for a plough — no overlay beats a wrong overlay near a hydrant.
+### Demo heroes (14, GREAT + OKAY)
 
-The expected naive baseline failure — running the same Cityscapes Segformer directly on the snowy frame — produces fragmented, sky-mistaken-for-road, or absent road predictions. The pipeline computes both `IoU(overlay, naive)` and `IoU(overlay, identity-warp)` (the "what if we trusted the prior with no alignment" condition) and persists them per pair; the Streamlit viewer surfaces both as live metrics.
+10 GREAT + 4 OKAY, spread across Gällivare, Kiruna, Luleå, and Rovaniemi. Inlier counts in the GREAT bucket span **17–128** (median 38) — confirming inlier count is a weak proxy for visual correctness. Sample of the GREAT set:
+
+- `gallivare_se__1113124` (128 inliers) — snow-banked road with parking-restriction sign; overlay precisely follows the cleared lane.
+- `lulea_se__1235981` (101 inliers) — clean residential street alignment.
+- `gallivare_se__724743` (83 inliers) — direct front-of-camera road buried in snow; overlay traces it accurately.
+- `kiruna_se__173943` (47 inliers) — red Falun-style houses; the original v0.1 poster, still in the demo set.
+- `kiruna_se__245577` (17 inliers) — low inlier count but the inliers happened to land on the road plane; clean overlay.
+
+The 4-panel contact sheet (`outputs/audit/contact_sheet.png`) lays out **snow / clear+mask / overlay / naive** for every pair (including the rejects) so the contrast condition and the failure modes are inspectable at a glance.
+
+### Honest limit exhibits (kept for the writeup, not the demo)
+
+- **Drift case (`rovaniemi_fi__1263019`, 6 inliers, rated NOT_GOOD)**: the visually-compelling Revontuli tunnel-entrance — Feb 2026 snow ↔ Jul 2020 clear, 0.45 m apart. Iterative segmentation-guided refinement does not help (the snow side has no usable road-surface features), so the overlay drifts ~10 % laterally.
+- **Content mismatch (`rovaniemi_fi__1457451`, 12 inliers, rated AWFUL)**: opposing carriageways of a divided highway with the same lat/lng but inverted view direction. Mapillary's `compass_angle` was wrong; the matcher found false-positive lane-marking correspondences.
+- **High-inlier visual failure (`kiruna_se__191430`, 238 inliers, rated NOT_GOOD)**: the homography aligns building façades rather than the road plane, so the warped overlay sits on the snow but in the wrong place. The clearest evidence that automated curation is insufficient.
+
+### Naive-baseline contrast condition
+
+For every accepted pair the pipeline also runs the same Mask2Former segmenter **directly on the snow frame** (no cross-season prior, no matching, no warp) and persists `*__naive_baseline.png`. The naive output is fragmented or absent on snow-covered roads, providing the contrast that motivates the cross-season approach. The pipeline computes both `IoU(overlay, naive)` and `IoU(overlay, identity-warp)` per pair (the latter being the "trust the prior with no alignment" condition); both are persisted in `summary.json` and surfaced as live metrics in the Streamlit viewer.
 
 ## Future direction
 

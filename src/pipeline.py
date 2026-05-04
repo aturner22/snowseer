@@ -15,7 +15,7 @@ import numpy as np
 
 from .homography import HomographyResult, estimate, refine_iteratively
 from .matching import Matcher, MatchResult, draw_matches
-from .overlay import alpha_blend, three_panel_figure, warp_mask
+from .overlay import alpha_blend, keep_largest_component, three_panel_figure, warp_mask
 from .segmentation import RoadSegmenter
 
 # When the initial homography has fewer than this many inliers, run a
@@ -117,8 +117,12 @@ def run_pair(
             H=None,
         )
 
-    # 3. Road mask on the *clear* prior (the model knows clear-weather roads)
+    # 3. Road mask on the *clear* prior (the model knows clear-weather roads).
+    #    Reduce to the single largest connected component — the road in front
+    #    of the camera. Kills disconnected sidewalks / distant road patches /
+    #    far-end visible road on the other side of an intersection.
     road_mask_clear = segmenter.segment_road(clear)
+    road_mask_clear = keep_largest_component(road_mask_clear)
 
     # 3b. If the initial fit is shaky, run iterative segmentation-guided
     #     refinement. This rescues drift cases where the lower-image-half
@@ -137,6 +141,10 @@ def run_pair(
     # We have H: snow -> clear. We need H^-1: clear -> snow.
     H_inv = np.linalg.inv(homo.H)
     road_mask_snow = warp_mask(road_mask_clear, H_inv, snow.shape[:2])
+    # Drop small "island" regions left behind by warp aliasing or pixels that
+    # got clipped at the destination boundary; keep only the dominant road in
+    # front of the plough.
+    road_mask_snow = keep_largest_component(road_mask_snow)
 
     # 5. Compose figures
     snow_overlay = alpha_blend(snow, road_mask_snow, color=(0, 255, 100), alpha=0.45)
@@ -213,17 +221,42 @@ def run_all(
     out_dir: Path = OUT_DIR,
     max_dim: int = 1024,
     *,
-    use_manual_curation: bool = True,
+    require_manual_curation: bool = True,
 ) -> list[PairResult]:
+    """Run the pipeline on all pairs accepted by manual snow-quality curation.
+
+    require_manual_curation (default True): the pipeline refuses to run unless
+    `data/manual_snow_curation.json` exists and has at least one accept. This
+    guards against accidentally producing overlays for the long tail of
+    motion-blurred / windshield-blocked snow frames that the user has already
+    decided not to demo. Pass False (or --allow-uncurated on the CLI) to
+    bypass.
+    """
     pair_dirs = sorted(p for p in pairs_dir.iterdir() if p.is_dir())
     if not pair_dirs:
         raise SystemExit(f"No pairs under {pairs_dir}. Run `uv run python -m data.fetch_mapillary` first.")
 
-    manual = _load_manual_curation() if use_manual_curation else {}
-    if manual:
+    manual = _load_manual_curation()
+    if require_manual_curation:
+        if not MANUAL_CURATION_PATH.exists():
+            raise SystemExit(
+                f"{MANUAL_CURATION_PATH} not found. Run the snow curator first:\n"
+                f"  uv run streamlit run demo/curate_snow.py\n"
+                f"Or pass --allow-uncurated to run on every pair."
+            )
+        accepted_ids = {pid for pid, v in manual.items() if v == "accept"}
+        if not accepted_ids:
+            raise SystemExit(
+                f"{MANUAL_CURATION_PATH} has no accepts. Run the snow curator and "
+                f"accept at least one pair, or pass --allow-uncurated."
+            )
+        before = len(pair_dirs)
+        pair_dirs = [d for d in pair_dirs if d.name in accepted_ids]
+        print(f"manual curation active: {len(pair_dirs)} / {before} pairs (manually accepted)")
+    elif manual:
         before = len(pair_dirs)
         pair_dirs = [d for d in pair_dirs if manual.get(d.name) == "accept"]
-        print(f"manual curation active: {len(pair_dirs)} / {before} pairs (accept-only)")
+        print(f"manual curation present (advisory): {len(pair_dirs)} / {before} pairs")
 
     matcher = Matcher()
     segmenter = RoadSegmenter()
@@ -269,6 +302,8 @@ def _cli() -> None:
     parser.add_argument("--out-dir", default=str(OUT_DIR))
     parser.add_argument("--max-dim", type=int, default=1024)
     parser.add_argument("--pair-id", default=None, help="Run a single pair by directory name.")
+    parser.add_argument("--allow-uncurated", action="store_true",
+                        help="Bypass the manual snow curation gate (default: required).")
     args = parser.parse_args()
 
     pairs_dir = Path(args.pairs_dir)
@@ -286,7 +321,10 @@ def _cli() -> None:
             indent=2,
         ))
     else:
-        run_all(pairs_dir=pairs_dir, out_dir=out_dir, max_dim=args.max_dim)
+        run_all(
+            pairs_dir=pairs_dir, out_dir=out_dir, max_dim=args.max_dim,
+            require_manual_curation=not args.allow_uncurated,
+        )
 
 
 if __name__ == "__main__":

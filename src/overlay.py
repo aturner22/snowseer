@@ -20,6 +20,34 @@ def warp_mask(
     return warped
 
 
+def keep_largest_component(mask: np.ndarray, *, min_area_px: int = 500) -> np.ndarray:
+    """Reduce a binary mask to its single largest connected component.
+
+    A snow plough cares about the *one* drivable surface directly in front of
+    it, not the long tail of small islands that warp aliasing or segmenter
+    noise can leave behind. This collapses the mask to that single component.
+    Returns an empty mask if no component clears `min_area_px`.
+
+    Connectivity: 8-way (matches typical road shape with diagonal pixels).
+    """
+    if mask.dtype != np.uint8:
+        mask = mask.astype(np.uint8)
+    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if n_labels <= 1:
+        return np.zeros_like(mask)
+    # Component 0 is background — skip. Find the largest by area.
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    if not len(areas):
+        return np.zeros_like(mask)
+    largest_idx = int(np.argmax(areas)) + 1  # +1 to account for skipped background
+    largest_area = int(stats[largest_idx, cv2.CC_STAT_AREA])
+    if largest_area < min_area_px:
+        return np.zeros_like(mask)
+    out = np.zeros_like(mask)
+    out[labels == largest_idx] = 1
+    return out
+
+
 def alpha_blend(
     img: np.ndarray,
     mask: np.ndarray,

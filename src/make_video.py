@@ -57,26 +57,29 @@ def build(out_path: Path, fps: float, target_height: int, *, only_accepted: bool
         raise SystemExit(f"Run the pipeline first; {summary_path} not found.")
     summary = json.loads(summary_path.read_text())
 
+    # If the user has rated overlay results, use those ratings as the primary
+    # ordering: GREAT first (best demo material), then OKAY, then a tail of
+    # NOT_GOOD / AWFUL only if explicitly requested via only_accepted=False.
+    ratings_path = Path("data/manual_result_curation.json")
+    ratings: dict[str, str] = {}
+    if ratings_path.exists():
+        try:
+            raw = json.loads(ratings_path.read_text())
+            ratings = {pid: v.get("rating", "") for pid, v in raw.items() if isinstance(v, dict)}
+        except json.JSONDecodeError:
+            ratings = {}
+
     if only_accepted:
-        # Order: accepted pairs descending by inlier count (best first), then a
-        # short tail of deliberate drift / graceful-failure cases for honesty.
-        accepted = [s for s in summary if s.get("accept")]
-        accepted.sort(key=lambda s: -s.get("n_inliers", 0))
-        # Deliberate honest-limit cases (drift + graceful failure) — pick a few rejects
-        # with non-trivial structure to show.
-        rejected = [s for s in summary if not s.get("accept")]
-        # Drift / honest-limit picks: low inlier but high match count (tells us the
-        # matcher saw lots of features but RANSAC could not coalesce them).
-        drift = sorted(
-            [s for s in rejected if 4 <= s.get("n_inliers", 0) <= 8 and s.get("n_matches", 0) >= 50],
-            key=lambda s: -s.get("n_matches", 0),
-        )[:1]
-        # One graceful failure (matches very low, inliers 0).
-        graceful = sorted(
-            [s for s in rejected if s.get("n_inliers", 0) == 0],
-            key=lambda s: s.get("n_matches", 99),
-        )[:1]
-        ordered = accepted + drift + graceful
+        if ratings:
+            order_key = {"great": 0, "okay": 1, "not_good": 2, "awful": 3}
+            keep = [s for s in summary if ratings.get(s["pair_id"]) in {"great", "okay"}]
+            keep.sort(key=lambda s: (order_key.get(ratings.get(s["pair_id"], ""), 9), -s.get("n_inliers", 0)))
+            ordered = keep
+        else:
+            # Fallback to the auto-curated set if no manual ratings yet.
+            accepted = [s for s in summary if s.get("accept")]
+            accepted.sort(key=lambda s: -s.get("n_inliers", 0))
+            ordered = accepted
     else:
         ordered = summary
 
