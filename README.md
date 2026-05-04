@@ -4,6 +4,8 @@
 
 A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy).
 
+> **Branches & tags.** `main` is the canonical single-prior pipeline that ships with the demo. The multi-prior fusion experiment (Phase J) lives on the `multi-prior` branch and at the tag `v1.2-multi-prior-experiment` — adaptive 1–5 priors per query with three fusion strategies. We kept it off `main` because the empirical gain at our scale is small relative to the added narrative cost; see the *Future direction* section for the architecture sketch.
+
 ---
 
 ## What this project is really about
@@ -188,13 +190,14 @@ snow-underlay/
 
 ## Future direction
 
-Three extensions, in increasing ambition:
+Four extensions, in increasing ambition:
 
-1. **Piecewise-affine warp** estimated from a semantic ground-plane segmentation of both images. Drops the planar-scene assumption; correctly handles slopes and curves.
-2. **Temporal smoothing.** Use the plough's odometry to chain consecutive frames; reject homographies that contradict the previous frame's pose update.
-3. **Replace Mapillary with the operator's own prior captures.** Same pipeline, much tighter geometric prior, no contributor-coverage gaps.
+1. **Multi-prior fusion** (already prototyped — see the [`multi-prior`](https://github.com/) branch / tag `v1.2-multi-prior-experiment`). Pull *K* priors per query (adaptive 1–5 within 30 m / ±30°), match each independently, fuse the K warped masks via union-with-edge-erosion, weighted soft-average, or hard majority vote, then foreground-crop. Code lives in `src/fuse.py` plus a multi-prior `run_pair()`. Empirical effect at this scale is small (a couple of demo pairs gained, a couple lost); we kept it on a branch rather than baking it into the headline demo because the explanatory cost in a 3-minute video outweighs the marginal gain. A real-time production system would ship this version — with K priors per frame the frame-edge cutoff and single-shot mismatch failures both go away.
+2. **Piecewise-affine warp** estimated from a semantic ground-plane segmentation of both images. Drops the planar-scene assumption; correctly handles slopes and curves.
+3. **Temporal smoothing.** Use the plough's odometry to chain consecutive frames; reject homographies that contradict the previous frame's pose update.
+4. **Replace Mapillary with the operator's own prior captures.** Same pipeline, much tighter geometric prior, no contributor-coverage gaps.
 
-The principle is unchanged through all three: the plough never has to learn what snow looks like; it only has to find what is constant under the snow.
+The principle is unchanged through all four: the plough never has to learn what snow looks like; it only has to find what is constant under the snow.
 
 ## Closing
 

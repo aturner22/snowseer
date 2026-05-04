@@ -59,6 +59,12 @@ We didn't claim the system replaces lidar or 3D depth estimation. The output is 
 
 We didn't claim novelty in any single component. The novelty, such as it is, is in the *composition*: the matcher, the segmenter, and the homography are off-the-shelf; the move is using them together to bridge a regime where one of them would otherwise fail.
 
+## What a real-time system would do
+
+This is a proof of concept. A production snow plough would not match a single clear-season prior; it would fuse several. The frame edge of any one prior leaves a visible cutoff in the warped overlay; multiple priors at slightly different positions along the road wash that cutoff out. A bad single match can corrupt the result; a per-pixel consensus across K priors absorbs the bad match. The geometry is the same — match, homography, segment, warp — only repeated K times and combined.
+
+We sketched this on the `multi-prior` branch of the repository (tag `v1.2-multi-prior-experiment`): adaptive 1–5 priors per query, three fusion strategies (union with edge erosion, weighted soft-average, hard majority vote), and a foreground crop. The empirical effect at our scale is real but small — a couple of demo pairs gained a level of subjective quality, a couple lost — and the explanatory cost in a 3-minute video is substantial. So we shipped the single-prior version as the demo. The fusion code is on the branch for anyone who wants to extend.
+
 ## Generalising
 
 The structure of the move is: a model trained on regime A; an inference target in regime B; a known correspondence between the two; transfer through the correspondence. Snow on a road is one instance. Others admit the same structure: low-light medical imaging without low-light training data, polar earth observation without polar training data, a manipulator on Mars without Mars training data. In each case there is a regime in which we have plenty of data, an adjacent regime in which we don't, and a constant between the two — temporal, geometric, anatomical — that lets us bridge.
