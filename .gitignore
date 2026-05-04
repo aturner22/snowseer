@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+data/pairs/
+data/raw/
+# Track INDEX.md but not the (large, regenerable) panel/baseline/match PNGs.
+outputs/heroes/*.png
+outputs/heroes/*.jpg
+outputs/cache/
+outputs/pipeline_run.log
+.streamlit/secrets.toml
+*.egg-info/
