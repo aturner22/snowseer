@@ -4,6 +4,8 @@
 
 A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy).
 
+> **Rollback.** The canonical single-prior pipeline is preserved at the tag `v1.1-single-prior` (`git checkout v1.1-single-prior`). Subsequent commits explore a multi-prior fusion variant; if that variant turns out worse, this tag is the safe revert point.
+
 ---
 
 ## What this project is really about
