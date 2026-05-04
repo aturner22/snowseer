@@ -13,6 +13,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .fuse import (
+    crop_foreground,
+    majority_vote,
+    union_with_edge_erosion,
+    weighted_soft_average,
+)
 from .homography import HomographyResult, estimate, refine_iteratively
 from .matching import Matcher, MatchResult, draw_matches
 from .overlay import alpha_blend, keep_largest_component, panel_figure, warp_mask
@@ -108,6 +114,44 @@ def _resize_to(img: np.ndarray, max_dim: int = 1024) -> np.ndarray:
     return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
 
+def _process_one_prior(
+    snow: np.ndarray, prior: np.ndarray,
+    matcher: Matcher, segmenter: RoadSegmenter,
+) -> dict | None:
+    """Match snow against a single prior, segment + warp the prior road mask
+    into snow space, return per-prior outputs. None if matching fails entirely.
+    """
+    matches = matcher.match(snow, prior)
+    homo: HomographyResult = estimate(matches, snow.shape[:2], prior.shape[:2])
+    if homo.H is None:
+        return None
+    road_mask_clear = keep_largest_component(segmenter.segment_road(prior))
+    refined = False
+    if homo.n_inliers < REFINEMENT_INLIER_TRIGGER:
+        refined_homo = refine_iteratively(
+            matches, homo.H, snow.shape[:2], prior.shape[:2], road_mask_clear,
+        )
+        if refined_homo.H is not None and refined_homo.n_inliers > homo.n_inliers:
+            homo = refined_homo
+            refined = True
+    H_inv = np.linalg.inv(homo.H)
+    road_mask_snow = keep_largest_component(
+        warp_mask(road_mask_clear, H_inv, snow.shape[:2])
+    )
+    valid_region = warp_mask(
+        np.ones(prior.shape[:2], dtype=np.uint8), H_inv, snow.shape[:2]
+    )
+    return {
+        "matches": matches,
+        "homo": homo,
+        "refined": refined,
+        "road_mask_clear": road_mask_clear,
+        "road_mask_snow": road_mask_snow,
+        "valid_region": valid_region,
+        "prior": prior,
+    }
+
+
 def run_pair(
     pair_dir: Path,
     matcher: Matcher,
@@ -116,123 +160,162 @@ def run_pair(
     out_dir: Path = OUT_DIR,
     max_dim: int = 1024,
 ) -> PairResult:
+    """Run the multi-prior fusion pipeline on a single pair_dir.
+
+    Reads `meta.json` to discover priors. Each prior contributes one road-mask
+    in snow image space; the K masks are fused via three strategies (union with
+    edge-erosion, weighted soft-average, hard majority vote), foreground-cropped,
+    and saved as separate overlays for downstream comparison. The headline
+    `panel.png` uses the weighted-average fusion as the primary.
+
+    Falls back to single-prior behaviour if `meta.priors` is missing.
+    """
     snow_path = pair_dir / "snow.jpg"
-    clear_path = pair_dir / "clear.jpg"
     snow = _resize_to(_load_rgb(snow_path), max_dim)
-    clear = _resize_to(_load_rgb(clear_path), max_dim)
-
-    # 1. Match snow (img0) <-> clear (img1)
-    matches = matcher.match(snow, clear)
-
-    # 2. Estimate homography snow -> clear with ground-plane bias
-    homo: HomographyResult = estimate(matches, snow.shape[:2], clear.shape[:2])
-
-    # Save correspondences viz (sanity)
     pair_id = pair_dir.name
     out_dir.mkdir(parents=True, exist_ok=True)
-    viz_path = out_dir / f"{pair_id}__matches.png"
-    draw_matches(snow, clear, matches, inlier_mask=homo.inlier_mask, out_path=viz_path)
 
-    if homo.H is None:
+    meta_path = pair_dir / "meta.json"
+    meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    prior_specs = meta.get("priors")
+    if not prior_specs:
+        # Back-compat: single clear.jpg path.
+        prior_specs = [{"file": "clear.jpg", "id": meta.get("clear", {}).get("id", "")}]
+
+    # Process each prior independently.
+    per_prior: list[dict] = []
+    for ps in prior_specs:
+        prior_path = pair_dir / ps["file"]
+        if not prior_path.exists():
+            print(f"  ! {pair_id}: prior {ps['file']} missing", flush=True)
+            continue
+        prior = _resize_to(_load_rgb(prior_path), max_dim)
+        result = _process_one_prior(snow, prior, matcher, segmenter)
+        if result is None:
+            continue
+        result["prior_id"] = ps.get("id", "")
+        result["prior_file"] = ps["file"]
+        per_prior.append(result)
+
+    if not per_prior:
         return PairResult(
-            pair_id=pair_id,
-            snow_path=snow_path,
-            clear_path=clear_path,
-            n_matches=len(matches.kpts0),
-            n_inliers=0,
-            used_ground_plane_restriction=homo.used_ground_plane_restriction,
-            figure_path=None,
-            snow_overlay_path=None,
-            naive_baseline_path=None,
+            pair_id=pair_id, snow_path=snow_path, clear_path=pair_dir / "clear.jpg",
+            n_matches=0, n_inliers=0, used_ground_plane_restriction=False,
+            figure_path=None, snow_overlay_path=None, naive_baseline_path=None,
             H=None,
         )
 
-    # 3. Road mask on the *clear* prior (the model knows clear-weather roads).
-    #    Reduce to the single largest connected component — the road in front
-    #    of the camera. Kills disconnected sidewalks / distant road patches /
-    #    far-end visible road on the other side of an intersection.
-    road_mask_clear = segmenter.segment_road(clear)
-    road_mask_clear = keep_largest_component(road_mask_clear)
+    # Save matches.png from the primary (highest-inlier) prior.
+    primary = max(per_prior, key=lambda r: r["homo"].n_inliers)
+    draw_matches(
+        snow, primary["prior"], primary["matches"],
+        inlier_mask=primary["homo"].inlier_mask,
+        out_path=out_dir / f"{pair_id}__matches.png",
+    )
 
-    # 3b. If the initial fit is shaky, run iterative segmentation-guided
-    #     refinement. This rescues drift cases where the lower-image-half
-    #     ground-plane bias was too coarse to dominate (tunnels, scenes where
-    #     most of the lower half is wall, not road).
-    refined = False
-    if homo.n_inliers < REFINEMENT_INLIER_TRIGGER:
-        refined_homo = refine_iteratively(
-            matches, homo.H, snow.shape[:2], clear.shape[:2], road_mask_clear,
-        )
-        if refined_homo.H is not None and refined_homo.n_inliers > homo.n_inliers:
-            homo = refined_homo
-            refined = True
-
-    # 4. Warp the road mask: clear -> snow.
-    # We have H: snow -> clear. We need H^-1: clear -> snow.
-    H_inv = np.linalg.inv(homo.H)
-    road_mask_snow = warp_mask(road_mask_clear, H_inv, snow.shape[:2])
-    # Drop small "island" regions left behind by warp aliasing or pixels that
-    # got clipped at the destination boundary; keep only the dominant road in
-    # front of the plough.
-    road_mask_snow = keep_largest_component(road_mask_snow)
-
-    # 5. Cross-season overlay: warp the prior mask onto the snow frame.
-    # Tint matches the prior road mask (green) — same road, transferred.
-    snow_overlay = alpha_blend(snow, road_mask_snow, color=(46, 156, 86), alpha=0.50)
-    snow_overlay_path = out_dir / f"{pair_id}__overlay.png"
-    cv2.imwrite(str(snow_overlay_path), cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR))
-
-    # 6. Naive baseline: run the same segmenter directly on the snow frame.
-    #    Expected to produce a fragmented / shifted / collapsed road prediction
-    #    because the segmenter has never been trained on snow. Rendered
-    #    uncleaned (no largest-component pass) and red — failure visualisation.
+    # Naive baseline (direct on snow). Same as v1.1.
     road_mask_snow_naive = segmenter.segment_road(snow)
     snow_naive = alpha_blend(snow, road_mask_snow_naive, color=(220, 60, 50), alpha=0.55)
     naive_path = out_dir / f"{pair_id}__naive_baseline.png"
     cv2.imwrite(str(naive_path), cv2.cvtColor(snow_naive, cv2.COLOR_RGB2BGR))
 
-    # 7. Headline figure: 4-panel snow / clear+mask / overlay / naive.
-    # Title from data/curated_pairs.json if available — viewer-friendly place
-    # name + condition phrase + season pair. Falls back to the internal id.
+    # Fuse the K warped masks via three strategies.
+    masks = [r["road_mask_snow"] for r in per_prior]
+    valids = [r["valid_region"] for r in per_prior]
+    weights = [float(r["homo"].n_inliers) for r in per_prior]
+
+    fused = {
+        "union": union_with_edge_erosion(masks, valids, erosion_px=20),
+        "weighted": weighted_soft_average(masks, weights, valids, threshold=0.4),
+        "majority": majority_vote(masks, valids),
+    }
+    # Foreground crop + largest-component cleanup on each fused mask.
+    for k, m in fused.items():
+        m = crop_foreground(m, foreground_y_frac=0.45)
+        fused[k] = keep_largest_component(m)
+
+    # Save per-fusion snow overlays.
+    overlay_paths: dict[str, Path] = {}
+    for name, mask in fused.items():
+        snow_overlay = alpha_blend(snow, mask, color=(46, 156, 86), alpha=0.50)
+        ovp = out_dir / f"{pair_id}__overlay_{name}.png"
+        cv2.imwrite(str(ovp), cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR))
+        overlay_paths[name] = ovp
+    # Default `__overlay.png` is the weighted fusion (chosen primary).
+    cv2.imwrite(
+        str(out_dir / f"{pair_id}__overlay.png"),
+        cv2.cvtColor(
+            alpha_blend(snow, fused["weighted"], color=(46, 156, 86), alpha=0.50),
+            cv2.COLOR_RGB2BGR,
+        ),
+    )
+
+    # Per-prior thumbnails strip.
+    _save_priors_strip(snow, per_prior, out_dir / f"{pair_id}__priors.png")
+
+    # Headline 2x2 panel uses the weighted fusion + the primary prior's
+    # clear+mask. (The clear+mask column shows what *one* prior says; the
+    # overlay column shows the fused multi-prior result.)
+    primary_clear = primary["prior"]
+    primary_road_mask_clear = primary["road_mask_clear"]
+    snow_overlay_weighted = alpha_blend(snow, fused["weighted"], color=(46, 156, 86), alpha=0.50)
     figure_path = out_dir / f"{pair_id}__panel.png"
     title, subtitle = _display_strings(pair_id)
     panel_figure(
-        snow, clear, road_mask_clear, snow_overlay,
+        snow, primary_clear, primary_road_mask_clear, snow_overlay_weighted,
         snowy_naive=snow_naive,
         title=title, subtitle=subtitle, out_path=figure_path,
     )
 
-    # 8. Identity-warp baseline: trust the prior road mask without any
-    #    matching/registration. This is "what if we just overlaid the clear
-    #    road mask onto snow without doing the cross-season alignment". For
-    #    any pair where snow and clear differ at all in framing, this is wrong.
+    # IoU metrics — measured against the weighted fusion.
+    iou_naive = _iou(fused["weighted"], road_mask_snow_naive)
+    # Identity-warp baseline: primary clear mask resized into snow shape.
     sh, sw = snow.shape[:2]
-    ch, cw = road_mask_clear.shape[:2]
+    ch, cw = primary_road_mask_clear.shape[:2]
     if (sh, sw) == (ch, cw):
-        identity_mask = road_mask_clear
+        identity_mask = primary_road_mask_clear
     else:
-        identity_mask = cv2.resize(
-            road_mask_clear, (sw, sh), interpolation=cv2.INTER_NEAREST
-        )
-
-    iou_naive = _iou(road_mask_snow, road_mask_snow_naive)
-    iou_identity = _iou(road_mask_snow, identity_mask)
+        identity_mask = cv2.resize(primary_road_mask_clear, (sw, sh), interpolation=cv2.INTER_NEAREST)
+    iou_identity = _iou(fused["weighted"], identity_mask)
 
     return PairResult(
         pair_id=pair_id,
         snow_path=snow_path,
-        clear_path=clear_path,
-        n_matches=len(matches.kpts0),
-        n_inliers=homo.n_inliers,
-        used_ground_plane_restriction=homo.used_ground_plane_restriction,
+        clear_path=pair_dir / primary["prior_file"],
+        n_matches=len(primary["matches"].kpts0),
+        n_inliers=primary["homo"].n_inliers,
+        used_ground_plane_restriction=primary["homo"].used_ground_plane_restriction,
         figure_path=figure_path,
-        snow_overlay_path=snow_overlay_path,
+        snow_overlay_path=out_dir / f"{pair_id}__overlay.png",
         naive_baseline_path=naive_path,
-        H=homo.H,
+        H=primary["homo"].H,
         iou_overlay_vs_naive=iou_naive,
         iou_overlay_vs_identity=iou_identity,
-        refined=refined,
+        refined=primary["refined"],
     )
+
+
+def _save_priors_strip(snow: np.ndarray, per_prior: list[dict], out_path: Path) -> None:
+    """One-row strip showing the K priors with per-prior overlay tints, for inspection."""
+    n = len(per_prior)
+    if n == 0:
+        return
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(1, n + 1, figsize=(4.5 * (n + 1), 4.0), facecolor="#f6f3ee")
+    if n + 1 == 1:
+        axes = [axes]
+    axes[0].imshow(snow); axes[0].set_axis_off()
+    axes[0].set_title("Snow query", fontfamily="Inter", fontsize=11, color="#1c1c1c", pad=8, loc="left")
+    for i, r in enumerate(per_prior, start=1):
+        ovl = alpha_blend(snow, r["road_mask_snow"], color=(46, 156, 86), alpha=0.50)
+        axes[i].imshow(ovl); axes[i].set_axis_off()
+        axes[i].set_title(
+            f"prior {i-1}  ·  inliers={r['homo'].n_inliers}",
+            fontfamily="Inter", fontsize=11, color="#1c1c1c", pad=8, loc="left",
+        )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=110, bbox_inches="tight", facecolor="#f6f3ee")
+    plt.close(fig)
 
 
 MANUAL_CURATION_PATH = Path("data/manual_snow_curation.json")
