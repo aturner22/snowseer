@@ -15,7 +15,7 @@ import numpy as np
 
 from .homography import HomographyResult, estimate, refine_iteratively
 from .matching import Matcher, MatchResult, draw_matches
-from .overlay import alpha_blend, keep_largest_component, three_panel_figure, warp_mask
+from .overlay import alpha_blend, keep_largest_component, panel_figure, warp_mask
 from .segmentation import RoadSegmenter
 
 # When the initial homography has fewer than this many inliers, run a
@@ -146,30 +146,36 @@ def run_pair(
     # front of the plough.
     road_mask_snow = keep_largest_component(road_mask_snow)
 
-    # 5. Compose figures
-    snow_overlay = alpha_blend(snow, road_mask_snow, color=(0, 255, 100), alpha=0.45)
+    # 5. Cross-season overlay: warp the prior mask onto the snow frame.
+    # Identity-tinted (rust) for the load-bearing column.
+    snow_overlay = alpha_blend(snow, road_mask_snow, color=(179, 74, 37), alpha=0.42)
     snow_overlay_path = out_dir / f"{pair_id}__overlay.png"
     cv2.imwrite(str(snow_overlay_path), cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR))
 
-    figure_path = out_dir / f"{pair_id}__panel.png"
-    three_panel_figure(
-        snow, clear, road_mask_clear, snow_overlay,
-        title=(
-            f"{pair_id}    inliers={homo.n_inliers}    "
-            f"ground-plane bias={homo.used_ground_plane_restriction}    "
-            f"refined={refined}"
-        ),
-        out_path=figure_path,
-    )
-
-    # 6. Naive baseline: run the same Cityscapes segmenter directly on the snow frame.
-    #    Expected to produce a fragmented / shifted / collapsed road prediction.
+    # 6. Naive baseline: run the same segmenter directly on the snow frame.
+    #    Expected to produce a fragmented / shifted / collapsed road prediction
+    #    because the segmenter has never been trained on snow. We render this
+    #    *uncleaned* (no largest-component pass) — that's the contrast condition.
     road_mask_snow_naive = segmenter.segment_road(snow)
-    snow_naive = alpha_blend(snow, road_mask_snow_naive, color=(255, 80, 80), alpha=0.45)
+    snow_naive = alpha_blend(snow, road_mask_snow_naive, color=(140, 140, 140), alpha=0.45)
     naive_path = out_dir / f"{pair_id}__naive_baseline.png"
     cv2.imwrite(str(naive_path), cv2.cvtColor(snow_naive, cv2.COLOR_RGB2BGR))
 
-    # 7. Identity-warp baseline: trust the prior road mask without any
+    # 7. Headline figure: 4-panel snow / clear+mask / overlay / naive
+    figure_path = out_dir / f"{pair_id}__panel.png"
+    title = pair_id.replace("__", "  ·  ")
+    subtitle = (
+        f"inliers={homo.n_inliers}    "
+        f"ground-plane bias={homo.used_ground_plane_restriction}    "
+        f"refined={refined}"
+    )
+    panel_figure(
+        snow, clear, road_mask_clear, snow_overlay,
+        snowy_naive=snow_naive,
+        title=title, subtitle=subtitle, out_path=figure_path,
+    )
+
+    # 8. Identity-warp baseline: trust the prior road mask without any
     #    matching/registration. This is "what if we just overlaid the clear
     #    road mask onto snow without doing the cross-season alignment". For
     #    any pair where snow and clear differ at all in framing, this is wrong.
