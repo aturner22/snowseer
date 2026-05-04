@@ -312,44 +312,117 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
 CURATED_PATH = Path("data/curated_pairs.json")
 
 
+def _save_multi_prior_pair(pair_id: str, region: str, snow: ImageMeta,
+                            priors: list[ImageMeta]) -> Path:
+    """Multi-prior layout:
+        data/pairs/<pair_id>/
+            snow.jpg
+            clear.jpg               (= priors/00_<id>.jpg, kept for back-compat)
+            priors/
+                00_<id>.jpg         (primary prior — matches the v1 clear_id)
+                01_<id>.jpg
+                …
+            meta.json               (with `priors: [...]`)
+    """
+    pair_dir = OUT_DIR / pair_id
+    priors_dir = pair_dir / "priors"
+    pair_dir.mkdir(parents=True, exist_ok=True)
+    priors_dir.mkdir(parents=True, exist_ok=True)
+
+    snow_path = pair_dir / "snow.jpg"
+    if not snow_path.exists():
+        _download_image(snow.thumb_url, snow_path)
+
+    saved_priors: list[dict] = []
+    for idx, p in enumerate(priors):
+        prior_path = priors_dir / f"{idx:02d}_{p.id}.jpg"
+        if not prior_path.exists():
+            try:
+                _download_image(p.thumb_url, prior_path)
+            except Exception as e:
+                print(f"  ! prior {p.id}: {e}", file=sys.stderr)
+                continue
+        # Distances + heading delta for record.
+        dlat_m = (p.lat - snow.lat) * _meters_per_deg_lat()
+        dlng_m = (p.lng - snow.lng) * _meters_per_deg_lng(snow.lat)
+        d_m = float(np.hypot(dlat_m, dlng_m))
+        saved_priors.append({
+            **asdict(p),
+            "file": str(prior_path.relative_to(pair_dir)),
+            "distance_m": round(d_m, 2),
+            "heading_delta_deg": round(_heading_delta(snow.heading, p.heading), 2),
+        })
+
+    # Back-compat: copy primary to clear.jpg (used by older code paths)
+    if saved_priors:
+        primary_path = pair_dir / saved_priors[0]["file"]
+        clear_back = pair_dir / "clear.jpg"
+        if not clear_back.exists() and primary_path.exists():
+            clear_back.write_bytes(primary_path.read_bytes())
+
+    meta = {
+        "region": region,
+        "snow": asdict(snow),
+        "priors": saved_priors,
+        # Back-compat: meta.clear == priors[0]
+        "clear": saved_priors[0] if saved_priors else None,
+    }
+    (pair_dir / "meta.json").write_text(json.dumps(meta, indent=2))
+    return pair_dir
+
+
 def _fetch_curated(token: str) -> int:
     """Fetch only the pairs declared in data/curated_pairs.json. Each entry's
     Mapillary IDs are queried fresh (URLs are signed and expire), so this
-    works on a clean clone."""
+    works on a clean clone.
+
+    Supports both v1 (single clear_id) and v2 (prior_ids list) schemas.
+    """
     if not CURATED_PATH.exists():
         print(f"!! {CURATED_PATH} not found.", file=sys.stderr)
         return 1
     spec = json.loads(CURATED_PATH.read_text())
     pairs = spec.get("pairs", [])
-    print(f"[curated] {len(pairs)} pairs to fetch")
+    schema_v2 = spec.get("version", "").startswith("v2")
+    print(f"[curated] {len(pairs)} pairs ({'v2 multi-prior' if schema_v2 else 'v1 single-prior'})")
     n_ok = 0
+
     for entry in tqdm(pairs, desc="curated"):
         pair_id = entry["pair_id"]
         region = entry["region"]
         snow_id = entry["snow_id"]
-        clear_id = entry["clear_id"]
-        pair_dir = OUT_DIR / pair_id
-        if (pair_dir / "snow.jpg").exists() and (pair_dir / "clear.jpg").exists() and (pair_dir / "meta.json").exists():
-            n_ok += 1
-            continue
+        prior_ids = entry.get("prior_ids") or [entry.get("clear_id")]
+        prior_ids = [pid for pid in prior_ids if pid]
+
+        # Snow image metadata
         snow_raw = _query_image(snow_id, token)
-        clear_raw = _query_image(clear_id, token)
-        if snow_raw is None or clear_raw is None:
-            print(f"  ! could not fetch metadata for {pair_id}", file=sys.stderr)
+        if snow_raw is None:
+            print(f"  ! {pair_id}: could not fetch snow metadata", file=sys.stderr)
             continue
         snow_meta = _to_meta(snow_raw)
-        clear_meta = _to_meta(clear_raw)
-        if snow_meta is None or clear_meta is None:
-            print(f"  ! could not parse metadata for {pair_id}", file=sys.stderr)
+        if snow_meta is None:
+            print(f"  ! {pair_id}: could not parse snow metadata", file=sys.stderr)
             continue
+
+        # Prior metadata for each id
+        prior_metas: list[ImageMeta] = []
+        for pid in prior_ids:
+            p_raw = _query_image(pid, token)
+            if p_raw is None:
+                continue
+            p_meta = _to_meta(p_raw)
+            if p_meta is not None:
+                prior_metas.append(p_meta)
+        if not prior_metas:
+            print(f"  ! {pair_id}: no priors fetchable; skipping", file=sys.stderr)
+            continue
+
         try:
-            dlat_m = (clear_meta.lat - snow_meta.lat) * _meters_per_deg_lat()
-            dlng_m = (clear_meta.lng - snow_meta.lng) * _meters_per_deg_lng(snow_meta.lat)
-            dist_m = float(np.hypot(dlat_m, dlng_m))
-            saved = _save_pair(region, snow_meta, clear_meta, dist_m)
+            _save_multi_prior_pair(pair_id, region, snow_meta, prior_metas)
             n_ok += 1
         except Exception as e:
             print(f"  ! {pair_id}: {e}", file=sys.stderr)
+
     print(f"\nDone. {n_ok}/{len(pairs)} curated pairs available under {OUT_DIR}/")
     return 0
 
