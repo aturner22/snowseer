@@ -30,14 +30,18 @@ def estimate(
     img1_shape: tuple[int, int],
     *,
     ground_plane_y_frac: float = 0.5,
+    dashboard_y_frac: float = 0.85,
     min_matches: int = 8,
     ransac_thresh_px: float = 3.0,
     confidence_thresh: float = 0.0,
 ) -> HomographyResult:
-    """Estimate H from img0 -> img1 using lower-image-half matches when available.
+    """Estimate H from img0 -> img1 using ground-plane matches when available.
 
     img*_shape: (H, W) of each image.
-    ground_plane_y_frac: keep correspondences where y > frac * height in BOTH images.
+    ground_plane_y_frac: keep matches where y > frac * height (drop sky / building tops).
+    dashboard_y_frac: drop matches where y > frac * height (the bottom strip is
+        the camera-vehicle's dashboard, not the road plane; Mapillary uploads
+        from cars routinely have a 10-15% dashboard band that confuses RANSAC).
     """
     n = len(matches.kpts0)
     full_mask = np.ones(n, dtype=bool)
@@ -49,7 +53,12 @@ def estimate(
     h1, _ = img1_shape
     y_min_0 = ground_plane_y_frac * h0
     y_min_1 = ground_plane_y_frac * h1
-    ground_mask = (matches.kpts0[:, 1] >= y_min_0) & (matches.kpts1[:, 1] >= y_min_1)
+    y_max_0 = dashboard_y_frac * h0
+    y_max_1 = dashboard_y_frac * h1
+    ground_mask = (
+        (matches.kpts0[:, 1] >= y_min_0) & (matches.kpts0[:, 1] <= y_max_0)
+        & (matches.kpts1[:, 1] >= y_min_1) & (matches.kpts1[:, 1] <= y_max_1)
+    )
 
     candidate_mask = full_mask & ground_mask
     used_restriction = candidate_mask.sum() >= min_matches

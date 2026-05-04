@@ -32,19 +32,31 @@ class RoadSegmenter:
             )
 
     @torch.inference_mode()
-    def segment_road(self, img_rgb: np.ndarray) -> np.ndarray:
+    def segment_road(
+        self,
+        img_rgb: np.ndarray,
+        *,
+        dashboard_y_frac: float = 0.85,
+    ) -> np.ndarray:
         """Return a binary (H, W) uint8 mask: 1 where road, 0 elsewhere.
 
-        Output is in the original image resolution.
+        Output is in the original image resolution. The bottom strip (below
+        `dashboard_y_frac * H`) is forcibly zeroed: Mapillary contributors mount
+        cameras inside cars, and Segformer-Cityscapes routinely classifies the
+        blue dashboard as 'road' because of its flat colour and lower-image
+        position. Cropping the bottom strip is cheaper than retraining.
         """
         self._load()
         h, w = img_rgb.shape[:2]
         pil = Image.fromarray(img_rgb)
         inputs = self._processor(images=pil, return_tensors="pt").to(self.device)
         logits = self._model(**inputs).logits  # (1, C, h', w')
-        # Upsample to original resolution.
         upsampled = torch.nn.functional.interpolate(
             logits, size=(h, w), mode="bilinear", align_corners=False
         )
         pred = upsampled.argmax(dim=1).squeeze(0).cpu().numpy().astype(np.int64)
-        return (pred == _ROAD_CLASS_ID).astype(np.uint8)
+        mask = (pred == _ROAD_CLASS_ID).astype(np.uint8)
+        cutoff = int(round(dashboard_y_frac * h))
+        if cutoff < h:
+            mask[cutoff:, :] = 0
+        return mask

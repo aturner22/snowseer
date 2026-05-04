@@ -1,0 +1,130 @@
+[
+  {
+    "pair_id": "kiruna_se__1132166577296546__430202249821980",
+    "n_matches": 4,
+    "n_inliers": 0,
+    "ground_plane_used": false,
+    "figure": null,
+    "naive_baseline": null
+  },
+  {
+    "pair_id": "kiruna_se__146117464191250__473098661877951",
+    "n_matches": 28,
+    "n_inliers": 7,
+    "ground_plane_used": false,
+    "figure": "../outputs/heroes/kiruna_se__146117464191250__473098661877951__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__146117464191250__473098661877951__naive_baseline.png"
+  },
+  {
+    "pair_id": "kiruna_se__173943764513956__2572648156371424",
+    "n_matches": 455,
+    "n_inliers": 47,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/kiruna_se__173943764513956__2572648156371424__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__173943764513956__2572648156371424__naive_baseline.png"
+  },
+  {
+    "pair_id": "kiruna_se__301760808219031__813395426217471",
+    "n_matches": 25,
+    "n_inliers": 4,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/kiruna_se__301760808219031__813395426217471__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__301760808219031__813395426217471__naive_baseline.png"
+  },
+  {
+    "pair_id": "kiruna_se__474352240535542__372889160790900",
+    "n_matches": 314,
+    "n_inliers": 74,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/kiruna_se__474352240535542__372889160790900__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__474352240535542__372889160790900__naive_baseline.png"
+  },
+  {
+    "pair_id": "kiruna_se__518714365823370__470148892364027",
+    "n_matches": 12,
+    "n_inliers": 5,
+    "ground_plane_used": false,
+    "figure": "../outputs/heroes/kiruna_se__518714365823370__470148892364027__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__518714365823370__470148892364027__naive_baseline.png"
+  },
+  {
+    "pair_id": "kiruna_se__837293103527079__4180807925287533",
+    "n_matches": 435,
+    "n_inliers": 43,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/kiruna_se__837293103527079__4180807925287533__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__837293103527079__4180807925287533__naive_baseline.png"
+  },
+  {
+    "pair_id": "kiruna_se__865461114182349__1462410224408491",
+    "n_matches": 17,
+    "n_inliers": 5,
+    "ground_plane_used": false,
+    "figure": "../outputs/heroes/kiruna_se__865461114182349__1462410224408491__panel.png",
+    "naive_baseline": "../outputs/heroes/kiruna_se__865461114182349__1462410224408491__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__1263019079098044__275111850989861",
+    "n_matches": 232,
+    "n_inliers": 6,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/rovaniemi_fi__1263019079098044__275111850989861__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__1263019079098044__275111850989861__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__1268529072009484__1950094872070678",
+    "n_matches": 324,
+    "n_inliers": 62,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/rovaniemi_fi__1268529072009484__1950094872070678__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__1268529072009484__1950094872070678__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__1362765774852728__7505659766205853",
+    "n_matches": 234,
+    "n_inliers": 33,
+    "ground_plane_used": false,
+    "figure": "../outputs/heroes/rovaniemi_fi__1362765774852728__7505659766205853__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__1362765774852728__7505659766205853__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__1379006517334210__1856349351185152",
+    "n_matches": 29,
+    "n_inliers": 6,
+    "ground_plane_used": false,
+    "figure": "../outputs/heroes/rovaniemi_fi__1379006517334210__1856349351185152__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__1379006517334210__1856349351185152__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__1457451495738922__1203351467651542",
+    "n_matches": 125,
+    "n_inliers": 12,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/rovaniemi_fi__1457451495738922__1203351467651542__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__1457451495738922__1203351467651542__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__1548379636222507__1624262148147376",
+    "n_matches": 142,
+    "n_inliers": 27,
+    "ground_plane_used": false,
+    "figure": "../outputs/heroes/rovaniemi_fi__1548379636222507__1624262148147376__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__1548379636222507__1624262148147376__naive_baseline.png"
+  },
+  {
+    "pair_id": "rovaniemi_fi__2119841382121712__231758195414969",
+    "n_matches": 7,
+    "n_inliers": 0,
+    "ground_plane_used": false,
+    "figure": null,
+    "naive_baseline": null
+  },
+  {
+    "pair_id": "rovaniemi_fi__26341928928771658__1533316530937158",
+    "n_matches": 251,
+    "n_inliers": 98,
+    "ground_plane_used": true,
+    "figure": "../outputs/heroes/rovaniemi_fi__26341928928771658__1533316530937158__panel.png",
+    "naive_baseline": "../outputs/heroes/rovaniemi_fi__26341928928771658__1533316530937158__naive_baseline.png"
+  }
+]

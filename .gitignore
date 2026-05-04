@@ -10,6 +10,7 @@ data/raw/
 outputs/heroes/*.png
 outputs/heroes/*.jpg
 outputs/cache/
+outputs/audit/
 outputs/pipeline_run.log
 .streamlit/secrets.toml
 *.egg-info/
