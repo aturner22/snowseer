@@ -205,11 +205,15 @@ def run_pair(
             H=None,
         )
 
-    # Save matches.png from the primary (highest-inlier) prior.
-    primary = max(per_prior, key=lambda r: r["homo"].n_inliers)
+    # The 'displayed' primary is priors[0] (the v1 canonical clear_id) so the
+    # panel's clear+mask column matches the v1.1 hero scene people remember.
+    # Multi-prior fusion still uses all K priors for the snow-side overlay.
+    primary = per_prior[0]
+    # Save matches.png from the highest-inlier prior (best diagnostic).
+    best_for_matches = max(per_prior, key=lambda r: r["homo"].n_inliers)
     draw_matches(
-        snow, primary["prior"], primary["matches"],
-        inlier_mask=primary["homo"].inlier_mask,
+        snow, best_for_matches["prior"], best_for_matches["matches"],
+        inlier_mask=best_for_matches["homo"].inlier_mask,
         out_path=out_dir / f"{pair_id}__matches.png",
     )
 
