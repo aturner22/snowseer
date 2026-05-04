@@ -142,9 +142,12 @@ def _new_canvas() -> tuple[plt.Figure, plt.Axes]:
 def _eyebrow(ax, x, y, text):
     if not text:
         return
-    ax.text(x, y, text, fontfamily="Inter", fontsize=20,
-            color=MUTE, fontweight=400, va="top", letterspacing=2)
-    ax.plot([x, x + 6], [y - 1.4, y - 1.4], color=ACCENT, linewidth=2.0)
+    # Letter-tracking via inserting spaces between characters; matplotlib's
+    # Text artist doesn't expose `letterspacing`.
+    spaced = "  ".join(list(text)) if len(text) <= 60 else " ".join(list(text))
+    ax.text(x, y, spaced, fontfamily="Inter", fontsize=18,
+            color=MUTE, fontweight=400, va="top")
+    ax.plot([x, x + 6], [y - 1.6, y - 1.6], color=ACCENT, linewidth=2.0)
 
 
 def _save(fig, out: Path):
@@ -207,7 +210,7 @@ def _draw_bridge_diagram(ax):
 
 
 def _draw_pipeline_diagram(ax):
-    """Six-step horizontal flow."""
+    """Six-step horizontal flow, vertically centred in the canvas."""
     steps = [
         ("Snow query", "live frame"),
         ("Clear prior", "Mapillary, same coords"),
@@ -218,31 +221,33 @@ def _draw_pipeline_diagram(ax):
     ]
     n = len(steps)
     box_w = 14
+    box_h = 26
     spacing = 1.2
     total = n * box_w + (n - 1) * spacing
     x0 = (100 - total) / 2
-    y_top = 50
-    y_bottom = 30
+    y_bottom = 44   # raised so the caption underneath has room without the diagram squatting low
+    y_top = y_bottom + box_h
+    arrow_y = y_bottom + box_h / 2
 
     for i, (head, sub) in enumerate(steps):
         x = x0 + i * (box_w + spacing)
-        rect = FancyBboxPatch((x, y_bottom), box_w, y_top - y_bottom,
+        rect = FancyBboxPatch((x, y_bottom), box_w, box_h,
                               boxstyle="round,pad=0.15",
                               linewidth=1.0, edgecolor=TEXT, facecolor="white")
         ax.add_patch(rect)
         ax.text(x + box_w / 2, y_top - 4, head,
-                fontfamily="Inter", fontweight=700, fontsize=14,
+                fontfamily="Inter", fontweight=700, fontsize=15,
                 ha="center", va="top", color=TEXT)
-        ax.text(x + box_w / 2, y_top - 9, sub,
+        ax.text(x + box_w / 2, y_top - 10, sub,
                 fontfamily="EB Garamond", fontstyle="italic", fontsize=12,
                 ha="center", va="top", color=MUTE, linespacing=1.2)
-        ax.text(x + box_w / 2, y_bottom + 3, str(i + 1),
+        ax.text(x + box_w / 2, y_bottom + 4, str(i + 1),
                 fontfamily="Inter", fontweight=700, fontsize=22,
                 ha="center", color=ACCENT)
         if i < n - 1:
-            ax.annotate("", xy=(x + box_w + spacing, 40), xytext=(x + box_w, 40),
-                        arrowprops=dict(arrowstyle="-|>", mutation_scale=12,
-                                        color=TEXT, linewidth=1.0))
+            ax.annotate("", xy=(x + box_w + spacing, arrow_y), xytext=(x + box_w, arrow_y),
+                        arrowprops=dict(arrowstyle="-|>", mutation_scale=14,
+                                        color=TEXT, linewidth=1.2))
 
 
 def _render_diagram_card(card: DiagramCard, out: Path) -> Path:
@@ -256,7 +261,10 @@ def _render_diagram_card(card: DiagramCard, out: Path) -> Path:
     elif card.kind == "pipeline":
         _draw_pipeline_diagram(ax)
     if card.caption:
-        ax.text(8, 18, card.caption, fontfamily="EB Garamond",
+        # Wrap caption so it doesn't run off the right edge.
+        import textwrap
+        wrapped = textwrap.fill(card.caption, width=110)
+        ax.text(8, 22, wrapped, fontfamily="EB Garamond",
                 fontsize=22, color=TEXT, va="top", linespacing=1.4)
     _save(fig, out)
     return out
@@ -289,7 +297,7 @@ def _render_hero_slide_a(scene: HeroSlideA, out: Path) -> Path:
     head = fig.add_subplot(gs[0, :]); head.set_facecolor(BG); head.set_axis_off()
     head.text(0.0, 0.85, "THE PROBLEM  ·  SNOW QUERY VS NAIVE PREDICTION",
               fontfamily="Inter", fontsize=18, color=MUTE, ha="left", va="top",
-              transform=head.transAxes, letterspacing=2)
+              transform=head.transAxes)
     head.plot([0, 0.04], [0.65, 0.65], color=ACCENT, linewidth=2.0,
               transform=head.transAxes)
     head.text(0.0, 0.55, title, fontfamily="Inter", fontsize=34,
@@ -315,14 +323,11 @@ def _render_hero_slide_b(scene: HeroSlideB, out: Path) -> Path:
     matches_path = HEROES_DIR / f"{pair_id}__matches.png"
     overlay_path = HEROES_DIR / f"{pair_id}__overlay.png"
     clear_path = PAIRS_DIR / pair_id / "clear.jpg"
-    pair_dir = PAIRS_DIR / pair_id
     if not (matches_path.exists() and overlay_path.exists() and clear_path.exists()):
         return _render_title_card(
             TitleCard(title="(missing assets)", subnote=pair_id, duration=scene.duration), out)
 
-    # Recompute the 'clear + green road mask' frame for display so we don't
-    # depend on a separately-cached PNG.
-    from .overlay import alpha_blend  # local to avoid circular import noise
+    from .overlay import alpha_blend
     from .pipeline import _load_rgb, _resize_to
     clear = _resize_to(_load_rgb(clear_path))
     road_mask = _segment_for_display(clear)
@@ -330,21 +335,20 @@ def _render_hero_slide_b(scene: HeroSlideB, out: Path) -> Path:
 
     title, sub = _hero_strings(pair_id)
     fig = plt.figure(figsize=(W/100, H/100), dpi=100, facecolor=BG)
-    # Header band + 2-row body. Top body row is matches (full width); bottom
-    # row is clear+mask | overlay (two columns).
-    gs = fig.add_gridspec(3, 2, height_ratios=[0.16, 0.50, 0.50], hspace=0.18, wspace=0.04,
-                          left=0.04, right=0.96, top=0.97, bottom=0.04)
+    # Header band gets ~22% of the figure so title + subtitle don't squish.
+    gs = fig.add_gridspec(3, 2, height_ratios=[0.22, 0.45, 0.45], hspace=0.20, wspace=0.04,
+                          left=0.04, right=0.96, top=0.97, bottom=0.03)
     head = fig.add_subplot(gs[0, :]); head.set_facecolor(BG); head.set_axis_off()
-    head.text(0.0, 0.85, "THE SOLUTION  ·  MATCHES, MASK, OVERLAY",
-              fontfamily="Inter", fontsize=18, color=MUTE, ha="left", va="top",
-              transform=head.transAxes, letterspacing=2)
-    head.plot([0, 0.04], [0.65, 0.65], color=ACCENT, linewidth=2.0,
+    head.text(0.0, 0.92, "THE SOLUTION  ·  MATCHES, MASK, OVERLAY",
+              fontfamily="Inter", fontsize=20, color=MUTE, ha="left", va="top",
               transform=head.transAxes)
-    head.text(0.0, 0.55, title, fontfamily="Inter", fontsize=34,
+    head.plot([0, 0.05], [0.74, 0.74], color=ACCENT, linewidth=2.4,
+              transform=head.transAxes)
+    head.text(0.0, 0.62, title, fontfamily="Inter", fontsize=36,
               fontweight=500, color=TEXT, ha="left", va="top",
               transform=head.transAxes)
     if sub:
-        head.text(0.0, 0.10, sub, fontfamily="EB Garamond", fontsize=20,
+        head.text(0.0, 0.10, sub, fontfamily="EB Garamond", fontsize=22,
                   color=MUTE, style="italic", ha="left", va="top",
                   transform=head.transAxes)
 
@@ -352,7 +356,7 @@ def _render_hero_slide_b(scene: HeroSlideB, out: Path) -> Path:
     matches_img = np.array(Image.open(matches_path).convert("RGB"))
     _annotate_image(
         ax_matches, matches_img,
-        "Feature correspondences  ·  green = RANSAC inlier (used for the homography fit)  ·  red = rejected outlier",
+        "Feature correspondences  ·  green = RANSAC inlier  ·  red = rejected",
     )
 
     ax_clear = fig.add_subplot(gs[2, 0])
@@ -434,7 +438,7 @@ def _build_scenes() -> list[object]:
     scenes.append(DiagramCard(
         kind="pipeline",
         eyebrow="THE ARCHITECTURE  ·  SIX STEPS",
-        title="",
+        title="Snow query → cross-season overlay.",
         caption="Frozen pretrained components throughout. The segmenter is applied to the clear prior only — never to the snow frame. Snow appears at inference time as the runtime input.",
         duration=14.0,
     ))
@@ -478,7 +482,8 @@ def _audio_track(total_duration: float):
         try:
             ac = AudioFileClip(str(mf))
             ac = ac.with_effects([afx.AudioLoop(duration=total_duration)])
-            ac = ac.with_effects([afx.MultiplyVolume(0.55)])
+            # Bumped to 0.85 (was 0.55) — earlier render was too quiet for some players.
+            ac = ac.with_effects([afx.MultiplyVolume(0.85)])
             pieces.append(ac)
         except Exception as e:
             print(f"  ! music {mf.name}: {e}")
@@ -486,7 +491,7 @@ def _audio_track(total_duration: float):
         try:
             ac = AudioFileClip(str(af))
             ac = ac.with_effects([afx.AudioLoop(duration=total_duration)])
-            ac = ac.with_effects([afx.MultiplyVolume(0.30)])
+            ac = ac.with_effects([afx.MultiplyVolume(0.45)])
             pieces.append(ac)
         except Exception as e:
             print(f"  ! ambience {af.name}: {e}")
