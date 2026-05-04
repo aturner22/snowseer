@@ -1,15 +1,19 @@
 """Fetch paired snowy/clear image pairs from Mapillary.
 
+Two modes:
+  - `--curated-only` (default for `make demo`): pull *only* the 14 pairs in
+    `data/curated_pairs.json` by their image IDs. This is the canonical
+    reproducibility path; produces the exact demo set on a fresh clone.
+  - exploration mode (no flag): query each REGIONS entry by bbox+date and
+    pair winter+summer images. Use this when curating a new demo set; the
+    output is then run through `demo/curate_snow.py` and
+    `demo/curate_results.py`, and the GREAT+OKAY survivors are baked into
+    `data/curated_pairs.json` for future reproducibility.
+
 Usage:
     export MAPILLARY_TOKEN=<your token from https://www.mapillary.com/dashboard/developers>
-    uv run python -m data.fetch_mapillary
-
-Pipeline:
-    1. For each region in REGIONS, query Mapillary for images captured in:
-        - winter months (`WINTER_MONTHS`)  -> "snow candidates"
-        - summer months (`SUMMER_MONTHS`)  -> "clear candidates"
-    2. For each winter image, find the nearest summer image by lat/lng/heading.
-    3. Save matched pairs with their thumbnails to data/pairs/<id>/.
+    uv run python -m data.fetch_mapillary --curated-only      # the demo set
+    uv run python -m data.fetch_mapillary                     # exploration
 
 Snow appears only at INFERENCE TIME as the runtime input. No model weights are
 fine-tuned on snowy images anywhere in this codebase.
@@ -114,6 +118,21 @@ def _bbox_for_region(lat: float, lng: float, radius_m: float) -> tuple[float, fl
     dlat = radius_m / 111_000.0
     dlng = radius_m / (111_000.0 * np.cos(np.radians(lat)))
     return (lng - dlng, lat - dlat, lng + dlng, lat + dlat)
+
+
+def _query_image(image_id: str, token: str) -> dict | None:
+    """Fetch a single Mapillary image's metadata + thumbnail URL by ID."""
+    url = f"https://graph.mapillary.com/{image_id}"
+    params = {"fields": ",".join(FIELDS)}
+    try:
+        r = requests.get(
+            url, headers={"Authorization": f"OAuth {token}"}, params=params, timeout=60
+        )
+        r.raise_for_status()
+        return r.json()
+    except (requests.HTTPError, requests.Timeout, requests.ConnectionError) as e:
+        print(f"  ! image {image_id}: {type(e).__name__}", file=sys.stderr)
+        return None
 
 
 def _query_bbox(
@@ -290,7 +309,59 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
         os.environ.setdefault(k, v)
 
 
+CURATED_PATH = Path("data/curated_pairs.json")
+
+
+def _fetch_curated(token: str) -> int:
+    """Fetch only the pairs declared in data/curated_pairs.json. Each entry's
+    Mapillary IDs are queried fresh (URLs are signed and expire), so this
+    works on a clean clone."""
+    if not CURATED_PATH.exists():
+        print(f"!! {CURATED_PATH} not found.", file=sys.stderr)
+        return 1
+    spec = json.loads(CURATED_PATH.read_text())
+    pairs = spec.get("pairs", [])
+    print(f"[curated] {len(pairs)} pairs to fetch")
+    n_ok = 0
+    for entry in tqdm(pairs, desc="curated"):
+        pair_id = entry["pair_id"]
+        region = entry["region"]
+        snow_id = entry["snow_id"]
+        clear_id = entry["clear_id"]
+        pair_dir = OUT_DIR / pair_id
+        if (pair_dir / "snow.jpg").exists() and (pair_dir / "clear.jpg").exists() and (pair_dir / "meta.json").exists():
+            n_ok += 1
+            continue
+        snow_raw = _query_image(snow_id, token)
+        clear_raw = _query_image(clear_id, token)
+        if snow_raw is None or clear_raw is None:
+            print(f"  ! could not fetch metadata for {pair_id}", file=sys.stderr)
+            continue
+        snow_meta = _to_meta(snow_raw)
+        clear_meta = _to_meta(clear_raw)
+        if snow_meta is None or clear_meta is None:
+            print(f"  ! could not parse metadata for {pair_id}", file=sys.stderr)
+            continue
+        try:
+            dlat_m = (clear_meta.lat - snow_meta.lat) * _meters_per_deg_lat()
+            dlng_m = (clear_meta.lng - snow_meta.lng) * _meters_per_deg_lng(snow_meta.lat)
+            dist_m = float(np.hypot(dlat_m, dlng_m))
+            saved = _save_pair(region, snow_meta, clear_meta, dist_m)
+            n_ok += 1
+        except Exception as e:
+            print(f"  ! {pair_id}: {e}", file=sys.stderr)
+    print(f"\nDone. {n_ok}/{len(pairs)} curated pairs available under {OUT_DIR}/")
+    return 0
+
+
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--curated-only", action="store_true",
+                    help="Pull only pairs listed in data/curated_pairs.json (the demo set). "
+                         "Default behaviour explores all REGIONS by bbox+date.")
+    args = ap.parse_args()
+
     _load_dotenv()
     token = os.environ.get(TOKEN_ENV)
     if not token:
@@ -299,10 +370,13 @@ def main() -> None:
         sys.exit(2)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    if args.curated_only:
+        sys.exit(_fetch_curated(token))
+
     summary: list[dict] = []
 
     for region in REGIONS:
-        # Skip API queries entirely if we already have TARGET pairs for this region.
         existing = sum(
             1 for d in OUT_DIR.iterdir()
             if d.is_dir() and d.name.startswith(region["name"] + "__")
@@ -315,7 +389,6 @@ def main() -> None:
         summer = _collect_images(region, token, SUMMER_MONTHS)
         print(f"  winter candidates: {len(winter)}   summer candidates: {len(summer)}")
         pairs = _pair_winter_to_summer(winter, summer)
-        # Rank by distance (tighter pairs first), keep the top K
         pairs.sort(key=lambda t: t[2])
         pairs = pairs[:TARGET_PAIRS_PER_REGION]
         print(f"  matched pairs (top {TARGET_PAIRS_PER_REGION}): {len(pairs)}")

@@ -1,0 +1,132 @@
+{
+  "version": "v1.0",
+  "description": "The 14 user-rated GREAT+OKAY pairs that constitute the Snow-Underlay demo. Reproducing this set is the canonical fresh-clone workflow.",
+  "pairs": [
+    {
+      "pair_id": "gallivare_se__1107706673896225__892247655024233",
+      "region": "gallivare_se",
+      "rating": "great",
+      "snow_id": "1107706673896225",
+      "clear_id": "892247655024233",
+      "distance_m": 1.0,
+      "heading_delta_deg": 10.16
+    },
+    {
+      "pair_id": "gallivare_se__1113124103239974__202392698419785",
+      "region": "gallivare_se",
+      "rating": "great",
+      "snow_id": "1113124103239974",
+      "clear_id": "202392698419785",
+      "distance_m": 1.26,
+      "heading_delta_deg": 7.97
+    },
+    {
+      "pair_id": "gallivare_se__345189905208531__154885286595910",
+      "region": "gallivare_se",
+      "rating": "great",
+      "snow_id": "345189905208531",
+      "clear_id": "154885286595910",
+      "distance_m": 1.33,
+      "heading_delta_deg": 3.55
+    },
+    {
+      "pair_id": "gallivare_se__7240084582787704__332803601580326",
+      "region": "gallivare_se",
+      "rating": "great",
+      "snow_id": "7240084582787704",
+      "clear_id": "332803601580326",
+      "distance_m": 1.32,
+      "heading_delta_deg": 10.32
+    },
+    {
+      "pair_id": "gallivare_se__724743419870843__1232870027145826",
+      "region": "gallivare_se",
+      "rating": "great",
+      "snow_id": "724743419870843",
+      "clear_id": "1232870027145826",
+      "distance_m": 1.51,
+      "heading_delta_deg": 7.77
+    },
+    {
+      "pair_id": "kiruna_se__1661386470711759__471612343955040",
+      "region": "kiruna_se",
+      "rating": "great",
+      "snow_id": "1661386470711759",
+      "clear_id": "471612343955040",
+      "distance_m": 0.37,
+      "heading_delta_deg": 5.57
+    },
+    {
+      "pair_id": "kiruna_se__173943764513956__2572648156371424",
+      "region": "kiruna_se",
+      "rating": "great",
+      "snow_id": "173943764513956",
+      "clear_id": "2572648156371424",
+      "distance_m": 0.21,
+      "heading_delta_deg": 4.33
+    },
+    {
+      "pair_id": "kiruna_se__245577317324651__633925574672091",
+      "region": "kiruna_se",
+      "rating": "great",
+      "snow_id": "245577317324651",
+      "clear_id": "633925574672091",
+      "distance_m": 0.32,
+      "heading_delta_deg": 11.79
+    },
+    {
+      "pair_id": "kiruna_se__4126780297420111__308352860669123",
+      "region": "kiruna_se",
+      "rating": "great",
+      "snow_id": "4126780297420111",
+      "clear_id": "308352860669123",
+      "distance_m": 0.17,
+      "heading_delta_deg": 8.96
+    },
+    {
+      "pair_id": "lulea_se__1235981388376274__771512076886521",
+      "region": "lulea_se",
+      "rating": "great",
+      "snow_id": "1235981388376274",
+      "clear_id": "771512076886521",
+      "distance_m": 1.22,
+      "heading_delta_deg": 3.7
+    },
+    {
+      "pair_id": "gallivare_se__1074104257224613__317074743121442",
+      "region": "gallivare_se",
+      "rating": "okay",
+      "snow_id": "1074104257224613",
+      "clear_id": "317074743121442",
+      "distance_m": 1.45,
+      "heading_delta_deg": 6.82
+    },
+    {
+      "pair_id": "gallivare_se__406156588778534__151656736926906",
+      "region": "gallivare_se",
+      "rating": "okay",
+      "snow_id": "406156588778534",
+      "clear_id": "151656736926906",
+      "distance_m": 1.08,
+      "heading_delta_deg": 4.86
+    },
+    {
+      "pair_id": "kiruna_se__5529843027088716__1189235864845198",
+      "region": "kiruna_se",
+      "rating": "okay",
+      "snow_id": "5529843027088716",
+      "clear_id": "1189235864845198",
+      "distance_m": 0.5,
+      "heading_delta_deg": 17.02
+    },
+    {
+      "pair_id": "rovaniemi_fi__856601484101706__474387813773207",
+      "region": "rovaniemi_fi",
+      "rating": "okay",
+      "snow_id": "856601484101706",
+      "clear_id": "474387813773207",
+      "distance_m": 0.11,
+      "heading_delta_deg": 9.45
+    }
+  ]
+}
