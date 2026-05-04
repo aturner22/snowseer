@@ -46,6 +46,19 @@ class PairResult:
     snow_overlay_path: Path | None
     naive_baseline_path: Path | None
     H: np.ndarray | None
+    iou_overlay_vs_naive: float | None = None
+    iou_overlay_vs_identity: float | None = None
+    refined: bool = False
+
+
+def _iou(mask_a: np.ndarray, mask_b: np.ndarray) -> float:
+    a = mask_a.astype(bool)
+    b = mask_b.astype(bool)
+    inter = (a & b).sum()
+    union = (a | b).sum()
+    if union == 0:
+        return 0.0
+    return float(inter) / float(union)
 
 
 def _load_rgb(path: Path) -> np.ndarray:
@@ -148,6 +161,22 @@ def run_pair(
     naive_path = out_dir / f"{pair_id}__naive_baseline.png"
     cv2.imwrite(str(naive_path), cv2.cvtColor(snow_naive, cv2.COLOR_RGB2BGR))
 
+    # 7. Identity-warp baseline: trust the prior road mask without any
+    #    matching/registration. This is "what if we just overlaid the clear
+    #    road mask onto snow without doing the cross-season alignment". For
+    #    any pair where snow and clear differ at all in framing, this is wrong.
+    sh, sw = snow.shape[:2]
+    ch, cw = road_mask_clear.shape[:2]
+    if (sh, sw) == (ch, cw):
+        identity_mask = road_mask_clear
+    else:
+        identity_mask = cv2.resize(
+            road_mask_clear, (sw, sh), interpolation=cv2.INTER_NEAREST
+        )
+
+    iou_naive = _iou(road_mask_snow, road_mask_snow_naive)
+    iou_identity = _iou(road_mask_snow, identity_mask)
+
     return PairResult(
         pair_id=pair_id,
         snow_path=snow_path,
@@ -159,6 +188,9 @@ def run_pair(
         snow_overlay_path=snow_overlay_path,
         naive_baseline_path=naive_path,
         H=homo.H,
+        iou_overlay_vs_naive=iou_naive,
+        iou_overlay_vs_identity=iou_identity,
+        refined=refined,
     )
 
 
@@ -188,6 +220,13 @@ def run_all(
                 "n_matches": int(res.n_matches),
                 "n_inliers": int(res.n_inliers),
                 "ground_plane_used": bool(res.used_ground_plane_restriction),
+                "refined": bool(res.refined),
+                "iou_overlay_vs_naive": (
+                    None if res.iou_overlay_vs_naive is None else round(res.iou_overlay_vs_naive, 4)
+                ),
+                "iou_overlay_vs_identity": (
+                    None if res.iou_overlay_vs_identity is None else round(res.iou_overlay_vs_identity, 4)
+                ),
                 "accept": bool(accept),
                 "figure": str(res.figure_path) if res.figure_path else None,
                 "naive_baseline": str(res.naive_baseline_path) if res.naive_baseline_path else None,

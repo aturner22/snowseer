@@ -166,6 +166,9 @@ def _collect_images(
         except requests.HTTPError as e:
             print(f"  ! HTTP {e.response.status_code} for {region['name']} year {year}", file=sys.stderr)
             continue
+        except (requests.Timeout, requests.ConnectionError) as e:
+            print(f"  ! network error for {region['name']} year {year}: {type(e).__name__}", file=sys.stderr)
+            continue
         for r in raw:
             meta = _to_meta(r)
             if meta is None:

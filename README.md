@@ -1,5 +1,13 @@
 # Snow-Underlay
 
+> **Zero snowy frames touch any model weights anywhere in this codebase.**
+> Snow appears only at inference time, as the runtime input.
+> The road segmentation comes from a Cityscapes-trained model that has never
+> seen snow; the feature matcher is trained on MegaDepth (no snow either).
+> What makes this work is geometric: aligning a *clear-season prior* of each
+> road against the live snowy frame, then transferring the road mask through
+> the alignment.
+
 **Cross-season image matching for snow-plough autonomy.**
 
 A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy).

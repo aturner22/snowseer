@@ -12,5 +12,7 @@ outputs/heroes/*.jpg
 outputs/cache/
 outputs/audit/
 outputs/pipeline_run.log
+outputs/fetch_v2.log
+outputs/fetch_*.log
 .streamlit/secrets.toml
 *.egg-info/

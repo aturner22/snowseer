@@ -51,19 +51,46 @@ def _read_panel(path: Path) -> np.ndarray | None:
     return img
 
 
-def build(out_path: Path, fps: float, target_height: int) -> Path:
+def build(out_path: Path, fps: float, target_height: int, *, only_accepted: bool = True) -> Path:
     summary_path = OUT_DIR / "summary.json"
     if not summary_path.exists():
         raise SystemExit(f"Run the pipeline first; {summary_path} not found.")
     summary = json.loads(summary_path.read_text())
 
+    if only_accepted:
+        # Order: accepted pairs descending by inlier count (best first), then a
+        # short tail of deliberate drift / graceful-failure cases for honesty.
+        accepted = [s for s in summary if s.get("accept")]
+        accepted.sort(key=lambda s: -s.get("n_inliers", 0))
+        # Deliberate honest-limit cases (drift + graceful failure) — pick a few rejects
+        # with non-trivial structure to show.
+        rejected = [s for s in summary if not s.get("accept")]
+        # Drift / honest-limit picks: low inlier but high match count (tells us the
+        # matcher saw lots of features but RANSAC could not coalesce them).
+        drift = sorted(
+            [s for s in rejected if 4 <= s.get("n_inliers", 0) <= 8 and s.get("n_matches", 0) >= 50],
+            key=lambda s: -s.get("n_matches", 0),
+        )[:1]
+        # One graceful failure (matches very low, inliers 0).
+        graceful = sorted(
+            [s for s in rejected if s.get("n_inliers", 0) == 0],
+            key=lambda s: s.get("n_matches", 99),
+        )[:1]
+        ordered = accepted + drift + graceful
+    else:
+        ordered = summary
+
     frames: list[np.ndarray] = []
-    for entry in summary:
+    for entry in ordered:
         pair_id = entry["pair_id"]
         panel_path = OUT_DIR / f"{pair_id}__panel.png"
         panel = _read_panel(panel_path)
         if panel is None:
-            continue
+            # graceful failure: stitch the matches viz with a "DECLINED" caption
+            mp = OUT_DIR / f"{pair_id}__matches.png"
+            panel = _read_panel(mp)
+            if panel is None:
+                continue
         meta_path = PAIRS_DIR / pair_id / "meta.json"
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else None
         captioned = _annotate_panel(panel, pair_id, meta)
