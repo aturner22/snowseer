@@ -63,6 +63,23 @@ def _load_curated_pair_ids() -> set[str]:
     spec = json.loads(CURATED_PAIRS_PATH.read_text())
     return {p["pair_id"] for p in spec.get("pairs", [])}
 
+
+def _user_chosen_fusion(pair_id: str) -> str | None:
+    """Return the user's per-pair fusion preference if set in
+    data/manual_result_curation.json, otherwise None.
+    """
+    if not RESULT_RATINGS_PATH.exists():
+        return None
+    try:
+        ratings = json.loads(RESULT_RATINGS_PATH.read_text())
+    except json.JSONDecodeError:
+        return None
+    entry = ratings.get(pair_id) or {}
+    pick = entry.get("best_fusion")
+    if pick in ("union", "weighted", "majority"):
+        return pick
+    return None
+
 # Content-level curation threshold. Pairs below this are considered
 # content-mismatched (different scenes despite tight GPS+heading) and are
 # excluded from the curated demo set. They remain on disk and are visible in
@@ -245,11 +262,14 @@ def run_pair(
         ovp = out_dir / f"{pair_id}__overlay_{name}.png"
         cv2.imwrite(str(ovp), cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR))
         overlay_paths[name] = ovp
-    # Default `__overlay.png` is the weighted fusion (chosen primary).
+    # Default `__overlay.png` is the user-picked fusion (from
+    # data/manual_result_curation.json) if one is set for this pair, else
+    # falls back to `weighted` (the modal user pick across the demo set).
+    chosen = _user_chosen_fusion(pair_id) or "weighted"
     cv2.imwrite(
         str(out_dir / f"{pair_id}__overlay.png"),
         cv2.cvtColor(
-            alpha_blend(snow, fused["weighted"], color=(46, 156, 86), alpha=0.50),
+            alpha_blend(snow, fused[chosen], color=(46, 156, 86), alpha=0.50),
             cv2.COLOR_RGB2BGR,
         ),
     )
@@ -257,30 +277,30 @@ def run_pair(
     # Per-prior thumbnails strip.
     _save_priors_strip(snow, per_prior, out_dir / f"{pair_id}__priors.png")
 
-    # Headline 2x2 panel uses the weighted fusion + the primary prior's
-    # clear+mask. (The clear+mask column shows what *one* prior says; the
-    # overlay column shows the fused multi-prior result.)
+    # Headline 2x2 panel uses the user-chosen fusion (or weighted default)
+    # + the canonical primary prior's clear+mask. (The clear+mask column
+    # shows what *one* prior says; the overlay column shows the fused
+    # multi-prior result.)
     primary_clear = primary["prior"]
     primary_road_mask_clear = primary["road_mask_clear"]
-    snow_overlay_weighted = alpha_blend(snow, fused["weighted"], color=(46, 156, 86), alpha=0.50)
+    panel_overlay = alpha_blend(snow, fused[chosen], color=(46, 156, 86), alpha=0.50)
     figure_path = out_dir / f"{pair_id}__panel.png"
     title, subtitle = _display_strings(pair_id)
     panel_figure(
-        snow, primary_clear, primary_road_mask_clear, snow_overlay_weighted,
+        snow, primary_clear, primary_road_mask_clear, panel_overlay,
         snowy_naive=snow_naive,
         title=title, subtitle=subtitle, out_path=figure_path,
     )
 
-    # IoU metrics — measured against the weighted fusion.
-    iou_naive = _iou(fused["weighted"], road_mask_snow_naive)
-    # Identity-warp baseline: primary clear mask resized into snow shape.
+    # IoU metrics — measured against the chosen fusion (the one we ship).
+    iou_naive = _iou(fused[chosen], road_mask_snow_naive)
     sh, sw = snow.shape[:2]
     ch, cw = primary_road_mask_clear.shape[:2]
     if (sh, sw) == (ch, cw):
         identity_mask = primary_road_mask_clear
     else:
         identity_mask = cv2.resize(primary_road_mask_clear, (sw, sh), interpolation=cv2.INTER_NEAREST)
-    iou_identity = _iou(fused["weighted"], identity_mask)
+    iou_identity = _iou(fused[chosen], identity_mask)
 
     return PairResult(
         pair_id=pair_id,
