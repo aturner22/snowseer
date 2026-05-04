@@ -1,117 +1,166 @@
-# Slide deck outline — Snow-Underlay
+---
+marp: true
+theme: snow-underlay
+paginate: true
+header: "Snow-Underlay  ·  SoTA Commission I"
+footer: "Constants as the bridge"
+---
 
-> Marp / Slidev compatible. Each `---` is a slide.
+<!-- _class: title -->
+
+# Constants as the bridge
+
+## Minimal-shot autonomy, demonstrated on a snow plough
 
 ---
 
-# Snow-Underlay
-### Cross-season image matching for snow-plough autonomy
+## A snow plough's job is short
 
-SoTA Commission I — Minimal-Shot Autonomy
+Keep the road clear.
 
----
+The catch: while the plough is doing it,
+the road is invisible.
 
-## The problem
+Curbs are buried. Lane markings are gone. The seam
+between asphalt and garden is no longer drawn.
 
-- Snow ploughs need to scale on demand. Hard to staff year-round.
-- Self-driving stacks are trained on dry roads.
-- A plough operates in the regime that data deliberately excludes.
-- The hardest perception failure: **the road itself is invisible**.
-
----
-
-## The trick
-
-- Don't learn what a road looks like under snow.
-- For nearly every road in the developed world we have a **clear-season prior image** of it (Street View, Mapillary, prior fleet captures).
-- Match the live snowy frame to the clear prior.
-- Transfer the road segmentation through the alignment.
+A self-driving stack trained on Cityscapes will report,
+with calibrated confidence, that the entire scene is sky.
 
 ---
 
-## The pipeline
+## We are not going to label our way out
 
-```
-[snow query] ─┐
-              ├─> DISK + LightGlue ─> RANSAC homography
-[clear prior] ┘                            │     (ground-plane biased)
-              └─> Segformer (Cityscapes) ─> road mask
-                                                │
-                                                ▼
-                                       warp + overlay
-```
+> 27 million miles of road.
+> The long tail of conditions any of them can be in
+> is longer than the road itself.
 
-Three pretrained models, all frozen, all trained on clear imagery only.
+The familiar response — annotate snowy roads, dust storms, fog,
+washouts, lava — does not scale.
+
+There is a different move.
 
 ---
 
-## Minimal-shot integrity (the load-bearing claim)
+## The move
 
-| Component | Pretrained on | Snow in training? |
-|---|---|---|
-| DISK | MegaDepth | **No** |
-| LightGlue | MegaDepth | **No** |
-| Segformer-B0 | Cityscapes | **No** |
+For almost every regime where autonomy fails for lack of data,
+there is an *adjacent regime* — temporally, seasonally, geographically —
+where data exists, and where the parts that matter are the same.
 
-Snow appears only at **inference time**, as the runtime input.
+The plough's road is the same road it was last July.
 
----
+The curb hasn't moved. The hydrant hasn't moved.
 
-## Naive baseline → motivation
-
-- Same Cityscapes segmenter, applied directly to the snow frame.
-- Fragmented, shifted, or missing road predictions.
-- → Cross-season transfer is the cheapest fix.
-
-*[insert side-by-side from outputs/heroes/<id>__naive_baseline.png ↔ <id>__overlay.png]*
+The road's *appearance* has changed completely.
+The road's *position in space* has not.
 
 ---
 
-## Hero results
+## Constants as the bridge
 
-*[insert 3-4 outputs/heroes/<id>__panel.png from Östersund, Tromsø, Rovaniemi]*
+If we can identify what stays constant between the data-rich regime
+and the data-poor one, we can extend our existing models into
+the new regime **without learning a single thing about it**.
 
-For each: `inliers = N`, `ground-plane bias used = True/False`.
-
----
-
-## Honest failure case
-
-*[insert one outputs/heroes/<id>__panel.png with worst inlier count]*
-
-Heavy snow, no surviving structure, the system declines an overlay rather than producing a wrong one.
+We use the constants as a bridge.
 
 ---
 
-## "Simulation environment" framing
+## The example, in six steps
 
-- Mapillary as the open-world substrate.
-- Fetcher pulls geo-paired snow/clear imagery from 6 known-snowy regions.
-- Agent traverses pairs one frame at a time.
-- Random start coordinates → "randomised scenario generation" bonus.
+1. Pull the live snowy frame from the plough's camera.
+2. Pull a clear-season prior of the same coordinates (Mapillary).
+3. Match the two with a generic frozen feature matcher.
+4. Estimate a homography, biased toward the ground plane.
+5. Run a generic Cityscapes road segmenter on **the clear prior only**.
+6. Warp the road mask onto the snowy frame.
 
----
-
-## What this does *not* claim
-
-- Not a 3D drivable surface estimate.
-- Not robust to a blizzard.
-- Not a substitute for lidar.
-- Just a road **prior** — cheap, snow-naive, surprisingly correct.
+The plough now knows where the road is. It has not been trained on snow.
 
 ---
 
-## Future direction
+![w:100%](../outputs/heroes/gallivare_se__1113124103239974__202392698419785__panel.png)
 
-1. Piecewise-affine warp (drop the planar-scene assumption).
-2. Temporal smoothing via odometry.
-3. Plough's own prior captures replace Mapillary.
+###### A user-rated GREAT pair. Snow query · clear prior + Cityscapes road · cross-season overlay (rust) · naive direct-on-snow (the failure condition).
 
 ---
 
-## Code, notebook, demo
+## Architecture
 
-- Repo: `<github URL>`
-- Notebook: `notebooks/01_walkthrough.ipynb` — runs end-to-end on CPU.
-- Streamlit demo: `uv run streamlit run demo/streamlit_app.py`
-- Video: `<URL>`
+| Component | Role | Pretrained on |
+|-----------|------|---------------|
+| **DISK** *(NeurIPS '20)* | Local features | MegaDepth, no snow |
+| **LightGlue** *(ICCV '23)* | Sparse matcher | MegaDepth, no snow |
+| **USAC-MAGSAC** *(CVPR '20)* | Robust homography | — |
+| **Mask2Former** *(CVPR '22)* | Road segmenter | Cityscapes, no snow |
+
+Every learned component is **frozen**. Snow appears only at inference.
+
+---
+
+## Minimal-shot integrity
+
+| Claim | Status |
+|-------|:---:|
+| Zero snowy frames touch any model weights | ✓ |
+| Zero snowy frames touch any annotation pipeline | ✓ |
+| Snow appears only as runtime input | ✓ |
+| Reproducible from a clean clone, one command | ✓ |
+
+> The only handle we offered the model on the snow regime
+> was the clear prior of the same place.
+
+---
+
+## What we showed
+
+**14 user-rated GREAT or OKAY heroes** from a 5-stage curation funnel:
+125 candidates → 95 auto pre-filter → 63 deduped → 27 manual snow accept → 19 auto-accepted overlays → 14 manual GREAT or OKAY.
+
+The interesting finding: **inlier count is not a reliable predictor of overlay quality**.
+
+A pair with 238 inliers was rated NOT_GOOD; a pair with 17 inliers was rated GREAT.
+
+The system needs a human in the loop on input *and* output.
+We shipped two small Streamlit raters for the work.
+
+---
+
+## What we didn't
+
+We didn't train. We didn't fine-tune. We didn't collect a snow corpus.
+
+We didn't write a single line of snow-aware logic.
+
+The novelty, such as it is, is in the *composition*.
+
+---
+
+## Generalising
+
+The structure of the move:
+
+> A model trained on regime A.
+> An inference target in regime B.
+> A known correspondence between the two.
+> Transfer through the correspondence.
+
+Snow on a road is one instance.
+Low-light medical imaging without low-light training data.
+Polar earth observation without polar training data.
+A manipulator on Mars without Mars training data.
+
+Each admits the same structure.
+
+---
+
+<!-- _class: title -->
+
+# Constants as the bridge.
+
+## We just have to find what stays the same and walk across.
+
+---
+
+###### Reproduce: `make demo` · Repo: github.com/&lt;you&gt;/snow-underlay · Submission: SoTA Commission I, May 2026

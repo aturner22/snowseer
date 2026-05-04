@@ -53,7 +53,7 @@ notebook:
 pdfs: slides writeup
 
 slides:
-	npx -y --package=@marp-team/marp-cli@latest -- marp docs/slides.md -o docs/slides.pdf --allow-local-files
+	npx -y --package=@marp-team/marp-cli@latest -- marp docs/slides.md -o docs/slides.pdf --allow-local-files --theme-set docs/style/marp.css
 
 writeup:
 	pandoc docs/writeup.md -o docs/writeup.pdf -V geometry:margin=2cm --pdf-engine=xelatex \

@@ -1,0 +1,199 @@
+/* Snow-Underlay — Marp slide theme.
+ *
+ * Visual identity: charcoal · cream · rust.
+ * Typography: EB Garamond (body) · Inter (headers/UI) · JetBrains Mono (code).
+ * Spacing: generous, hairlines not boxes, one accent only.
+ * See docs/style/style.md.
+ */
+
+/* @theme snow-underlay */
+
+@import "default";
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("../../assets/fonts/EBGaramond-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("../../assets/fonts/EBGaramond-Italic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../assets/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+
+:root {
+  --bg: #f6f3ee;
+  --text: #1c1c1c;
+  --accent: #b34a25;
+  --mute: #8a8780;
+}
+
+section {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "EB Garamond", Georgia, serif;
+  font-size: 28px;
+  line-height: 1.5;
+  padding: 60px 80px;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0 0 0.4em 0;
+}
+
+h1 {
+  font-size: 60px;
+  line-height: 1.1;
+  margin-bottom: 0.3em;
+}
+
+h2 {
+  font-size: 38px;
+  line-height: 1.15;
+}
+
+h3 {
+  font-size: 28px;
+  color: var(--mute);
+  font-weight: 500;
+}
+
+/* The accent bar, used semantically */
+h1::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: var(--accent);
+  margin-top: 0.4em;
+}
+
+/* Body emphasis */
+em, i {
+  font-style: italic;
+  color: var(--text);
+}
+strong {
+  font-weight: 700;
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+/* Code */
+code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85em;
+  background: rgba(28, 28, 28, 0.05);
+  padding: 0.1em 0.3em;
+  border-radius: 2px;
+}
+
+pre {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7em;
+  background: rgba(28, 28, 28, 0.04);
+  padding: 1em 1.2em;
+  border-left: 2px solid var(--accent);
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  font-family: "Inter", sans-serif;
+  font-size: 0.7em;
+  width: 100%;
+}
+
+th {
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 2px solid var(--text);
+  padding: 0.4em 0.8em;
+}
+
+td {
+  border-bottom: 1px solid rgba(28, 28, 28, 0.15);
+  padding: 0.4em 0.8em;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Lists */
+ul, ol {
+  font-size: 0.95em;
+}
+li {
+  margin-bottom: 0.3em;
+}
+
+/* Blockquote — pull-quote style with accent */
+blockquote {
+  font-style: italic;
+  font-size: 1.05em;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+  padding-left: 1em;
+  margin: 1em 0;
+}
+
+/* Title-card layout: large quiet quote, footer marker */
+section.title {
+  padding: 100px 100px;
+}
+section.title h1 {
+  font-size: 72px;
+  margin-bottom: 0.6em;
+}
+section.title h2 {
+  font-family: "EB Garamond", serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--mute);
+  font-size: 30px;
+}
+
+/* Footer / page marker */
+section::after {
+  font-family: "Inter", sans-serif;
+  color: var(--mute);
+  font-size: 0.5em;
+  letter-spacing: 0.1em;
+}
+
+/* Image presentation */
+img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid rgba(28, 28, 28, 0.12);
+}
+
+/* Hairline divider */
+hr {
+  border: 0;
+  border-top: 1px solid rgba(28, 28, 28, 0.2);
+  margin: 1em 0;
+}
