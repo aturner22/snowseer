@@ -11,6 +11,7 @@ outputs/heroes/*.png
 outputs/heroes/*.jpg
 outputs/cache/
 outputs/audit/
+outputs/_video_frames/
 outputs/pipeline_run.log
 outputs/fetch_v2.log
 outputs/fetch_*.log
