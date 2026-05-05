@@ -92,9 +92,19 @@ def draw_matches(
     result: MatchResult,
     inlier_mask: np.ndarray | None = None,
     out_path: str | Path | None = None,
-    max_lines: int = 250,
+    max_outliers: int = 15,
+    max_inliers: int = 45,
 ) -> np.ndarray:
-    """Side-by-side viz with lines between matched keypoints. Inliers green, outliers red."""
+    """Side-by-side viz with lines between matched keypoints.
+
+    Outliers (rejected by RANSAC) are drawn first in faint, thin desaturated
+    red so they read as 'background noise'. Inliers (the correspondences that
+    actually fit the homography) are drawn on top in bold, saturated green so
+    they always dominate visually — even when raw outlier counts swamp them.
+
+    Outliers and inliers are subsampled independently so neither monopolises
+    the canvas.
+    """
     h_a, w_a = img_a.shape[:2]
     h_b, w_b = img_b.shape[:2]
     h = max(h_a, h_b)
@@ -105,23 +115,37 @@ def draw_matches(
     n = len(result.kpts0)
     if inlier_mask is None:
         inlier_mask = np.ones(n, dtype=bool)
+    inlier_mask = inlier_mask.astype(bool)
 
-    # Subsample for legibility
-    if n > max_lines:
-        idx = np.random.RandomState(0).choice(n, size=max_lines, replace=False)
-    else:
-        idx = np.arange(n)
+    rng = np.random.RandomState(0)
+    in_idx = np.where(inlier_mask)[0]
+    out_idx = np.where(~inlier_mask)[0]
+    if len(in_idx) > max_inliers:
+        in_idx = rng.choice(in_idx, size=max_inliers, replace=False)
+    if len(out_idx) > max_outliers:
+        out_idx = rng.choice(out_idx, size=max_outliers, replace=False)
 
-    for i in idx:
+    # Outliers first (background), faded.
+    out_colour = (170, 110, 110)  # desaturated dusty red
+    for i in out_idx:
         xa, ya = result.kpts0[i]
         xb, yb = result.kpts1[i]
-        is_in = bool(inlier_mask[i])
-        color = (0, 200, 0) if is_in else (220, 60, 60)
         pa = (int(round(xa)), int(round(ya)))
         pb = (int(round(xb)) + w_a, int(round(yb)))
-        cv2.line(canvas, pa, pb, color, 1, lineType=cv2.LINE_AA)
-        cv2.circle(canvas, pa, 2, color, -1, lineType=cv2.LINE_AA)
-        cv2.circle(canvas, pb, 2, color, -1, lineType=cv2.LINE_AA)
+        cv2.line(canvas, pa, pb, out_colour, 1, lineType=cv2.LINE_AA)
+        cv2.circle(canvas, pa, 2, out_colour, -1, lineType=cv2.LINE_AA)
+        cv2.circle(canvas, pb, 2, out_colour, -1, lineType=cv2.LINE_AA)
+
+    # Inliers on top, bold and saturated.
+    in_colour = (40, 200, 80)
+    for i in in_idx:
+        xa, ya = result.kpts0[i]
+        xb, yb = result.kpts1[i]
+        pa = (int(round(xa)), int(round(ya)))
+        pb = (int(round(xb)) + w_a, int(round(yb)))
+        cv2.line(canvas, pa, pb, in_colour, 2, lineType=cv2.LINE_AA)
+        cv2.circle(canvas, pa, 3, in_colour, -1, lineType=cv2.LINE_AA)
+        cv2.circle(canvas, pb, 3, in_colour, -1, lineType=cv2.LINE_AA)
 
     if out_path is not None:
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
