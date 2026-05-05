@@ -197,3 +197,154 @@ hr {
   border-top: 1px solid rgba(28, 28, 28, 0.2);
   margin: 1em 0;
 }
+
+/* ─── Layout classes used by slides.md ─────────────────────────────── */
+
+/* Slide whose right half is a background image; left half is text. */
+section.image-right {
+  padding: 80px 80px 80px 80px;
+}
+section.image-right h2 {
+  font-size: 36px;
+  margin-top: 0.4em;
+}
+section.image-right p {
+  max-width: 38ch;
+  font-size: 30px;
+  line-height: 1.45;
+}
+
+/* Pull-quote slide: huge quiet quote, footer line muted. */
+section.pullquote {
+  padding: 140px 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+section.pullquote blockquote {
+  border-left: none;
+  padding-left: 0;
+  font-style: italic;
+  font-size: 50px;
+  line-height: 1.35;
+  color: var(--text);
+  max-width: 22ch;
+  margin: 0 0 0.8em 0;
+}
+section.pullquote blockquote em {
+  color: var(--accent);
+}
+section.pullquote h6 {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  color: var(--mute);
+  letter-spacing: 0.04em;
+}
+
+/* Principle slide: centred headline + breathing body. */
+section.principle {
+  padding: 120px 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+section.principle h1 {
+  font-size: 70px;
+  margin-bottom: 0.6em;
+}
+section.principle h1::after {
+  width: 80px;
+  margin-top: 0.5em;
+}
+section.principle p {
+  font-size: 32px;
+  line-height: 1.5;
+  max-width: 26ch;
+}
+
+/* Recipe block — slightly more breathing room around the numbered list. */
+section .recipe ol {
+  font-size: 26px;
+  line-height: 1.55;
+  margin: 0.6em 0 0.6em 0;
+  padding-left: 1.2em;
+}
+section .recipe li {
+  margin-bottom: 0.45em;
+}
+section .recipe li::marker {
+  color: var(--accent);
+  font-weight: 700;
+  font-family: "Inter", sans-serif;
+}
+
+/* Full-bleed image slide — no padding, image carries the slide. */
+section.full-bleed {
+  padding: 0;
+}
+section.full-bleed::after {
+  /* Page number muted on full-bleed slides. */
+  color: rgba(255, 255, 255, 0.0);
+}
+
+/* Caption slide that follows a full-bleed: tight, scholarly. */
+section.full-bleed + section,
+section.caption {
+  padding: 100px 120px;
+}
+section.caption h2 {
+  font-size: 36px;
+  max-width: 24ch;
+  margin-bottom: 0.4em;
+}
+section.caption h6 {
+  font-family: "Inter", sans-serif;
+  color: var(--mute);
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  margin-bottom: 1.2em;
+}
+section.caption p {
+  font-size: 26px;
+  line-height: 1.55;
+  max-width: 38ch;
+  color: var(--text);
+}
+
+/* Closing repro / footer card. */
+section.footer-card {
+  padding: 100px 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.2em;
+}
+section.footer-card h6 {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--mute);
+  letter-spacing: 0.06em;
+  margin: 0 0 0.3em 0;
+}
+section.footer-card pre {
+  font-size: 18px;
+  margin: 0;
+  background: rgba(28, 28, 28, 0.05);
+}
+section.footer-card p {
+  font-size: 24px;
+  margin: 0;
+}
+
+/* Title-card refinement when used as closing card. */
+section.title h6 {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  color: var(--mute);
+  letter-spacing: 0.06em;
+  margin-top: 1.4em;
+}
