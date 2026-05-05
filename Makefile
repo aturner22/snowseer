@@ -8,7 +8,7 @@
 # That produces, deterministically, the v1.0 demo: 14 user-curated pair
 # panels, the contact sheet, the demo video, and summary.json.
 
-.PHONY: help demo fetch pipeline audit video stream notebook pdfs slides writeup clean dist-clean
+.PHONY: help demo fetch pipeline audit video stream notebook pdfs slides writeup clean dist-clean video-fetch video-render
 
 help:
 	@echo "Snow-Underlay  ·  make targets"
@@ -27,6 +27,10 @@ help:
 	@echo ""
 	@echo "  make clean       Remove generated outputs (keeps cached pairs and INDEX.md)"
 	@echo "  make dist-clean  Also remove cached pair downloads"
+	@echo ""
+	@echo "  Phase K (video / pseudo-realtime, on the 'video' branch):"
+	@echo "    make video-fetch TRACK=<id>           Pull snow clip + clear-season priors for a track"
+	@echo "    make video-render TRACK=<id> MODE=<m> Render overlay | sidebyside | quad for a track"
 
 demo: fetch pipeline audit video
 	@echo ""
@@ -67,3 +71,16 @@ clean:
 
 dist-clean: clean
 	rm -rf data/pairs
+
+# ─── Phase K — pseudo-realtime video pipeline ───────────────────────────────
+# These targets only have meaning on the `video` branch. Stub bodies live in
+# src/video_runtime/.
+
+video-fetch:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make video-fetch TRACK=<track_id>"; exit 2; fi
+	uv run python -m src.video_runtime.fetch_track --track $(TRACK)
+
+video-render:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make video-render TRACK=<track_id> MODE=<overlay|sidebyside|quad>"; exit 2; fi
+	@if [ -z "$(MODE)" ]; then echo "usage: make video-render TRACK=<track_id> MODE=<overlay|sidebyside|quad>"; exit 2; fi
+	uv run python -m src.video_runtime.render --track $(TRACK) --mode $(MODE)

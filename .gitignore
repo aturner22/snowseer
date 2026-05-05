@@ -17,3 +17,9 @@ outputs/fetch_v2.log
 outputs/fetch_*.log
 .streamlit/secrets.toml
 *.egg-info/
+# Phase K (video) — raw clips and renders are large + regenerable.
+data/video/snow/
+data/video/priors/
+data/video/tracks/*/frames/
+outputs/video/*/frames/
+outputs/video/*/*.mp4
