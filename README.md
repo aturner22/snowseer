@@ -129,7 +129,7 @@ snow-underlay/
 │       └── render_all_layouts.py     # batch renderer (5 layouts)
 │
 ├── data/
-│   ├── curated_pairs.json            # 27 curated Mapillary pairs (static-stills set)
+│   ├── curated_pairs.json            # 27 reviewed Mapillary pairs (14 GREAT+OKAY headline + 13 review-pool)
 │   ├── manual_*_curation.json        # Streamlit curator state
 │   ├── fetch_mapillary.py            # Mapillary v4 fetcher
 │   ├── find_snow_sequences.py        # winter-sequence reconnaissance

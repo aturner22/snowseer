@@ -268,7 +268,7 @@ Every asset below is produced by a `make` command. No one-offs.
 
 ### Static-stills precursor (B-roll for the principle)
 
-`outputs/heroes/<pair_id>__panel.png` (4-panel), `outputs/heroes/<pair_id>__matches.png` (correspondences), `outputs/audit/contact_sheet.png` (14-row sheet). Produced by `make stills`.
+`outputs/heroes/<pair_id>__panel.png` (4-column 2×2: snow / clear+mask / overlay / naive), `outputs/heroes/<pair_id>__matches.png` (correspondences), `outputs/heroes/<pair_id>__overlay.png` (snow with green road overlay), `outputs/heroes/<pair_id>__naive_baseline.png` (snow with red naive mask), and `outputs/audit/contact_sheet.png` (27-row sheet: 14 GREAT+OKAY headline rows plus 13 review-pool rows; in single-prior mode each row is snow / overlay / naive). Produced by `make stills` (single-prior, default; `make stills-multi` for the Phase J fusion ablation).
 
 ### Music
 
