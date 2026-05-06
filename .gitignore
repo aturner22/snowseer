@@ -4,6 +4,11 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .DS_Store
+
+# Archive of legacy code from earlier project phases. Not part of the
+# canonical pipeline. Kept on local disk for reference; not shipped.
+_archive/
+
 data/pairs/
 data/raw/
 # Track INDEX.md but not the (large, regenerable) panel/baseline/match PNGs.
