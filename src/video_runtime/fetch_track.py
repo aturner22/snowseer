@@ -60,27 +60,26 @@ TRACKS = {
         "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
         "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
     },
-    "boreas_2021_02_09": {
-        "snow_seq": "boreas-2021-02-09-12-55",
-        "summer_seq": "boreas-2021-07-27-14-43",
-        # Sunny-day winter residential — bare trees, clear sky, snow-banked
-        # sidewalks, road mostly dry. Different aesthetic from 01-26.
-        "snow_window_seconds": (80.0, 115.0),
-        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
-        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
-    },
+    # Note: boreas-2021-02-09-12-55 has no camera_poses.csv on S3 (Boreas
+    # publishes Applanix post-processing only for some sequences). Skipped.
+    # Other 2021 winter sequences with poses available, if a sunny-day
+    # alternative is needed: 2020-12-18-13-44, 2021-01-15-12-17,
+    # 2021-01-19-15-08, 2021-02-02-14-07, 2021-03-02-13-38.
     "boreas_2024_12_23": {
         "snow_seq": "boreas-2024-12-23-16-27",
-        "summer_seq": "boreas-2025-07-18-11-25",
-        # Dusk residential, quiet street, light snow on ground. Same Glen
-        # Shields loop, paired with a recent 2025-07-18 summer capture.
+        # Use the known-good 2021-07-27 summer for all alt tracks. Per-sequence
+        # local UTM frames vary in origin between Boreas runs, so cross-sequence
+        # alignment with arbitrary summer pairings fails. 2021-07-27 has been
+        # verified to align cleanly with the Glen Shields loop coordinates.
+        "summer_seq": "boreas-2021-07-27-14-43",
+        # Dusk residential, quiet street, light snow on ground.
         "snow_window_seconds": (80.0, 115.0),
         "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
         "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
     },
     "boreas_2025_02_15": {
         "snow_seq": "boreas-2025-02-15-16-58",
-        "summer_seq": "boreas-2025-08-06-12-20",
+        "summer_seq": "boreas-2021-07-27-14-43",
         # Late afternoon active snowfall, commercial street with traffic and
         # apartment blocks. Most cinematic of the alt set.
         "snow_window_seconds": (80.0, 115.0),
