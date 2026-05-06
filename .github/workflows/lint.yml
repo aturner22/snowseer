@@ -24,6 +24,36 @@ jobs:
       - name: compileall (no imports, just AST)
         run: python -m compileall -q src/ data/ demo/
 
+  smoke-light:
+    name: smoke tests (file checks only)
+    runs-on: ubuntu-latest
+    # Subset of `make test` that doesn't require torch / kornia / cv2 — just
+    # parses the Makefile / .gitignore / curated_pairs.json and verifies
+    # they have the expected shape. The full smoke-test suite (which
+    # imports model-loading modules) runs locally via `make test`; CI's
+    # job is to catch regressions in the data + config files.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: run light smoke tests
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "tests")
+          from test_smoke import (
+              test_curated_pairs_well_formed,
+              test_makefile_targets_exist,
+              test_gitignore_keeps_binaries_out,
+          )
+          for t in (test_curated_pairs_well_formed,
+                    test_makefile_targets_exist,
+                    test_gitignore_keeps_binaries_out):
+              t()
+              print(f"OK {t.__name__}")
+          PY
+
   ruff-critical:
     name: ruff (critical errors only)
     runs-on: ubuntu-latest

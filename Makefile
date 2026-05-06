@@ -23,7 +23,7 @@
 
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
-        assets extract-stills pages-assets submission-bundle \
+        assets extract-stills pages-assets submission-bundle test \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         stream slides writeup pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
@@ -69,6 +69,9 @@ help:
 	@echo "    make video-render TRACK=<id> MODE=<m>  Render one layout from cache"
 	@echo "    make video-augment TRACK=<id> CACHE=<tag>  Build naive + summer panels cache"
 	@echo "    make video-recon CITY=<name>        Mapillary winter sequence reconnaissance"
+	@echo ""
+	@echo "  Tests:"
+	@echo "    make test                           Smoke tests (import graph + CLI shape; no compute)"
 	@echo ""
 	@echo "  Cleanup:"
 	@echo "    make clean                          Remove generated outputs"
@@ -273,6 +276,14 @@ submission-bundle:
 	@echo ""
 	@echo "Submission bundle staged at ./submission/. Contents:"
 	@ls -la submission/
+
+# ─── Tests (smoke / CLI shape only — no model loading) ────────────────────
+
+# Light tests that never load model weights or touch GPU. Verify import
+# graph + argparse shape + Make targets + .gitignore policy. Fast (< 5 s)
+# and safe to run during cache builds.
+test:
+	uv run python tests/test_smoke.py
 
 # ─── Cleanup ────────────────────────────────────────────────────────────────
 
