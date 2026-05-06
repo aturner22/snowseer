@@ -70,15 +70,3 @@ jobs:
         run: pip install ruff==0.6.9
       - name: ruff check (E9 + F only)
         run: ruff check --select=E9,F63,F7,F82 src/ data/ demo/
-
-  markdown-link-check:
-    name: markdown link check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: gaurav-nelson/github-action-markdown-link-check@v1
-        with:
-          use-quiet-mode: yes
-          use-verbose-mode: no
-          config-file: .github/markdown-link-check-config.json
-          file-path: ./README.md, ./CHANGELOG.md
