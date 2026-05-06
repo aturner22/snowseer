@@ -110,7 +110,9 @@ reproduce-track:
 
 # ─── Static-prior quick test ────────────────────────────────────────────────
 
-stills: stills-fetch stills-pipeline stills-audit
+# Default `make stills` cleans heroes/ first so stale multi-prior fusion
+# outputs from a previous run don't contaminate the single-prior audit.
+stills: clean-heroes stills-fetch stills-pipeline stills-audit
 	@echo ""
 	@echo "Static stills built (single-prior, v1.x narrative). See outputs/heroes/"
 	@echo "and outputs/audit/contact_sheet.png."
@@ -127,7 +129,7 @@ stills-pipeline:
 # strategies (union / weighted / majority) compared side-by-side. Adds:
 #   __overlay_union.png  __overlay_weighted.png  __overlay_majority.png  __priors.png
 # Substantially slower than single-prior (matching cost scales with K).
-stills-multi: stills-fetch
+stills-multi: clean-heroes stills-fetch
 	uv run python -m src.pipeline --max-priors 5
 	uv run python -m src.audit
 	@echo ""
@@ -276,6 +278,26 @@ submission-bundle:
 	@echo ""
 	@echo "Submission bundle staged at ./submission/. Contents:"
 	@ls -la submission/
+
+# ─── Hygiene helpers ──────────────────────────────────────────────────────
+
+# Wipe outputs/heroes/ stills before a fresh single-prior run, so that
+# stale multi-prior fusion outputs (overlay_union/weighted/majority,
+# priors strip) from a previous run don't contaminate the audit's per-pair
+# detection (audit infers "single-prior" from the *absence* of those
+# files). Idempotent. Safe to call before either single-prior or
+# multi-prior runs.
+.PHONY: clean-heroes
+clean-heroes:
+	rm -f outputs/heroes/*.png outputs/heroes/*.jpg outputs/heroes/summary.json
+	@echo "  outputs/heroes/ cleaned"
+
+# Wipe outputs/audit/ before a fresh contact-sheet generation. Useful when
+# switching between single-prior and multi-prior modes.
+.PHONY: clean-audit
+clean-audit:
+	rm -rf outputs/audit
+	@echo "  outputs/audit/ cleaned"
 
 # ─── Tests (smoke / CLI shape only — no model loading) ────────────────────
 
