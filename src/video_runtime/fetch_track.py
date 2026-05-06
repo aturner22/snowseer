@@ -60,6 +60,33 @@ TRACKS = {
         "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
         "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
     },
+    "boreas_2021_02_09": {
+        "snow_seq": "boreas-2021-02-09-12-55",
+        "summer_seq": "boreas-2021-07-27-14-43",
+        # Sunny-day winter residential — bare trees, clear sky, snow-banked
+        # sidewalks, road mostly dry. Different aesthetic from 01-26.
+        "snow_window_seconds": (80.0, 115.0),
+        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
+        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
+    },
+    "boreas_2024_12_23": {
+        "snow_seq": "boreas-2024-12-23-16-27",
+        "summer_seq": "boreas-2025-07-18-11-25",
+        # Dusk residential, quiet street, light snow on ground. Same Glen
+        # Shields loop, paired with a recent 2025-07-18 summer capture.
+        "snow_window_seconds": (80.0, 115.0),
+        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
+        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
+    },
+    "boreas_2025_02_15": {
+        "snow_seq": "boreas-2025-02-15-16-58",
+        "summer_seq": "boreas-2025-08-06-12-20",
+        # Late afternoon active snowfall, commercial street with traffic and
+        # apartment blocks. Most cinematic of the alt set.
+        "snow_window_seconds": (80.0, 115.0),
+        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
+        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
+    },
 }
 
 
@@ -160,6 +187,26 @@ def _pull_window(seq: str, gpstimes: list[int], dest: Path, label: str) -> int:
     return total
 
 
+def _bootstrap_metadata(seq: str, target_dir: Path) -> None:
+    """Pull camera_poses.csv + calib/* from S3 if not already on disk."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+    poses = target_dir / "camera_poses.csv"
+    if not poses.exists() or poses.stat().st_size == 0:
+        print(f"  pulling {seq}/applanix/camera_poses.csv...")
+        body = _fetch(f"{S3}/{seq}/applanix/camera_poses.csv")
+        poses.write_bytes(body)
+    calib_dir = target_dir / "calib"
+    calib_dir.mkdir(parents=True, exist_ok=True)
+    for calib_name in ("P_camera.txt", "T_applanix_lidar.txt", "T_camera_lidar.txt", "camera0_intrinsics.yaml"):
+        f = calib_dir / calib_name
+        if f.exists() and f.stat().st_size > 0:
+            continue
+        try:
+            f.write_bytes(_fetch(f"{S3}/{seq}/calib/{calib_name}"))
+        except Exception as e:
+            print(f"    skip {calib_name}: {e}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True, choices=list(TRACKS.keys()))
@@ -174,7 +221,12 @@ def main() -> None:
     snow_dir.mkdir(parents=True, exist_ok=True)
     summer_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Load (already-pulled) camera_poses.csv for both.
+    # 0. Bootstrap metadata (camera_poses + calib) if missing.
+    print(f"[{args.track}] bootstrapping metadata for {spec['snow_seq']} + {spec['summer_seq']}")
+    _bootstrap_metadata(spec["snow_seq"], snow_dir)
+    _bootstrap_metadata(spec["summer_seq"], summer_dir)
+
+    # 1. Load camera_poses.csv for both.
     print(f"[{args.track}] reading camera poses...")
     snow_poses = _load_camera_poses(snow_dir / "camera_poses.csv")
     summer_poses = _load_camera_poses(summer_dir / "camera_poses.csv")
