@@ -52,6 +52,12 @@ def main() -> None:
                         "change the matching itself.")
     p.add_argument("--rebuild-cache", action="store_true",
                    help="Force re-matching even if a cache file exists.")
+    p.add_argument("--debug-strip", action="store_true",
+                   help="overlay mode: include the diagnostic strip "
+                        "(frame index + priors_used). Off for final renders.")
+    p.add_argument("--label-panels", action="store_true",
+                   help="sidebyside / quad modes: caption each panel with its "
+                        "role. Off for final renders.")
     args = p.parse_args()
 
 
@@ -80,6 +86,7 @@ def main() -> None:
             fps=args.fps,
             out_name=args.out_name,
             keep_frames=args.keep_frames,
+            debug_strip=args.debug_strip,
         )
     elif args.mode == "sidebyside":
         out = render_sidebyside(
@@ -87,6 +94,7 @@ def main() -> None:
             fps=args.fps,
             out_name=args.out_name,
             keep_frames=args.keep_frames,
+            label_panels=args.label_panels,
         )
     elif args.mode == "quad":
         import pickle as _pickle
@@ -106,6 +114,7 @@ def main() -> None:
             fps=args.fps,
             out_name=args.out_name,
             keep_frames=args.keep_frames,
+            label_panels=args.label_panels,
         )
     else:
         raise AssertionError(f"unreachable mode: {args.mode}")

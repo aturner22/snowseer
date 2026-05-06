@@ -66,23 +66,32 @@ def _compose_overlay_panel(r: FrameResult, *, with_label: bool = True) -> np.nda
     return canvas
 
 
-def _compose_naive_panel(r: FrameResult, naive_mask: np.ndarray | None) -> np.ndarray:
+def _compose_naive_panel(r: FrameResult, naive_mask: np.ndarray | None,
+                        *, with_label: bool = True) -> np.ndarray:
     """Snow + (red) naive direct-on-snow Cityscapes segmentation. The failure."""
     canvas = r.snow_image.copy()
     if naive_mask is not None and int(naive_mask.sum()) > 0:
         canvas = alpha_blend(canvas, naive_mask, color=RED, alpha=0.45)
-    return _label(canvas, "naive direct-on-snow segmentation")
+    if with_label:
+        canvas = _label(canvas, "naive direct-on-snow segmentation")
+    return canvas
 
 
-def _compose_input_panel(r: FrameResult) -> np.ndarray:
-    return _label(r.snow_image.copy(), "snow query (live frame)")
+def _compose_input_panel(r: FrameResult, *, with_label: bool = True) -> np.ndarray:
+    canvas = r.snow_image.copy()
+    if with_label:
+        canvas = _label(canvas, "snow query (live frame)")
+    return canvas
 
 
-def _compose_summer_panel(summer_image: np.ndarray, summer_mask: np.ndarray) -> np.ndarray:
+def _compose_summer_panel(summer_image: np.ndarray, summer_mask: np.ndarray,
+                          *, with_label: bool = True) -> np.ndarray:
     canvas = summer_image.copy()
     if summer_mask is not None and int(summer_mask.sum()) > 0:
         canvas = alpha_blend(canvas, summer_mask, color=GREEN, alpha=0.45)
-    return _label(canvas, "summer prior + road (Cityscapes)")
+    if with_label:
+        canvas = _label(canvas, "summer prior + road (Cityscapes)")
+    return canvas
 
 
 def render_overlay(
@@ -92,6 +101,7 @@ def render_overlay(
     out_name: str = "overlay_v0.mp4",
     fps: float = 10.0,
     keep_frames: bool = False,
+    debug_strip: bool = False,
 ) -> Path:
     out_dir = OUT / track_id
     frame_dir = out_dir / "frames"
@@ -102,10 +112,11 @@ def render_overlay(
     print(f"[render] writing {len(results)} frames to {frame_dir}")
     for i, r in enumerate(results):
         canvas = _compose_overlay_panel(r, with_label=False)
-        # Tiny diagnostic strip (top-left): frame index + priors_used.
-        label = f"{i + 1}/{len(results)}  priors={r.n_priors_used}"
-        cv2.putText(canvas, label, (16, 32), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7, (255, 255, 255), 2, cv2.LINE_AA)
+        if debug_strip:
+            # Tiny diagnostic strip (top-left): frame index + priors_used.
+            label = f"{i + 1}/{len(results)}  priors={r.n_priors_used}"
+            cv2.putText(canvas, label, (16, 32), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.imwrite(str(frame_dir / f"f{i:04d}.png"),
                     cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
 
@@ -140,6 +151,7 @@ def render_sidebyside(
     out_name: str = "sidebyside.mp4",
     fps: float = 10.0,
     keep_frames: bool = False,
+    label_panels: bool = False,
 ) -> Path:
     """Snow input | overlay output, two panels lockstepped.
 
@@ -153,8 +165,8 @@ def render_sidebyside(
 
     print(f"[render-sidebyside] writing {len(results)} frames")
     for i, r in enumerate(results):
-        left = _compose_input_panel(r)
-        right = _compose_overlay_panel(r)
+        left = _compose_input_panel(r, with_label=label_panels)
+        right = _compose_overlay_panel(r, with_label=label_panels)
         target_h = min(left.shape[0], right.shape[0])
         left = _resize_to_height(left, target_h)
         right = _resize_to_height(right, target_h)
@@ -178,6 +190,7 @@ def render_quad(
     out_name: str = "quad.mp4",
     fps: float = 10.0,
     keep_frames: bool = False,
+    label_panels: bool = False,
 ) -> Path:
     """4-panel layout: snow input | summer prior + road | overlay | naive.
 
@@ -194,15 +207,17 @@ def render_quad(
     print(f"[render-quad] writing {len(results)} frames")
     for i, r in enumerate(results):
         target_h = r.snow_image.shape[0]
-        p1 = _compose_input_panel(r)
+        p1 = _compose_input_panel(r, with_label=label_panels)
         if summer_panels[i] is not None:
             sp = summer_panels[i]
-            p2 = _resize_to_height(_compose_summer_panel(sp["image"], sp["road_mask"]),
-                                   target_h)
+            p2 = _resize_to_height(
+                _compose_summer_panel(sp["image"], sp["road_mask"], with_label=label_panels),
+                target_h,
+            )
         else:
             p2 = np.zeros_like(r.snow_image)
-        p3 = _compose_overlay_panel(r)
-        p4 = _compose_naive_panel(r, naive_masks[i])
+        p3 = _compose_overlay_panel(r, with_label=label_panels)
+        p4 = _compose_naive_panel(r, naive_masks[i], with_label=label_panels)
         # 2x2 grid (top: input | summer ; bottom: overlay | naive)
         top = np.hstack([p1, p2])
         bot = np.hstack([p3, p4])
