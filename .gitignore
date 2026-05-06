@@ -20,6 +20,6 @@ outputs/fetch_*.log
 # Phase K (video) — raw clips and renders are large + regenerable.
 data/video/snow/
 data/video/priors/
-data/video/tracks/*/frames/
+data/video/tracks/**/frames/
 outputs/video/*/frames/
 outputs/video/*/*.mp4
