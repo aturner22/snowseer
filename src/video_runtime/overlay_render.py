@@ -181,6 +181,51 @@ def render_sidebyside(
     return out_path
 
 
+def render_three_panel(
+    results: list[FrameResult],
+    track_id: str,
+    naive_masks: list[np.ndarray | None],
+    *,
+    layout: str = "snow_naive_overlay",  # or 'snow_overlay_naive'
+    out_name: str = "three_panel.mp4",
+    fps: float = 10.0,
+    keep_frames: bool = False,
+    label_panels: bool = True,
+) -> Path:
+    """Three-panel hstacked layout combining the snow query with the naive
+    failure baseline and the cross-season overlay.
+
+    `layout` controls panel order:
+        snow_naive_overlay : input | naive (red) | overlay (green)
+        snow_overlay_naive : input | overlay (green) | naive (red)
+    """
+    out_dir = OUT / track_id
+    frame_dir = out_dir / "frames"
+    if frame_dir.exists():
+        shutil.rmtree(frame_dir)
+    frame_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"[render-three-panel:{layout}] writing {len(results)} frames")
+    for i, r in enumerate(results):
+        target_h = r.snow_image.shape[0]
+        snow = _resize_to_height(_compose_input_panel(r, with_label=label_panels), target_h)
+        overlay = _resize_to_height(_compose_overlay_panel(r, with_label=label_panels), target_h)
+        naive = _resize_to_height(_compose_naive_panel(r, naive_masks[i], with_label=label_panels), target_h)
+
+        if layout == "snow_naive_overlay":
+            canvas = np.hstack([snow, naive, overlay])
+        else:
+            canvas = np.hstack([snow, overlay, naive])
+        cv2.imwrite(str(frame_dir / f"f{i:04d}.png"),
+                    cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
+
+    out_path = out_dir / out_name
+    _ffmpeg_concat(frame_dir, out_path, fps)
+    if not keep_frames:
+        shutil.rmtree(frame_dir)
+    return out_path
+
+
 def render_quad(
     results: list[FrameResult],
     track_id: str,

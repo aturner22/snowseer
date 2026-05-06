@@ -15,14 +15,15 @@ from pathlib import Path
 from pathlib import Path
 
 from src.video_runtime.pipeline_v import run_track
-from src.video_runtime.overlay_render import render_overlay, render_sidebyside, render_quad
+from src.video_runtime.overlay_render import render_overlay, render_sidebyside, render_quad, render_three_panel
 from src.video_runtime.temporal import make_smoother
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
-    p.add_argument("--mode", choices=["overlay", "sidebyside", "quad"], default="overlay")
+    p.add_argument("--mode", choices=["overlay", "sidebyside", "snow_naive_overlay",
+                                       "snow_overlay_naive", "quad"], default="overlay")
     p.add_argument("--start", type=int, default=0)
     p.add_argument("--end", type=int, default=None)
     p.add_argument("--stride", type=int, default=1)
@@ -55,9 +56,11 @@ def main() -> None:
     p.add_argument("--debug-strip", action="store_true",
                    help="overlay mode: include the diagnostic strip "
                         "(frame index + priors_used). Off for final renders.")
-    p.add_argument("--label-panels", action="store_true",
+    p.add_argument("--label-panels", action="store_true", default=True,
                    help="sidebyside / quad modes: caption each panel with its "
-                        "role. Off for final renders.")
+                        "role. Default ON (panel labels are useful context).")
+    p.add_argument("--no-label-panels", dest="label_panels", action="store_false",
+                   help="disable per-panel captions for a totally bare render")
     args = p.parse_args()
 
 
@@ -96,7 +99,7 @@ def main() -> None:
             keep_frames=args.keep_frames,
             label_panels=args.label_panels,
         )
-    elif args.mode == "quad":
+    elif args.mode in ("snow_naive_overlay", "snow_overlay_naive", "quad"):
         import pickle as _pickle
         aug_path = Path(f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl")
         if not aug_path.exists():
@@ -107,15 +110,26 @@ def main() -> None:
             )
         with open(aug_path, "rb") as fh:
             aug = _pickle.load(fh)
-        out = render_quad(
-            results, args.track,
-            summer_panels=aug["summer_panels"],
-            naive_masks=aug["naive_masks"],
-            fps=args.fps,
-            out_name=args.out_name,
-            keep_frames=args.keep_frames,
-            label_panels=args.label_panels,
-        )
+        if args.mode == "quad":
+            out = render_quad(
+                results, args.track,
+                summer_panels=aug["summer_panels"],
+                naive_masks=aug["naive_masks"],
+                fps=args.fps,
+                out_name=args.out_name,
+                keep_frames=args.keep_frames,
+                label_panels=args.label_panels,
+            )
+        else:
+            out = render_three_panel(
+                results, args.track,
+                naive_masks=aug["naive_masks"],
+                layout=args.mode,
+                fps=args.fps,
+                out_name=args.out_name,
+                keep_frames=args.keep_frames,
+                label_panels=args.label_panels,
+            )
     else:
         raise AssertionError(f"unreachable mode: {args.mode}")
     print(f"[render] wrote {out}")
