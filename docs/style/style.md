@@ -42,10 +42,11 @@ Source files live in `assets/fonts/`. Open Font License compatible; redistributa
 ## Where the identity is applied
 
 - `README.md` — banner, run instructions, hero image
-- `docs/writeup.{md,pdf}` — the essay, rendered with EB Garamond body + Inter headers
-- `docs/slides.{md,pdf}` — Marp deck via `docs/style/marp.css`
+- `docs/writeup.md` — the essay (rendered to PDF via `make writeup` with EB Garamond body + Inter headers; PDF is gitignored)
+- `docs/slides.md` — Marp deck via `docs/style/marp.css` + a markdown video-plan appendix
+- `docs/index.html` + `docs/style/site.css` — GitHub Pages site (charcoal / cream / rust palette, Google-Fonts CDN for EB Garamond + Inter; serves the canonical static stills as poster placeholders)
 - `outputs/heroes/<id>__panel.png` — figure typography (Inter caption labels), rust frame on the overlay column
-- `outputs/demo.mp4` — title cards, caption overlays
+- `outputs/video/<id>/{overlay,sidebyside,...}.mp4` — overlays use `--green` (`#2e9c56`) for the road and `--red` (`#dc3c32`) for the naive-baseline failure mode
 - `demo/streamlit_app.py` — custom CSS injection (time-permitting)
 
 ## Reference
