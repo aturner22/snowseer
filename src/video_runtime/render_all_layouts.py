@@ -73,12 +73,15 @@ def main() -> None:
         "--max-dim", str(args.max_dim), "--fps", str(args.fps),
     ]
 
+    # Output names match the layout, no cache-tag suffix. Each track gets its
+    # own outputs/video/<track>/ directory so per-tag disambiguation isn't
+    # needed; the slide deck + GitHub Pages reference these stable names.
     layouts = [
-        ("overlay", f"overlay_{args.cache_tag}.mp4"),
-        ("sidebyside", f"sidebyside_{args.cache_tag}.mp4"),
-        ("snow_naive_overlay", f"snow_naive_overlay_{args.cache_tag}.mp4"),
-        ("snow_overlay_naive", f"snow_overlay_naive_{args.cache_tag}.mp4"),
-        ("quad", f"quad_{args.cache_tag}.mp4"),
+        ("overlay", "overlay.mp4"),
+        ("sidebyside", "sidebyside.mp4"),
+        ("snow_naive_overlay", "snow_naive_overlay.mp4"),
+        ("snow_overlay_naive", "snow_overlay_naive.mp4"),
+        ("quad", "quad.mp4"),
     ]
     for mode, out_name in layouts:
         _run(common + ["--mode", mode, "--out-name", out_name])
