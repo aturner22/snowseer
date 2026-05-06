@@ -24,7 +24,7 @@ import numpy as np
 from src.fuse import weighted_soft_average, crop_foreground
 from src.homography import estimate
 from src.overlay import keep_largest_component, warp_mask
-from src.video_runtime.prior_pool import PriorPool, PriorEntry
+from src.video_runtime.prior_pool import PriorPool, PriorEntry, SyntheticPriorQueue
 from src.video_runtime.temporal import Smoother
 from src.video_runtime.track import Track, FrameMeta
 
@@ -76,6 +76,7 @@ def run_track(
     smoother: "Smoother | None" = None,
     cache_path: Path | None = None,
     rebuild_cache: bool = False,
+    synthetic_priors: int = 0,
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
@@ -100,12 +101,14 @@ def run_track(
 
     track = Track(track_id)
     pool = PriorPool(track, K=K, max_dim=max_dim)
+    synthetic = SyntheticPriorQueue(max_size=synthetic_priors) if synthetic_priors > 0 else None
     results: list[FrameResult] = []
 
     end = end or track.snow_frame_count()
     indices = list(range(start, end, stride))
+    syn_label = f", synth_priors={synthetic_priors}" if synthetic_priors > 0 else ""
     print(f"[{track_id}] processing {len(indices)} snow frames "
-          f"(K={K} priors each, max_dim={max_dim})")
+          f"(K={K} priors each, max_dim={max_dim}{syn_label})")
 
     matcher = pool.matcher()  # warm load
 
@@ -114,7 +117,11 @@ def run_track(
         snow_meta = track.snow_meta[snow_idx]
         snow_image = track.load_frame(snow_meta, max_dim=max_dim)
 
+        # Summer priors selected by GPS proximity.
         priors = pool.select(snow_meta)
+        # Synthetic priors (recent past snow frames) appended.
+        if synthetic is not None:
+            priors = priors + synthetic.entries()
         per_prior_records: list[dict] = []
         masks: list[np.ndarray] = []
         valids: list[np.ndarray] = []
@@ -123,7 +130,8 @@ def run_track(
         for k_idx, prior in enumerate(priors):
             mask, n_inliers, valid = _process_one_prior(snow_image, prior, matcher)
             per_prior_records.append({
-                "prior_idx": int(prior.meta.idx),
+                "kind": prior.kind,
+                "prior_idx": int(prior.meta.idx) if prior.meta is not None else -1,
                 "distance_m": float(prior.distance_m),
                 "n_inliers": int(n_inliers),
                 "ok": mask is not None,
@@ -153,10 +161,17 @@ def run_track(
             n_priors_used=len(masks),
             elapsed_s=elapsed,
         ))
+
+        # Push the raw fused mask into the synthetic prior queue *before*
+        # smoothing, so the K.3 feedback loop matches against unsmoothed
+        # ground-truth-from-fusion. Smoothing remains a display concern.
+        if synthetic is not None:
+            synthetic.push(snow_image, fused)
+
         ok_inliers = [r["n_inliers"] for r in per_prior_records if r["ok"]]
         ok_summary = ",".join(map(str, ok_inliers)) if ok_inliers else "—"
         print(f"  [{frame_n + 1:>3d}/{len(indices)}] snow_idx={snow_idx}  "
-              f"priors_ok={len(masks)}/{K}  inliers={ok_summary}  "
+              f"priors_ok={len(masks)}/{len(priors)}  inliers={ok_summary}  "
               f"t={elapsed:.1f}s")
 
     # Persist raw results to cache before smoothing, so the K.4 ablation

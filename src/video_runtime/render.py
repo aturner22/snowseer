@@ -15,7 +15,7 @@ from pathlib import Path
 from pathlib import Path
 
 from src.video_runtime.pipeline_v import run_track
-from src.video_runtime.overlay_render import render_overlay
+from src.video_runtime.overlay_render import render_overlay, render_sidebyside, render_quad
 from src.video_runtime.temporal import make_smoother
 
 
@@ -41,18 +41,19 @@ def main() -> None:
                    help="EMA weight on the current raw mask (0..1). Default 0.5.")
     p.add_argument("--flow-weight", type=float, default=0.5,
                    help="Flow propagation weight (0..1). Default 0.5.")
+    p.add_argument("--synthetic-priors", type=int, default=0,
+                   help="K.3 — number of past frames to surface as synthetic "
+                        "priors per current frame. 0 disables.")
     p.add_argument("--cache-tag", default="default",
                    help="Identifier for the matching cache. Renders that share "
                         "(track, start, end, stride, K, max_dim, foreground_y_frac) "
-                        "but differ only in smoother should share the same tag.")
+                        "but differ only in smoother should share the same tag. "
+                        "Synthetic-prior runs use a different tag because they "
+                        "change the matching itself.")
     p.add_argument("--rebuild-cache", action="store_true",
                    help="Force re-matching even if a cache file exists.")
     args = p.parse_args()
 
-    if args.mode != "overlay":
-        raise NotImplementedError(
-            f"--mode={args.mode} is K.5 work. K.2 baseline implements only 'overlay'."
-        )
 
     smoother = make_smoother(args.temporal, alpha=args.ema_alpha,
                              flow_weight=args.flow_weight)
@@ -70,14 +71,44 @@ def main() -> None:
         smoother=smoother,
         cache_path=cache_path,
         rebuild_cache=args.rebuild_cache,
+        synthetic_priors=args.synthetic_priors,
     )
 
-    out = render_overlay(
-        results, args.track,
-        fps=args.fps,
-        out_name=args.out_name,
-        keep_frames=args.keep_frames,
-    )
+    if args.mode == "overlay":
+        out = render_overlay(
+            results, args.track,
+            fps=args.fps,
+            out_name=args.out_name,
+            keep_frames=args.keep_frames,
+        )
+    elif args.mode == "sidebyside":
+        out = render_sidebyside(
+            results, args.track,
+            fps=args.fps,
+            out_name=args.out_name,
+            keep_frames=args.keep_frames,
+        )
+    elif args.mode == "quad":
+        import pickle as _pickle
+        aug_path = Path(f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl")
+        if not aug_path.exists():
+            raise SystemExit(
+                f"missing augmentation cache {aug_path}. "
+                f"Run `uv run python -m src.video_runtime.augment "
+                f"--track {args.track} --cache-tag {args.cache_tag}` first."
+            )
+        with open(aug_path, "rb") as fh:
+            aug = _pickle.load(fh)
+        out = render_quad(
+            results, args.track,
+            summer_panels=aug["summer_panels"],
+            naive_masks=aug["naive_masks"],
+            fps=args.fps,
+            out_name=args.out_name,
+            keep_frames=args.keep_frames,
+        )
+    else:
+        raise AssertionError(f"unreachable mode: {args.mode}")
     print(f"[render] wrote {out}")
 
 
