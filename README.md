@@ -119,23 +119,23 @@ snow-underlay/
 │   └── video_runtime/                # per-frame video pipeline (the canonical path)
 │       ├── track.py                  # snow stream + summer stream loaders
 │       ├── prior_pool.py             # K-NN prior selection by UTM
-│       ├── pipeline_v.py             # run_track entry point + cache
+│       ├── pipeline_v.py             # run_track entry point + cache + checkpoint resume
 │       ├── temporal.py               # EMA / flow smoothers (EMA wins)
 │       ├── overlay_render.py         # render_overlay / sidebyside / 3-panel / quad
 │       ├── augment.py                # naive baseline + summer panel cache
-│       ├── compose_final.py          # title cards + audio (utility, not on master path)
+│       ├── extract_assets.py         # extract preset stills (1.0/5.0/10.0/14.0 s) from mp4s
 │       ├── fetch_track.py            # Boreas S3 fetcher with retry
 │       ├── render.py                 # CLI entry
-│       └── render_all_layouts.py     # batch renderer
+│       └── render_all_layouts.py     # batch renderer (5 layouts)
 │
 ├── data/
-│   ├── curated_pairs.json            # the 14 Mapillary heroes (static-stills set)
+│   ├── curated_pairs.json            # 27 curated Mapillary pairs (static-stills set)
 │   ├── manual_*_curation.json        # Streamlit curator state
 │   ├── fetch_mapillary.py            # Mapillary v4 fetcher
 │   ├── find_snow_sequences.py        # winter-sequence reconnaissance
 │   ├── preview_sequence.py           # thumbnail montage tool
 │   ├── pairs/                        # static-stills pair downloads (gitignored)
-│   └── video/
+│   └── video/                        # (gitignored — regenerate via `make video-fetch`)
 │       ├── tracks/<track_id>/        # per-track snow + summer windows
 │       │   ├── snow/{frames/, camera_poses.csv, calib/, window.json}
 │       │   └── summer/{frames/, camera_poses.csv, calib/, window.json}
@@ -145,28 +145,29 @@ snow-underlay/
 │   ├── streamlit_app.py              # cached-output viewer
 │   └── curate_snow.py                # Streamlit big-image accept/reject
 │
-├── notebooks/
-│   └── 02_video_walkthrough.ipynb    # the technical replication notebook
-│
 ├── docs/
-│   ├── style/                        # visual identity (charcoal · cream · rust)
-│   ├── writeup.{md,pdf}              # ≤ 2-page essay
-│   ├── slides.{md,pdf}               # Marp deck
+│   ├── style/                        # visual identity (charcoal · cream · rust) + Marp theme
+│   ├── _assets/                      # Pages-deployed JPEGs (poster placeholders for mp4s)
+│   ├── writeup.md                    # ≤ 2-page essay (PDF gitignored)
+│   ├── slides.md                     # Marp deck + submission-video storyboard appendix (PDF gitignored)
 │   └── index.html                    # GitHub Pages site
 │
 ├── outputs/
-│   ├── heroes/                       # static-stills panels
-│   ├── audit/                        # static-stills contact sheet
-│   └── video/<track_id>/             # video renders (gitignored)
+│   ├── heroes/                       # static-stills panels (gitignored)
+│   ├── audit/                        # static-stills contact sheet (gitignored)
+│   └── video/<track_id>/             # video renders + matching cache (gitignored)
 │
 └── assets/
-    ├── fonts/                        # EB Garamond · Inter · JetBrains Mono (OFL)
-    └── audio/                        # Bensound 'Slow Motion' (free with attribution)
+    └── fonts/                        # EB Garamond · Inter · JetBrains Mono (OFL)
 ```
 
-`_archive/` (gitignored) contains legacy code from earlier project phases (the auto-rendered submission video, multi-prior schema migrations, the Phase A audit notes). Kept on local disk for reference; not part of the canonical repo.
+`_archive/` (gitignored) holds legacy code kept on local disk for reference but not part of the canonical repo: the auto-rendered submission video composer (`compose_final.py`, audio, music — user composes externally now), multi-prior schema migrations from Phase J, the v1 walkthrough notebook, the Phase A audit notes, the deferred 02_video_walkthrough.ipynb (the writeup essay + Pages site replaced its narrative role).
 
 ## Honest limits
+
+**The contribution is bounded.** Snow-Underlay is one channel of a fuller autonomy stack — a 2D road-position prior — not a complete perception system. The output answers *where the road should be*, not *where to drive*. A snow-covered car parked on the road would still sit inside the green overlay; the system has no notion of obstacles, drivable surface, or 3D geometry. This pipeline is designed to feed into a stack alongside lidar, depth estimation, and obstacle detection — not to replace any of them. The contribution we are demonstrating is the *move* — transferring knowledge across regimes through a learned-invariant constant — not a turnkey snowplough perception system.
+
+Within that scope:
 
 - A single homography assumes a near-planar scene. When matches concentrate on building façades rather than the road plane, the warp can drift. Ground-plane bias and iterative refinement mitigate but don't eliminate.
 - Heavy snow on the lens (water droplets, lens-occlusion) reduces match quality on affected frames. The system fails *gracefully* — low inlier counts → EMA holds the previous good mask.

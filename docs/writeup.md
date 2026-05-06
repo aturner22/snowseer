@@ -65,6 +65,10 @@ The static-stills precursor is preserved in the same repository (`make stills`) 
 
 The most interesting honest finding survives from the static work and into the moving demo: **inlier count is not a reliable predictor of overlay quality**. A pair with hundreds of inliers can warp the mask onto the wrong region if the inliers concentrate on building façades. A pair with seventeen inliers can be perfect if those seventeen happen to land on the road. The system therefore needs a human in the loop on the input and the output, even after the matcher succeeds.
 
+## Scope of the contribution
+
+The system answers *where the road should be*. It does not answer *where to drive*. That distinction matters, because the most obvious criticism of a road-overlay pipeline is the obstacle case: a snow-covered car parked on the road would still sit inside the green overlay; the pipeline knows nothing about obstacles, drivable surface, or 3D geometry. That criticism would be fair if the claim were "this replaces a perception stack". It is not the claim. The claim is that this is *one channel* — a 2D road-position prior — to feed alongside lidar, depth estimation, and obstacle detection in a fuller stack. The contribution is the **move**: how to extend a model from a data-rich regime into an adjacent data-poor one, by anchoring on what stays constant between the two. Snow on a road is the instance we built; the structure transfers.
+
 ## What we extended (and what we tried that didn't work)
 
 The video pipeline is a thin wrapper around the static pipeline, but two extensions deserve note for what they reveal.

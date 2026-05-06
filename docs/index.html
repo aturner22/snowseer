@@ -172,9 +172,12 @@
   <h4>Honest limits</h4>
   <h2>What we do not claim</h2>
 
+  <p class="lead"><strong>This is one channel, not a snowplough.</strong> The output answers <em>where the road should be</em>, not <em>where to drive</em>. A snow-covered car parked on the road would still sit inside the green overlay — the system has no notion of obstacles, drivable surface, or 3D geometry. That is not a bug; it is the scope. This pipeline is designed to feed into a fuller stack alongside lidar, depth, and obstacle detection — not to replace any of them. The contribution we are demonstrating is the <em>move</em>: transferring knowledge across regimes through a learned-invariant constant. Snow on a road is the instance we built.</p>
+
+  <p>Within that scope:</p>
+
   <ul>
     <li><strong>This is not real-time.</strong> Matching takes ~5 s per snow→summer pair on Mac CPU; the canonical 15 s clip's matching cache builds in ~50 min. The cache layer makes that cost amortise across renders, but real-time would require a substantially faster correspondence model (a learned component, ideally trained on synthetic snow + clear pairs to preserve the no-snow-in-training guarantee).</li>
-    <li><strong>This does not replace lidar or 3D depth estimation.</strong> The output is a 2D road <em>prior</em>, not a drivable-surface estimate. Treat it as one channel feeding into a fuller stack, not as a standalone perception system.</li>
     <li><strong>The homography assumes a near-planar scene.</strong> When matches concentrate on building façades rather than the road plane, the warp can drift. Ground-plane bias mitigates but doesn't eliminate.</li>
     <li><strong>Inlier count is not a reliable predictor of overlay quality.</strong> A pair with hundreds of inliers can still warp the mask onto the wrong region if the inliers concentrate on building façades. The system needs a human in the loop on input and output, even after the matcher succeeds.</li>
   </ul>

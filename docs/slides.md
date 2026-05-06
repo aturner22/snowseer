@@ -168,6 +168,18 @@ stretches the previous mask outward at every step. Same outcome, different mecha
 
 ---
 
+## One channel, not a snowplough
+
+The output answers *where the road **should be***. **Not** *where to drive*.
+
+A snow-covered car parked on the road would still sit inside the green overlay. The pipeline has no notion of obstacles, drivable surface, or 3D geometry — and that is the **scope**, not a bug.
+
+This is **one channel** in a fuller stack. It feeds alongside lidar, depth estimation, and obstacle detection. It does not replace them.
+
+> The contribution we are demonstrating is the *move*: how to extend a model from a data-rich regime into an adjacent data-poor one through a learned-invariant constant. **Snow on a road is the instance we built. The structure transfers.**
+
+---
+
 ## Generalising
 
 The structure of the move:
