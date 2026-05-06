@@ -2,17 +2,26 @@
 per snow frame against K nearest summer priors, fuses the K warped masks,
 and emits a list of FrameResult that the renderer consumes.
 
-K.2 baseline: no temporal smoothing.
-K.4 (this update): optional Smoother applied after fusion.
+Matching is the dominant cost. Two reliability features keep this practical:
 
-Matching is the dominant cost, so the pipeline can persist the *raw fused
-mask per frame* (pre-smoother) into a cache file. Subsequent renders that
-only change the Smoother (EMA / flow / none) load from cache and skip
-matching — that's how we run the K.4 ablation cheaply.
+1. **Cache** — once matching completes, persist the raw fused masks to
+   `_cache_<tag>.pkl`. Subsequent renders that change only the smoother
+   (`temporal=ema|flow|none`) load the cache and skip matching entirely.
+2. **Checkpoint resume** — every CHECKPOINT_EVERY frames, atomically write
+   `_cache_<tag>.partial.pkl`. If the process is killed mid-run, restart
+   reads the partial and resumes from the next unprocessed frame. The user
+   can kill and restart at will without losing accumulated work.
+
+All progress lines are flushed; a stuck or memory-thrashing run is visible
+immediately rather than after-the-fact. ETA is logged every ETA_EVERY frames.
+
+Memory-aware sequencing: do NOT run two of these in parallel on a Mac with
+≤ 16 GB RAM — each process holds ~9 GB resident. Run sequentially.
 """
 
 from __future__ import annotations
 
+import os
 import pickle
 import time
 from dataclasses import dataclass, field
@@ -27,6 +36,16 @@ from src.overlay import keep_largest_component, warp_mask
 from src.video_runtime.prior_pool import PriorPool, PriorEntry, SyntheticPriorQueue
 from src.video_runtime.temporal import Smoother
 from src.video_runtime.track import Track, FrameMeta
+
+CHECKPOINT_EVERY = 50           # write partial cache every N processed frames
+ETA_EVERY = 10                   # log ETA line every N processed frames
+
+
+def _log(msg: str) -> None:
+    """Single-line flushed log. Writing to stdout under a `> file 2>&1`
+    redirect needs the explicit flush — Python defaults to block buffering
+    on non-tty stdout, which made multi-hour runs invisible to the user."""
+    print(msg, flush=True)
 
 
 @dataclass
@@ -64,6 +83,26 @@ def _process_one_prior(
     return mask_in_snow, n_inliers, valid
 
 
+def _atomic_pickle(path: Path, payload: dict) -> None:
+    """Pickle to a sibling .tmp then rename so a crash mid-write doesn't
+    leave a corrupt cache. The user can `kill -9` mid-checkpoint safely."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "wb") as fh:
+        pickle.dump(payload, fh)
+    os.replace(tmp, path)
+
+
+def _format_eta(frame_n: int, total: int, t0: float) -> str:
+    """Human-readable elapsed/ETA suffix."""
+    elapsed = time.time() - t0
+    if frame_n == 0:
+        return f"elapsed={elapsed:.0f}s ETA=?"
+    rate = frame_n / max(elapsed, 1e-3)
+    remaining = (total - frame_n) / max(rate, 1e-9)
+    return f"elapsed={elapsed:.0f}s ETA={remaining:.0f}s ({rate:.2f} fr/s)"
+
+
 def run_track(
     track_id: str,
     *,
@@ -80,46 +119,69 @@ def run_track(
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
-    Returns one FrameResult per processed snow frame.
+    Cache fast-path: if `cache_path` exists and `rebuild_cache=False`, the
+    matching pass is skipped entirely; only the smoother is re-applied.
+
+    Checkpoint resume: if `<cache_path>.partial.pkl` exists, the matching
+    pass starts from the next unprocessed frame instead of from scratch.
+    Useful after a kill or memory-thrash crash.
     """
-    # Cache fast-path: if a cache file exists for the same (start, end,
-    # stride, K, max_dim, foreground_y_frac) it contains the per-frame raw
-    # fused mask plus snow_image; we just re-apply the smoother and skip
-    # matching entirely.
+    # Cache fast-path — completed runs.
     if cache_path is not None and cache_path.exists() and not rebuild_cache:
         with open(cache_path, "rb") as fh:
             cached = pickle.load(fh)
         cached_results: list[FrameResult] = cached["results"]
-        # Re-apply smoother on the saved raw fusion outputs.
         if smoother is not None:
             smoother.reset()
             for r in cached_results:
                 r.fused_mask = smoother.smooth(r.fused_mask, r.snow_image)
-        print(f"[{track_id}] loaded {len(cached_results)} frames from cache "
-              f"({cache_path.name}); smoother='{type(smoother).__name__ if smoother else 'none'}'")
+        _log(f"[{track_id}] loaded {len(cached_results)} frames from cache "
+             f"({cache_path.name}); smoother='{type(smoother).__name__ if smoother else 'none'}'")
         return cached_results
 
     track = Track(track_id)
     pool = PriorPool(track, K=K, max_dim=max_dim)
     synthetic = SyntheticPriorQueue(max_size=synthetic_priors) if synthetic_priors > 0 else None
-    results: list[FrameResult] = []
 
     end = end or track.snow_frame_count()
     indices = list(range(start, end, stride))
     syn_label = f", synth_priors={synthetic_priors}" if synthetic_priors > 0 else ""
-    print(f"[{track_id}] processing {len(indices)} snow frames "
-          f"(K={K} priors each, max_dim={max_dim}{syn_label})")
+
+    # Resume from partial checkpoint if one exists for this cache_path.
+    results: list[FrameResult] = []
+    resume_from = 0
+    partial_path = (
+        cache_path.with_name(cache_path.stem + ".partial.pkl")
+        if cache_path is not None else None
+    )
+    if partial_path is not None and partial_path.exists() and not rebuild_cache:
+        try:
+            with open(partial_path, "rb") as fh:
+                partial = pickle.load(fh)
+            cached_indices = partial.get("indices", [])
+            if cached_indices == indices[: len(partial["results"])]:
+                results = partial["results"]
+                resume_from = len(results)
+                _log(f"[{track_id}] resuming from partial cache ({partial_path.name}): "
+                     f"{resume_from}/{len(indices)} frames already done")
+            else:
+                _log(f"[{track_id}] partial cache present but indices mismatch — starting over")
+        except Exception as e:
+            _log(f"[{track_id}] partial cache unreadable ({e}); starting over")
+
+    _log(f"[{track_id}] processing {len(indices)} snow frames from index {resume_from} "
+         f"(K={K} priors each, max_dim={max_dim}{syn_label})")
 
     matcher = pool.matcher()  # warm load
 
-    for frame_n, snow_idx in enumerate(indices):
-        t0 = time.time()
+    t0 = time.time()
+    for frame_n in range(resume_from, len(indices)):
+        snow_idx = indices[frame_n]
+        frame_t0 = time.time()
         snow_meta = track.snow_meta[snow_idx]
         snow_image = track.load_frame(snow_meta, max_dim=max_dim)
 
-        # Summer priors selected by GPS proximity.
         priors = pool.select(snow_meta)
-        # Synthetic priors (recent past snow frames) appended.
         if synthetic is not None:
             priors = priors + synthetic.entries()
         per_prior_records: list[dict] = []
@@ -127,7 +189,7 @@ def run_track(
         valids: list[np.ndarray] = []
         weights: list[float] = []
 
-        for k_idx, prior in enumerate(priors):
+        for prior in priors:
             mask, n_inliers, valid = _process_one_prior(snow_image, prior, matcher)
             per_prior_records.append({
                 "kind": prior.kind,
@@ -143,47 +205,46 @@ def run_track(
 
         fused: np.ndarray | None = None
         if masks:
-            fused_soft = weighted_soft_average(masks, np.array(weights, dtype=np.float32),
-                                               valids, threshold=0.4)
+            fused_soft = weighted_soft_average(
+                masks, np.array(weights, dtype=np.float32), valids, threshold=0.4)
             fused_soft = keep_largest_component(fused_soft)
             fused_soft = crop_foreground(fused_soft, foreground_y_frac=foreground_y_frac)
             fused = fused_soft
 
-        # Note: we save the *raw* fused mask to the FrameResult (not the
-        # smoothed one) so the cache holds matching+fusion outputs and
-        # different smoothers can be applied later from cache.
-        elapsed = time.time() - t0
+        elapsed = time.time() - frame_t0
         results.append(FrameResult(
-            snow_meta=snow_meta,
-            snow_image=snow_image,
-            fused_mask=fused,
-            per_prior=per_prior_records,
-            n_priors_used=len(masks),
-            elapsed_s=elapsed,
+            snow_meta=snow_meta, snow_image=snow_image, fused_mask=fused,
+            per_prior=per_prior_records, n_priors_used=len(masks), elapsed_s=elapsed,
         ))
 
-        # Push the raw fused mask into the synthetic prior queue *before*
-        # smoothing, so the K.3 feedback loop matches against unsmoothed
-        # ground-truth-from-fusion. Smoothing remains a display concern.
         if synthetic is not None:
             synthetic.push(snow_image, fused)
 
         ok_inliers = [r["n_inliers"] for r in per_prior_records if r["ok"]]
         ok_summary = ",".join(map(str, ok_inliers)) if ok_inliers else "—"
-        print(f"  [{frame_n + 1:>3d}/{len(indices)}] snow_idx={snow_idx}  "
-              f"priors_ok={len(masks)}/{len(priors)}  inliers={ok_summary}  "
-              f"t={elapsed:.1f}s")
+        _log(f"  [{frame_n + 1:>3d}/{len(indices)}] snow_idx={snow_idx}  "
+             f"priors_ok={len(masks)}/{len(priors)}  inliers={ok_summary}  "
+             f"t={elapsed:.1f}s")
 
-    # Persist raw results to cache before smoothing, so the K.4 ablation
-    # can re-render with different smoothers without re-matching.
+        # Periodic ETA + checkpoint.
+        progressed = frame_n - resume_from + 1
+        if progressed % ETA_EVERY == 0:
+            eta = _format_eta(progressed, len(indices) - resume_from, t0)
+            _log(f"  ── {eta}")
+        if partial_path is not None and progressed % CHECKPOINT_EVERY == 0 and progressed > 0:
+            _atomic_pickle(partial_path, {"indices": indices[: len(results)],
+                                          "results": results})
+            _log(f"  ── checkpoint: wrote {len(results)} frames to {partial_path.name}")
+
+    # Final cache write.
     if cache_path is not None:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(cache_path, "wb") as fh:
-            pickle.dump({"results": results}, fh)
-        print(f"[{track_id}] cached {len(results)} raw FrameResults to {cache_path}")
+        _atomic_pickle(cache_path, {"results": results})
+        _log(f"[{track_id}] cached {len(results)} raw FrameResults to {cache_path}")
+        # Drop the partial — main cache supersedes.
+        if partial_path is not None and partial_path.exists():
+            partial_path.unlink()
 
-    # Temporal smoothing — applied after caching so the cache holds raw
-    # fusion outputs.
+    # Temporal smoothing applied AFTER caching so cache holds raw fusion.
     if smoother is not None:
         smoother.reset()
         for r in results:
