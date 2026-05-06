@@ -1,12 +1,19 @@
-"""Per-frame video pipeline (K.2 baseline) — runs the static cross-season
-pipeline once per snow frame against K nearest summer priors, fuses the K
-warped masks, and emits a list of FrameResult that the renderer consumes.
+"""Per-frame video pipeline — runs the static cross-season pipeline once
+per snow frame against K nearest summer priors, fuses the K warped masks,
+and emits a list of FrameResult that the renderer consumes.
 
-No temporal smoothing here. K.4 layers it on.
+K.2 baseline: no temporal smoothing.
+K.4 (this update): optional Smoother applied after fusion.
+
+Matching is the dominant cost, so the pipeline can persist the *raw fused
+mask per frame* (pre-smoother) into a cache file. Subsequent renders that
+only change the Smoother (EMA / flow / none) load from cache and skip
+matching — that's how we run the K.4 ablation cheaply.
 """
 
 from __future__ import annotations
 
+import pickle
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,6 +25,7 @@ from src.fuse import weighted_soft_average, crop_foreground
 from src.homography import estimate
 from src.overlay import keep_largest_component, warp_mask
 from src.video_runtime.prior_pool import PriorPool, PriorEntry
+from src.video_runtime.temporal import Smoother
 from src.video_runtime.track import Track, FrameMeta
 
 
@@ -65,11 +73,31 @@ def run_track(
     end: int | None = None,
     stride: int = 1,
     foreground_y_frac: float = 0.45,
+    smoother: "Smoother | None" = None,
+    cache_path: Path | None = None,
+    rebuild_cache: bool = False,
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
     Returns one FrameResult per processed snow frame.
     """
+    # Cache fast-path: if a cache file exists for the same (start, end,
+    # stride, K, max_dim, foreground_y_frac) it contains the per-frame raw
+    # fused mask plus snow_image; we just re-apply the smoother and skip
+    # matching entirely.
+    if cache_path is not None and cache_path.exists() and not rebuild_cache:
+        with open(cache_path, "rb") as fh:
+            cached = pickle.load(fh)
+        cached_results: list[FrameResult] = cached["results"]
+        # Re-apply smoother on the saved raw fusion outputs.
+        if smoother is not None:
+            smoother.reset()
+            for r in cached_results:
+                r.fused_mask = smoother.smooth(r.fused_mask, r.snow_image)
+        print(f"[{track_id}] loaded {len(cached_results)} frames from cache "
+              f"({cache_path.name}); smoother='{type(smoother).__name__ if smoother else 'none'}'")
+        return cached_results
+
     track = Track(track_id)
     pool = PriorPool(track, K=K, max_dim=max_dim)
     results: list[FrameResult] = []
@@ -113,6 +141,9 @@ def run_track(
             fused_soft = crop_foreground(fused_soft, foreground_y_frac=foreground_y_frac)
             fused = fused_soft
 
+        # Note: we save the *raw* fused mask to the FrameResult (not the
+        # smoothed one) so the cache holds matching+fusion outputs and
+        # different smoothers can be applied later from cache.
         elapsed = time.time() - t0
         results.append(FrameResult(
             snow_meta=snow_meta,
@@ -127,5 +158,20 @@ def run_track(
         print(f"  [{frame_n + 1:>3d}/{len(indices)}] snow_idx={snow_idx}  "
               f"priors_ok={len(masks)}/{K}  inliers={ok_summary}  "
               f"t={elapsed:.1f}s")
+
+    # Persist raw results to cache before smoothing, so the K.4 ablation
+    # can re-render with different smoothers without re-matching.
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "wb") as fh:
+            pickle.dump({"results": results}, fh)
+        print(f"[{track_id}] cached {len(results)} raw FrameResults to {cache_path}")
+
+    # Temporal smoothing — applied after caching so the cache holds raw
+    # fusion outputs.
+    if smoother is not None:
+        smoother.reset()
+        for r in results:
+            r.fused_mask = smoother.smooth(r.fused_mask, r.snow_image)
 
     return results

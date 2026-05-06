@@ -12,8 +12,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from pathlib import Path
+
 from src.video_runtime.pipeline_v import run_track
 from src.video_runtime.overlay_render import render_overlay
+from src.video_runtime.temporal import make_smoother
 
 
 def main() -> None:
@@ -32,12 +35,29 @@ def main() -> None:
     p.add_argument("--foreground-y-frac", type=float, default=0.30,
                    help="cut everything above this fraction of image height "
                         "(roof-mounted Boreas camera ≈ 0.30)")
+    p.add_argument("--temporal", choices=["none", "ema", "flow"], default="none",
+                   help="temporal smoothing strategy (K.4 ablation). Default 'none'.")
+    p.add_argument("--ema-alpha", type=float, default=0.5,
+                   help="EMA weight on the current raw mask (0..1). Default 0.5.")
+    p.add_argument("--flow-weight", type=float, default=0.5,
+                   help="Flow propagation weight (0..1). Default 0.5.")
+    p.add_argument("--cache-tag", default="default",
+                   help="Identifier for the matching cache. Renders that share "
+                        "(track, start, end, stride, K, max_dim, foreground_y_frac) "
+                        "but differ only in smoother should share the same tag.")
+    p.add_argument("--rebuild-cache", action="store_true",
+                   help="Force re-matching even if a cache file exists.")
     args = p.parse_args()
 
     if args.mode != "overlay":
         raise NotImplementedError(
             f"--mode={args.mode} is K.5 work. K.2 baseline implements only 'overlay'."
         )
+
+    smoother = make_smoother(args.temporal, alpha=args.ema_alpha,
+                             flow_weight=args.flow_weight)
+
+    cache_path = Path(f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl")
 
     results = run_track(
         args.track,
@@ -47,6 +67,9 @@ def main() -> None:
         end=args.end,
         stride=args.stride,
         foreground_y_frac=args.foreground_y_frac,
+        smoother=smoother,
+        cache_path=cache_path,
+        rebuild_cache=args.rebuild_cache,
     )
 
     out = render_overlay(
