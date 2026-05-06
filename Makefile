@@ -23,7 +23,7 @@
 
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
-        assets extract-stills pages-assets \
+        assets extract-stills pages-assets submission-bundle \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         stream slides writeup pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
@@ -60,6 +60,7 @@ help:
 	@echo "                                          all mp4s in outputs/video/<id>/"
 	@echo "    make pages-assets                   Copy canonical mp4s + stills into docs/_assets/"
 	@echo "                                          for GitHub Pages deployment"
+	@echo "    make submission-bundle              Stage submission/ dir (PDFs + mp4s, local-only)"
 	@echo "    make reproduce-everything           Full bundle: canonical + all alts + stills +"
 	@echo "                                          static panels + writeup PDF + pages assets"
 	@echo ""
@@ -243,6 +244,35 @@ writeup:
 	    --variable=mainfont:"EB Garamond" \
 	    --variable=sansfont:"Inter" \
 	    --variable=monofont:"JetBrains Mono"
+
+# ─── Submission bundle (manual, local-only — not in git) ───────────────────
+
+# Copies the submission deliverables into ./submission/ so the user has a
+# single directory to upload from. The bundle is local-only — it contains
+# binaries (mp4s, PDFs) that we do NOT commit. Run AFTER `make assets`,
+# `make pages-assets`, and `make pdfs`.
+.PHONY: submission-bundle
+submission-bundle:
+	@mkdir -p submission
+	@echo "  → copying writeup + slides PDFs"
+	@cp -f docs/writeup.pdf submission/writeup.pdf 2>/dev/null || echo "  ! writeup.pdf missing — run make writeup first"
+	@cp -f docs/slides.pdf submission/slides.pdf 2>/dev/null || echo "  ! slides.pdf missing — run make slides first"
+	@echo "  → copying canonical overlay clip"
+	@cp -f outputs/video/$(CANONICAL_TRACK)/overlay.mp4 submission/overlay.mp4 2>/dev/null || echo "  ! overlay.mp4 missing — run make reproduce first"
+	@echo "  → copying canonical 5-layout asset bundle"
+	@for f in sidebyside snow_naive_overlay snow_overlay_naive quad; do \
+	    cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 submission/$$f.mp4 2>/dev/null || true; \
+	done
+	@echo "  → copying alt-track headlines"
+	@for track in boreas_2024_12_23 boreas_2025_02_15; do \
+	    cp -f outputs/video/$$track/overlay.mp4 submission/$$track.mp4 2>/dev/null || true; \
+	done
+	@echo "  → copying source repo URL"
+	@echo "https://github.com/aturner22/snowseer" > submission/REPO.txt
+	@echo "Submitted to SoTA Commission I — Minimal-Shot Autonomy" >> submission/REPO.txt
+	@echo ""
+	@echo "Submission bundle staged at ./submission/. Contents:"
+	@ls -la submission/
 
 # ─── Cleanup ────────────────────────────────────────────────────────────────
 

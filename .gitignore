@@ -23,6 +23,9 @@ data/video/
 data/pairs/
 data/raw/
 
+# --- submission bundle (local-only; populated by `make submission-bundle`) ---
+submission/
+
 # --- runtime outputs (regenerable from `make`) ---
 # Static-prior heroes: track INDEX.md and summary.json, drop the renders.
 outputs/heroes/*.png
