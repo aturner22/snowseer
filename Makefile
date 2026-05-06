@@ -25,7 +25,7 @@
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
         assets extract-stills pages-assets \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
-        stream slides writeup notebook pdfs \
+        stream slides writeup pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
 
 # ─── Master entry points ────────────────────────────────────────────────────
@@ -49,10 +49,9 @@ help:
 	@echo "    make stream                         Open Streamlit viewer over cached static stills"
 	@echo ""
 	@echo "  Documentation:"
-	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf"
+	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf (gitignored)"
 	@echo "    make slides                         Marp deck (slides + video-plan appendix)"
 	@echo "    make writeup                        Pandoc essay PDF"
-	@echo "    make notebook                       Re-execute notebooks/02_video_walkthrough.ipynb"
 	@echo ""
 	@echo "  Asset bundles (slides plan + Pages):"
 	@echo "    make assets                         Render canonical clip's full asset bundle"
@@ -206,10 +205,6 @@ reproduce-everything: reproduce reproduce-track-alts assets stills writeup pages
 reproduce-track-alts:
 	$(MAKE) reproduce-track TRACK=boreas_2024_12_23
 	$(MAKE) reproduce-track TRACK=boreas_2025_02_15
-
-notebook:
-	uv run jupyter nbconvert --to notebook --execute notebooks/02_video_walkthrough.ipynb \
-	    --output 02_video_walkthrough.ipynb --ExecutePreprocessor.timeout=900
 
 # ─── Lower-level Phase K targets ────────────────────────────────────────────
 

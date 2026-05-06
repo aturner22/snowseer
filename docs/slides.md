@@ -224,7 +224,7 @@ make reproduce
 
 ###### Read
 
-`README.md` &nbsp;·&nbsp; `docs/writeup.pdf` &nbsp;·&nbsp; `notebooks/02_video_walkthrough.ipynb`
+`README.md` &nbsp;·&nbsp; `docs/writeup.md` (render with `make writeup`) &nbsp;·&nbsp; `docs/index.html` (Pages)
 
 ###### Submission
 
