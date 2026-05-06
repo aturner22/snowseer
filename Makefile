@@ -21,7 +21,8 @@
 # top level is the static-prior pipeline used by `make stills`. Legacy code
 # is under _archive/ (gitignored).
 
-.PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-everything \
+.PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
+        reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
         assets extract-stills pages-assets \
         stills stills-fetch stills-pipeline stills-audit stream writeup notebook pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
@@ -45,9 +46,9 @@ help:
 	@echo "    make stream                         Open Streamlit viewer over cached static stills"
 	@echo ""
 	@echo "  Documentation:"
-	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf"
-	@echo "    make slides                         Render only slides.pdf"
-	@echo "    make writeup                        Render only writeup.pdf"
+	@echo "    make writeup                        Render docs/writeup.pdf"
+	@echo "    make notebook                       Re-execute notebooks/02_video_walkthrough.ipynb"
+	@echo "                                          (docs/slides.md is a markdown plan, not a deck)"
 	@echo ""
 	@echo "  Asset bundles (slides plan + Pages):"
 	@echo "    make assets                         Render canonical clip's full asset bundle"
@@ -214,11 +215,10 @@ video-recon:
 
 # ─── Documentation ──────────────────────────────────────────────────────────
 
-pdfs: slides writeup
-
-slides:
-	npx -y --package=@marp-team/marp-cli@latest -- marp docs/slides.md \
-	    -o docs/slides.pdf --allow-local-files --theme-set docs/style/marp.css
+# docs/slides.md is now a markdown submission-video plan (storyboard +
+# asset inventory), not a Marp slide deck. No Marp render needed.
+# `make pdfs` is just `make writeup` for backwards compatibility.
+pdfs: writeup
 
 writeup:
 	pandoc docs/writeup.md -o docs/writeup.pdf -V geometry:margin=2cm \

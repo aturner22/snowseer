@@ -1,265 +1,238 @@
----
-marp: true
-theme: snow-underlay
-paginate: true
-header: "Snow-Underlay  ·  SoTA Commission I — Minimal-Shot Autonomy"
-footer: "Constants as the bridge"
----
+# Submission video — script, storyboard, and asset inventory
 
-<!-- _class: title -->
-<!-- _paginate: false -->
-
-# Constants as the bridge
-
-## Minimal-shot autonomy, demonstrated on a snow plough
-
-###### Snow-Underlay  ·  SoTA Commission I  ·  May 2026
+> **Title**: *Constants as the bridge — in motion.*
+> **Length**: 90 seconds (target). Acceptable range: 60–120 s.
+> **Audience**: SoTA Commission I judges + general technical reader.
+> **Format**: 1080p MP4, H.264 / yuv420p, ≤ 50 MB.
+> **Composed externally** (Premiere / Final Cut / DaVinci / Capcut / etc.); this file is the editor's brief.
 
 ---
 
-<!-- _class: image-right -->
+## 1 · Thesis (the line everything serves)
 
-![bg right:55%](../data/pairs/kiruna_se__173943764513956__2572648156371424/snow.jpg)
+> *We don't have to learn what a road looks like under snow. The road's appearance has changed; its position in space has not. Match what stays the same, and the rest comes for free.*
 
-## A snow plough's job is short.
-
-Keep the road clear.
-
-The catch:
-**while the plough is doing it,
-the road is invisible.**
-
-A self-driving stack trained on Cityscapes
-will report, with calibrated confidence,
-that the entire scene is sky.
+Every beat below points back to that line. If a clip doesn't earn it, cut.
 
 ---
 
-<!-- _class: image-right -->
+## 2 · Asset inventory (paths)
 
-![bg right:55%](../outputs/heroes/kiruna_se__173943764513956__2572648156371424__naive_baseline.png)
+Every asset below is produced by a `make` command in this repo. No one-offs.
 
-## Off-the-shelf segmentation, applied directly:
+### 2.1 — Moving overlay clips (15 s each, 1024 × 856)
 
-a fragmented red mask
-that does not survive a glance.
+| Asset | Path | Produced by |
+|---|---|---|
+| **Canonical overlay** (snow + green road overlay, headline visual) | `outputs/video/boreas_2021_01_26/overlay.mp4` | `make reproduce` |
+| Snow input \| overlay (sidebyside) | `outputs/video/boreas_2021_01_26/sidebyside.mp4` | `make assets` |
+| Snow \| naive (red) \| overlay (3-panel) | `outputs/video/boreas_2021_01_26/snow_naive_overlay.mp4` | `make assets` |
+| Snow \| overlay \| naive (alt order) | `outputs/video/boreas_2021_01_26/snow_overlay_naive.mp4` | `make assets` |
+| Snow \| summer prior + road \| overlay \| naive (quad, 2×2) | `outputs/video/boreas_2021_01_26/quad.mp4` | `make assets` |
+| Alt: 2024-12-23 dusk residential | `outputs/video/boreas_2024_12_23/overlay.mp4` | `make reproduce-track TRACK=boreas_2024_12_23` |
+| Alt: 2025-02-15 active snowfall | `outputs/video/boreas_2025_02_15/overlay.mp4` | `make reproduce-track TRACK=boreas_2025_02_15` |
 
-Or worse — silent failure:
-zero road predicted,
-no warning issued.
+### 2.2 — Stills (extracted at t = 1.0 s, 5.0 s, 10.0 s, 14.0 s of each clip)
 
----
+| Asset directory | Produced by |
+|---|---|
+| `outputs/video/<track>/stills/<layout>__t<NNNN>.jpg` | `make extract-stills TRACK=<id>` (auto-run by `make assets`) |
 
-<!-- _class: pullquote -->
+Useful as: title-card backgrounds, B-roll, before/after stills, thumbnail.
 
-> 27 million miles of road.
-> The long tail of conditions
-> any of them can be in
-> is *longer than the road itself*.
+### 2.3 — Static-stills precursor (the cross-season principle on individual pairs)
 
-###### We are not going to label our way out of it.
+These are the v1.x demo's hero panels. Use as supporting B-roll to establish the principle before the moving-overlay reveal.
 
----
+| Asset | Path | Produced by |
+|---|---|---|
+| Per-pair 4-panel figure (snow / clear+mask / overlay / naive) | `outputs/heroes/<pair_id>__panel.png` | `make stills` |
+| Per-pair single overlay (snow + green) | `outputs/heroes/<pair_id>__overlay.png` | `make stills` |
+| Per-pair feature-correspondence viz (matches.png) | `outputs/heroes/<pair_id>__matches.png` | `make stills` |
+| 14-row contact sheet (one row per hero) | `outputs/audit/contact_sheet.png` | `make stills` |
 
-## There is a different move.
+Recommended hero pair to feature: `gallivare_se__1113124103239974__202392698419785` (highest-inlier GREAT pair, snow-banked road with a parking-restriction sign).
 
-For almost every regime where autonomy fails for lack of data,
-there is an *adjacent regime* — temporally, seasonally, geographically —
-where data exists, and where the parts that matter are the same.
+### 2.4 — Reference / supporting visuals
 
-The plough's road is the same road it was last July.
+- The plough's *failure* shot (snow + red naive baseline) lives at `outputs/heroes/<id>__naive_baseline.png` — use as the "this is what fails" beat.
+- Boreas vehicle / route information for credits: `data/video/tracks/boreas_2021_01_26/track.json` (carries the CC BY 4.0 attribution string).
 
-The curb hasn't moved. The hydrant hasn't moved.
+### 2.5 — Music
 
-The road's *appearance* has changed completely.
-The road's **position in space** has not.
+Bensound — *Slow Motion* (free with attribution).
+File on disk (kept for editor convenience, not part of the canonical pipeline): `_archive/assets/audio/music.mp3`.
+Source / re-download: <https://www.bensound.com/royalty-free-music>
+Attribution to bake into end card: `Music: "Slow Motion" by Bensound — bensound.com`.
 
----
+### 2.6 — Typography (if title cards are added in editor)
 
-<!-- _class: principle -->
+Fonts ship with the repo at `assets/fonts/` (OFL-licensed):
+- **Inter Regular** — headlines, captions, on-screen labels
+- **EB Garamond Regular / Italic** — body text, attributions
+- **JetBrains Mono Regular** — code / file-path overlays if used
 
-# Constants as the bridge
-
-If we can identify what stays constant
-between the data-rich regime and the data-poor one,
-we can extend our existing models into the new regime —
-**without learning a single thing about it.**
-
----
-
-## The recipe
-
-<div class="recipe">
-
-1. &nbsp;Pull the **live snowy frame** from the plough's camera.
-2. &nbsp;Pull a **clear-season prior** of the same coordinates (Mapillary).
-3. &nbsp;**Match** the two with a generic frozen feature matcher.
-4. &nbsp;Estimate a **homography**, biased toward the ground plane.
-5. &nbsp;Run a generic Cityscapes road segmenter — **on the clear prior only**.
-6. &nbsp;**Warp** the road mask onto the snowy frame.
-
-</div>
-
-The plough now knows where the road is.
-It has not been trained on snow.
+Palette (in case the editor wants to match the repo's visual identity, see `docs/style/style.md`):
+- Background `#f6f3ee` (warm cream)
+- Body text `#1c1c1c` (charcoal)
+- Accent `#b34a25` (rust)
+- Mute `#8a8780` (warm grey)
+- Road overlay (green) `#2e9c56`
+- Naive failure (red) `#dc3c32`
 
 ---
 
-## Architecture
+## 3 · Storyboard (10 beats, ≈ 90 s)
 
-| Component | Role | Pretrained on |
-|-----------|------|---------------|
-| **DISK** &nbsp;*(NeurIPS '20)* | Local features | MegaDepth · no snow |
-| **LightGlue** &nbsp;*(ICCV '23)* | Sparse matcher | MegaDepth · no snow |
-| **USAC-MAGSAC** &nbsp;*(CVPR '20)* | Robust homography | — |
-| **Mask2Former** &nbsp;*(CVPR '22)* | Road segmenter | Cityscapes · no snow |
+Each beat is one cut. Music starts at beat 1 and runs continuously, fading out under beat 10.
 
-Every learned component is **frozen**.
-Snow appears only at inference, as the runtime input.
+### Beat 1 — Hook *(0:00 – 0:08)*
 
----
+- **Visual**: still from the canonical snow query (no overlay yet) — `outputs/video/boreas_2021_01_26/stills/overlay__t01p0.jpg`. Hold for 2 s, then slow zoom in to ~110 % over 6 s.
+- **On-screen text** (Inter, large, centre): "Where is the road?"
+- **Narration / text card** (EB Garamond italic, 1.5 s after the headline):
+  > *A snow plough's job is short. Keep the road clear. The catch — while it's doing it, the road is invisible.*
+- **Transition**: cut on the music's first sustained piano note.
 
-<!-- _class: full-bleed -->
+### Beat 2 — The failure *(0:08 – 0:16)*
 
-![bg fit](../outputs/heroes/gallivare_se__1113124103239974__202392698419785__panel.png)
+- **Visual**: snow + red-naive baseline still (`outputs/heroes/<one of the heroes>__naive_baseline.png`) hard-cut after the snow query. Hold 4 s, then dissolve to the moving 3-panel `snow_naive_overlay.mp4` for the second 4 s (so the red naive prediction is *seen drifting* as the camera moves).
+- **On-screen text**: "Off-the-shelf segmentation, applied directly:"
+- **Narration**: *The model's confident answer is red — wrong. It hasn't seen snow.*
+- **Transition**: dip to white (1 frame) on the cut.
 
----
+### Beat 3 — The 27 million miles *(0:16 – 0:24)*
 
-###### Gällivare, Sweden  ·  snow-banked road, parking sign  ·  128 RANSAC inliers
+- **Visual**: cream background card. Large EB Garamond italic text (centred):
+  > 27 million miles of road.
+  > The long tail of conditions any of them can be in
+  > is *longer than the road itself.*
+- **Narration**: silence, let the type breathe.
+- **Transition**: subtle horizontal-line wipe, rust accent.
 
-## Snow query · Clear prior + Cityscapes road · Cross-season overlay · Naive direct-on-snow
+### Beat 4 — The move *(0:24 – 0:34)*
 
-The matcher anchors on what stays constant —
-buildings, signs, the parking-sign post — and the homography
-carries the road mask across.
+- **Visual**: split-screen still — left half snow query, right half summer prior, both 50 % width. Use frames at the same UTM coordinate from `outputs/video/boreas_2021_01_26/stills/quad__t05p0.jpg` (top-left = snow, top-right = summer).
+- **On-screen text**: "Same road. Last July. Match what stays the same."
+- **Narration**: *The road's appearance changed. Its position in space did not. Buildings, signs, rooflines — they're still where they always were.*
+- **Transition**: cross-dissolve.
 
----
+### Beat 5 — The recipe *(0:34 – 0:42)*
 
-<!-- _class: full-bleed -->
+- **Visual**: cream card again. Six numbered lines, Inter, large. Animate each line on after 0.6 s.
+  1. Live snowy frame.
+  2. Clear-season prior of the same coordinates.
+  3. Match the two with a frozen feature matcher.
+  4. Fit a homography, biased toward the ground plane.
+  5. Segment the road on the *clear* prior only.
+  6. Warp the mask onto the snowy frame.
+- **Narration**: *Six steps. Nothing in the pipeline has been trained on snow.*
+- **Transition**: rust accent line wipes to next.
 
-![bg fit](../outputs/heroes/kiruna_se__173943764513956__2572648156371424__panel.png)
+### Beat 6 — THE REVEAL *(0:42 – 0:58)*
 
----
+- **Visual**: full-bleed `outputs/video/boreas_2021_01_26/overlay.mp4`, played 1.0× from t=0 to t=15. **This is the headline shot.** Hold the entire clip.
+- **On-screen text**: lower-third caption that fades in at t=2 s of clip and out at t=12 s:
+  > *Cross-season road overlay. Snow, frame by frame. Nothing trained on snow.*
+- **Narration**: silence on the long shot. Music carries the moment.
+- **Transition**: fade to next on the last frame of the overlay clip.
 
-###### Kiruna, Sweden  ·  red Falun-style houses, road buried  ·  47 RANSAC inliers
+### Beat 7 — Why it works *(0:58 – 1:06)*
 
-## A scene with no visible road surface.
+- **Visual**: the matches viz from a strong static pair, e.g. `outputs/heroes/<pair>__matches.png`. Hold 2 s; pan slowly across.
+- **On-screen text**: "The matcher anchors on what the season can't change: \n buildings, signs, rooflines, distant horizons."
+- **Narration**: *A frozen feature matcher. A frozen segmenter. Classical RANSAC. The composition is the contribution.*
+- **Transition**: cut.
 
-The Falun-red houses survive the season change.
-The matcher uses them. The homography lands on the right plane.
-The road mask transfers cleanly onto a road
-the model can no longer see.
+### Beat 8 — Architecture (the receipts) *(1:06 – 1:14)*
 
----
+- **Visual**: cream card with a 4-row table, Inter:
+  - DISK · MegaDepth · no snow
+  - LightGlue · MegaDepth · no snow
+  - USAC-MAGSAC · classical RANSAC
+  - Mask2Former · Cityscapes · no snow
+- **On-screen footer**: "Every learned component frozen. Snow is the runtime input only."
+- **Narration**: silence.
+- **Transition**: dissolve.
 
-<!-- _class: full-bleed -->
+### Beat 9 — Generalising *(1:14 – 1:22)*
 
-![bg fit](../outputs/heroes/kiruna_se__5529843027088716__1189235864845198__matches.png)
+- **Visual**: cream card with the closing line, large EB Garamond italic, centred:
+  > *Where data is missing,*
+  > *find a regime where it isn't.*
+  > *Identify what is constant.*
+  > *Transfer through the constant.*
+- **Narration**: *Snow on a road is one example. Polar imaging without polar training data. Low-light medical imaging without low-light training data. A manipulator on Mars without Mars training data. Each admits the same structure.*
+- **Transition**: gentle fade.
 
----
+### Beat 10 — Sign-off *(1:22 – 1:30)*
 
-###### Feature correspondences  ·  green = RANSAC inliers (kept)  ·  faint red = rejected outliers
-
-## What the matcher actually finds.
-
-Every line is a candidate correspondence.
-RANSAC keeps the ones that fit a single homography (green)
-and discards the rest (faded red).
-
-The matcher has never seen snow.
-It anchors on rooflines, signage, distant horizons —
-the constants between the two scenes.
-
----
-
-## What we did **not** see coming
-
-> A pair with **238 inliers** was rated NOT_GOOD —
-> the inliers concentrated on building façades and the homography
-> aligned the buildings rather than the road plane.
-
-> A pair with **17 inliers** was rated GREAT —
-> the few it had happened to land on the road.
-
-###### Inlier count alone is not a reliable predictor of overlay quality. The system needs a human in the loop on the input *and* the output.
-
----
-
-## Minimal-shot integrity
-
-| Claim | Status |
-|-------|:------:|
-| Zero snowy frames touch any model weights | ✓ |
-| Zero snowy frames touch any annotation pipeline | ✓ |
-| Snow appears only as runtime input | ✓ |
-| Pretrained matcher · pretrained segmenter · classical RANSAC | ✓ |
-| Reproducible from a clean clone, one command | ✓ |
-
-> The only handle we offered the model on the snow regime
-> was the clear prior of the same place.
-
----
-
-## What we didn't claim
-
-We didn't train. We didn't fine-tune. We didn't collect a snow corpus.
-We didn't write a single line of snow-aware logic.
-
-We didn't claim the system replaces lidar or 3D depth.
-The output is a 2D road *prior*, not a drivable-surface estimate.
-
-We didn't claim novelty in any single component.
-The novelty, such as it is, is in the **composition**.
+- **Visual**: cream card. Single line, Inter, centred:
+  > *Constants as the bridge.*
+- **Subtitle / credits** (EB Garamond italic, smaller, lower):
+  > Snow-Underlay · SoTA Commission I · May 2026
+  > Boreas dataset (UTIAS-ASRL, CC BY 4.0)
+  > Music: "Slow Motion" by Bensound · bensound.com
+- **Music**: fade out across these 8 seconds.
+- **Final hold**: 1 s on a fully-cream frame before end.
 
 ---
 
-## Generalising
+## 4 · Music timing notes
 
-The structure of the move:
-
-> A model trained on regime A.
-> An inference target in regime B.
-> A known correspondence between the two.
-> Transfer through the correspondence.
-
-Snow on a road is one instance.
-
-*Low-light medical imaging without low-light training data.
-Polar earth observation without polar training data.
-A manipulator on Mars without Mars training data.*
-
-Each admits the same structure.
+- Bensound *Slow Motion* opens with a soft piano single note at ≈ 0:01 — start the clip there, not on the file's t=0.
+- The piece has natural breaths around 0:30 and 1:00 — align beat 4 → beat 5 cut to one of those breaths.
+- Final fade-out: 6 s, starting at video t=1:24.
 
 ---
 
-<!-- _class: title -->
-<!-- _paginate: false -->
+## 5 · Voice-over options
 
-# Find what stays the same
+The narration above is written for *on-screen text only* — no recorded VO required. If a voice-over is preferred, narrate verbatim from the storyboard (calm, unhurried, about 2 wpm slower than conversational speed). Voice should sit at -16 LUFS, music ducked to -22 LUFS under the VO.
 
-## and walk across.
-
-###### Constants as the bridge.
+If silent / text-only is preferred, slow each cream card by ~30 % so the reader has time.
 
 ---
 
-<!-- _class: footer-card -->
-<!-- _paginate: false -->
+## 6 · Required asset checklist (run before opening the editor)
 
-###### Reproduce
+```bash
+# ≤ 6 GB download + ~50 min on Mac CPU. Produces the headline.
+make reproduce
 
-```
-git clone <repo>
-cd snow-underlay
-uv sync --python 3.12
-export MAPILLARY_TOKEN=<token>
-make demo
+# ≤ 5 min per layout × 4 extra layouts + ≤ 5 min stills extraction.
+make assets
+
+# ≤ 30 min compute total for both alts (sequential — never parallel on ≤ 16 GB).
+make reproduce-track TRACK=boreas_2024_12_23
+make reproduce-track TRACK=boreas_2025_02_15
+make extract-stills TRACK=boreas_2024_12_23
+make extract-stills TRACK=boreas_2025_02_15
+
+# ≤ 30 min for static-stills precursor (Mapillary pulls + pipeline).
+make stills
+
+# (Optional) Stage GitHub Pages assets at the same time:
+make pages-assets
 ```
 
-###### Read
+After all four runs:
+- [ ] `outputs/video/boreas_2021_01_26/overlay.mp4` exists and is ~7 MB
+- [ ] `outputs/video/boreas_2021_01_26/{sidebyside,snow_naive_overlay,snow_overlay_naive,quad}.mp4` all exist
+- [ ] `outputs/video/boreas_2021_01_26/stills/` has ≥ 20 JPEGs
+- [ ] `outputs/video/boreas_2024_12_23/overlay.mp4` and `outputs/video/boreas_2025_02_15/overlay.mp4` exist (these are the alts)
+- [ ] `outputs/heroes/` has 14 panel PNGs
+- [ ] `outputs/audit/contact_sheet.png` exists
+- [ ] `_archive/assets/audio/music.mp3` is on disk (the music bed)
 
-`README.md` &nbsp;·&nbsp; `docs/writeup.pdf` &nbsp;·&nbsp; `notebooks/01_walkthrough.ipynb`
+If anything is missing, the corresponding `make` command will (re)produce it deterministically.
 
-###### Submission
+---
 
-SoTA Commission I — Minimal-Shot Autonomy &nbsp;·&nbsp; May 2026
+## 7 · Notes for the editor
+
+- **Don't add hard cuts on busy frames of the overlay clip.** The road overlay's mask shifts subtly between frames; cuts mid-overlay-jiggle look like editing artefacts. Cut only on transitions between beats.
+- **The naive baseline (red) is intentionally ugly.** Don't smooth it. Its job is to demonstrate the wrong answer in red, set against the right answer in green.
+- **The cream card colour is precise** — `#f6f3ee`. Most editing software defaults to pure white (`#ffffff`); use the hex.
+- **Run-time tweak**: if the overlay clip's first or last second looks weak in motion, trim it. The clip is rendered at full 15 s but 12–13 s usable is fine.
+- **Closing card lingers** — give the *Constants as the bridge* line at least 4 s on screen. The whole video earns that line; don't rush past it.
