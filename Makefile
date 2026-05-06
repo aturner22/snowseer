@@ -21,8 +21,9 @@
 # top level is the static-prior pipeline used by `make stills`. Legacy code
 # is under _archive/ (gitignored).
 
-.PHONY: help reproduce reproduce-all-layouts reproduce-track \
-        stills stills-fetch stills-pipeline stills-audit stream pdfs slides writeup \
+.PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-everything \
+        assets extract-stills pages-assets \
+        stills stills-fetch stills-pipeline stills-audit stream writeup notebook pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
 
 # ─── Master entry points ────────────────────────────────────────────────────
@@ -47,6 +48,16 @@ help:
 	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf"
 	@echo "    make slides                         Render only slides.pdf"
 	@echo "    make writeup                        Render only writeup.pdf"
+	@echo ""
+	@echo "  Asset bundles (slides plan + Pages):"
+	@echo "    make assets                         Render canonical clip's full asset bundle"
+	@echo "                                          (5 layouts + extracted stills)"
+	@echo "    make extract-stills TRACK=<id>      Extract JPEGs at preset timestamps from"
+	@echo "                                          all mp4s in outputs/video/<id>/"
+	@echo "    make pages-assets                   Copy canonical mp4s + stills into docs/_assets/"
+	@echo "                                          for GitHub Pages deployment"
+	@echo "    make reproduce-everything           Full bundle: canonical + all alts + stills +"
+	@echo "                                          static panels + writeup PDF + pages assets"
 	@echo ""
 	@echo "  Lower-level Phase K targets:"
 	@echo "    make video-fetch TRACK=<id>         Pull snow + summer Boreas track"
@@ -106,6 +117,80 @@ stills-audit:
 
 stream:
 	uv run streamlit run demo/streamlit_app.py
+
+# ─── Asset bundles (slides plan + GitHub Pages) ─────────────────────────────
+
+# Render the canonical track in all 5 layouts and extract preset stills.
+# Single command, single track. Reuses any existing matching + augment caches.
+assets: reproduce-all-layouts-canonical extract-stills-canonical
+	@echo ""
+	@echo "Canonical asset bundle ready under outputs/video/$(CANONICAL_TRACK)/."
+
+reproduce-all-layouts-canonical:
+	uv run python -m src.video_runtime.render_all_layouts \
+	    --track $(CANONICAL_TRACK) --cache-tag $(CANONICAL_TAG) \
+	    --start 100 --end 250 --stride 1 --K 3 --ema-alpha 0.4
+
+extract-stills-canonical:
+	uv run python -m src.video_runtime.extract_assets --track $(CANONICAL_TRACK)
+
+# Per-track variant (alts).
+extract-stills:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make extract-stills TRACK=<id>"; exit 2; fi
+	uv run python -m src.video_runtime.extract_assets --track $(TRACK)
+
+# Copy finalised mp4s + a representative still per track into docs/_assets/
+# so the GitHub Pages site (docs/index.html) can reference them via stable
+# relative paths. Run this after `make assets` (and after `make reproduce-track`
+# for any alt tracks you want on Pages).
+pages-assets:
+	@mkdir -p docs/_assets/canonical
+	@if [ -d outputs/video/$(CANONICAL_TRACK) ]; then \
+	    for f in overlay sidebyside snow_naive_overlay snow_overlay_naive quad; do \
+	        if [ -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 ]; then \
+	            cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 docs/_assets/canonical/$$f.mp4; \
+	        fi; \
+	    done; \
+	    if [ -d outputs/video/$(CANONICAL_TRACK)/stills ]; then \
+	        mkdir -p docs/_assets/canonical/stills; \
+	        cp -f outputs/video/$(CANONICAL_TRACK)/stills/*.jpg docs/_assets/canonical/stills/ 2>/dev/null || true; \
+	    fi; \
+	    echo "  copied canonical assets"; \
+	fi
+	@for track in boreas_2024_12_23 boreas_2025_02_15; do \
+	    if [ -d outputs/video/$$track ]; then \
+	        mkdir -p docs/_assets/$$track; \
+	        for f in overlay sidebyside snow_naive_overlay snow_overlay_naive quad; do \
+	            if [ -f outputs/video/$$track/$$f.mp4 ]; then \
+	                cp -f outputs/video/$$track/$$f.mp4 docs/_assets/$$track/$$f.mp4; \
+	            fi; \
+	        done; \
+	        if [ -d outputs/video/$$track/stills ]; then \
+	            mkdir -p docs/_assets/$$track/stills; \
+	            cp -f outputs/video/$$track/stills/*.jpg docs/_assets/$$track/stills/ 2>/dev/null || true; \
+	        fi; \
+	        echo "  copied $$track assets"; \
+	    fi; \
+	done
+	@echo ""
+	@echo "Pages assets staged under docs/_assets/. Commit and push to deploy."
+
+# Master "produce every shippable artefact" target. Slow.
+reproduce-everything: reproduce reproduce-track-alts assets stills writeup pages-assets
+	@echo ""
+	@echo "Reproduce-everything complete. The canonical + alts + stills + static"
+	@echo "panels + writeup PDF + Pages assets are all up to date."
+
+# Helper: run reproduce-track for each known alt sequentially. Sequential is
+# critical — running two cache builds in parallel on a Mac with ≤16 GB RAM
+# guarantees swap thrashing and silently degrades both.
+reproduce-track-alts:
+	$(MAKE) reproduce-track TRACK=boreas_2024_12_23
+	$(MAKE) reproduce-track TRACK=boreas_2025_02_15
+
+notebook:
+	uv run jupyter nbconvert --to notebook --execute notebooks/02_video_walkthrough.ipynb \
+	    --output 02_video_walkthrough.ipynb --ExecutePreprocessor.timeout=900
 
 # ─── Lower-level Phase K targets ────────────────────────────────────────────
 
