@@ -151,7 +151,8 @@ blockquote {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 
-.hero-video-wrap video {
+.hero-video-wrap video,
+.hero-video-wrap img {
   width: 100%;
   height: auto;
   display: block;
@@ -162,6 +163,13 @@ blockquote {
   font-style: italic;
   color: var(--mute);
   font-size: 15px;
+}
+
+.note {
+  font-size: 14px;
+  color: var(--mute);
+  font-style: italic;
+  margin-top: 8px;
 }
 
 /* ─── Architecture table ─────────────────────────────────────────────── */

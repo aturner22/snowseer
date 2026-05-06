@@ -28,12 +28,9 @@
   <h2>Minimal-shot autonomy, in motion.</h2>
 
   <div class="hero-video-wrap">
-    <video src="_assets/canonical/overlay.mp4" controls autoplay muted loop playsinline poster="_assets/canonical/stills/overlay__t05p0.jpg">
-      Your browser doesn't support inline video.
-      <a href="_assets/canonical/overlay.mp4">Download the canonical clip.</a>
-    </video>
+    <img src="_assets/canonical/stills/overlay__t05p0.jpg" alt="Frame from the canonical overlay clip — Boreas Toronto, January 2021. Green road overlay transferred from a paired summer prior." />
   </div>
-  <p class="hero-caption">15 s · Boreas · Toronto · January 2021. Green = the road, transferred from a clear-season prior. Nothing in the pipeline has been trained on snow.</p>
+  <p class="hero-caption">15 s clip · Boreas · Toronto · January 2021. Green = the road, transferred from a clear-season prior. Nothing in the pipeline has been trained on snow. <em>(Hero frame above; reproduce the full clip with <code>make reproduce</code>.)</em></p>
 </section>
 
 <!-- ─── PRINCIPLE ────────────────────────────────────────────────────────── -->
@@ -102,20 +99,24 @@
     <div class="track">
       <h3>Canonical · 2021-01-26 residential</h3>
       <p class="meta">Heavy snow on a residential street near UTIAS. Lens-water blob visible on some frames. The strongest matches concentrate on the gate post, fence wires, and distant rooflines.</p>
-      <video src="_assets/canonical/overlay.mp4" controls muted loop playsinline poster="_assets/canonical/stills/overlay__t05p0.jpg"></video>
+      <img src="_assets/canonical/stills/overlay__t05p0.jpg" alt="Canonical overlay frame at t = 5.0 s." />
     </div>
 
     <div class="track">
       <h3>2024-12-23 dusk residential</h3>
       <p class="meta">Quiet residential street at dusk, light snow. Same pipeline; recent (2024) capture matched against a 2021 summer prior.</p>
-      <video src="_assets/boreas_2024_12_23/overlay.mp4" controls muted loop playsinline></video>
+      <img src="_assets/boreas_2024_12_23/stills/overlay__t05p0.jpg" alt="Dusk residential overlay frame at t = 5.0 s." />
     </div>
 
     <div class="track">
       <h3>2025-02-15 active snowfall</h3>
       <p class="meta">Late-afternoon active snowfall on a commercial street with traffic. The same Glen Shields loop; different season, different lighting, different traffic — same overlay.</p>
-      <video src="_assets/boreas_2025_02_15/overlay.mp4" controls muted loop playsinline></video>
+      <img src="_assets/boreas_2025_02_15/stills/overlay__t05p0.jpg" alt="Active-snowfall overlay frame at t = 5.0 s." />
     </div>
+  </div>
+
+  <div class="container">
+    <p class="note">The clips themselves are large binary artefacts produced by <code>make reproduce</code> on a clean clone — they are not committed. The frames above are the t = 5 s sample from each track's overlay layout (extracted by <code>make assets</code>).</p>
   </div>
 </section>
 
@@ -211,7 +212,7 @@ make reproduce</code></pre>
 <!-- ─── FOOTER ─────────────────────────────────────────────────────────── -->
 
 <footer class="container">
-  <p><a href="https://github.com/">Repository</a> · <a href="writeup.pdf">Writeup PDF</a> · <a href="slides.pdf">Slide deck PDF</a> · Submitted to <a href="https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy">SoTA Commission I — Minimal-Shot Autonomy</a>, May 2026.</p>
+  <p><a href="https://github.com/">Repository</a> · <a href="writeup.md">Writeup</a> · <a href="slides.md">Slide deck</a> · Submitted to <a href="https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy">SoTA Commission I — Minimal-Shot Autonomy</a>, May 2026. <em>(Render PDF locally with <code>make pdfs</code>.)</em></p>
 
   <p>Boreas dataset: Burnett et al., <em>Boreas: A Multi-Season Autonomous Driving Dataset</em>, IJRR 2023, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Mapillary imagery (static-stills precursor) under the Mapillary open-data licence. Models pretrained by their respective authors and used frozen. Visual identity inspired by <a href="https://sotaletters.substack.com/">SOTA Letters</a>. Repository licensed under MIT.</p>
 </footer>
