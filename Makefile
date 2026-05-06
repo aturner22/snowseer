@@ -8,7 +8,7 @@
 # That produces, deterministically, the v1.0 demo: 14 user-curated pair
 # panels, the contact sheet, the demo video, and summary.json.
 
-.PHONY: help demo fetch pipeline audit video stream notebook pdfs slides writeup clean dist-clean video-fetch video-render
+.PHONY: help demo fetch pipeline audit video stream notebook pdfs slides writeup clean dist-clean video-fetch video-render video-augment video-final video-recon
 
 help:
 	@echo "Snow-Underlay  ·  make targets"
@@ -31,6 +31,9 @@ help:
 	@echo "  Phase K (video / pseudo-realtime, on the 'video' branch):"
 	@echo "    make video-fetch TRACK=<id>           Pull snow clip + clear-season priors for a track"
 	@echo "    make video-render TRACK=<id> MODE=<m> Render overlay | sidebyside | quad for a track"
+	@echo "    make video-augment TRACK=<id> CACHE=<tag>  Build naive + summer panels cache for quad mode"
+	@echo "    make video-final TRACK=<id> CLIP=<file>    Wrap a clip with title cards + Bensound audio"
+	@echo "    make video-recon CITY=<name>          Mapillary winter-sequence reconnaissance (or CITY=all)"
 
 demo: fetch pipeline audit video
 	@echo ""
@@ -84,3 +87,17 @@ video-render:
 	@if [ -z "$(TRACK)" ]; then echo "usage: make video-render TRACK=<track_id> MODE=<overlay|sidebyside|quad>"; exit 2; fi
 	@if [ -z "$(MODE)" ]; then echo "usage: make video-render TRACK=<track_id> MODE=<overlay|sidebyside|quad>"; exit 2; fi
 	uv run python -m src.video_runtime.render --track $(TRACK) --mode $(MODE)
+
+video-augment:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make video-augment TRACK=<track_id> CACHE=<tag>"; exit 2; fi
+	@if [ -z "$(CACHE)" ]; then echo "usage: make video-augment TRACK=<track_id> CACHE=<tag>"; exit 2; fi
+	uv run python -m src.video_runtime.augment --track $(TRACK) --cache-tag $(CACHE)
+
+video-final:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make video-final TRACK=<track_id> CLIP=<filename.mp4>"; exit 2; fi
+	@if [ -z "$(CLIP)" ]; then echo "usage: make video-final TRACK=<track_id> CLIP=<filename.mp4>"; exit 2; fi
+	uv run python -m src.video_runtime.compose_final --track $(TRACK) --clip $(CLIP)
+
+video-recon:
+	@if [ -z "$(CITY)" ]; then echo "usage: make video-recon CITY=<name|all>"; exit 2; fi
+	uv run python -m data.find_snow_sequences --city $(CITY)
