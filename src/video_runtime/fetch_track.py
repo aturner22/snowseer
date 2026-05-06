@@ -159,14 +159,23 @@ def _align_summer_window(
     return s_start, s_end, monotonic
 
 
-def _download_one(args: tuple[str, Path]) -> tuple[str, int]:
+def _download_one(args: tuple[str, Path], *, max_retries: int = 4) -> tuple[str, int]:
     url, dest = args
     if dest.exists() and dest.stat().st_size > 0:
         return url, dest.stat().st_size
     dest.parent.mkdir(parents=True, exist_ok=True)
-    body = _fetch(url)
-    dest.write_bytes(body)
-    return url, len(body)
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            body = _fetch(url)
+            dest.write_bytes(body)
+            return url, len(body)
+        except Exception as e:
+            last_exc = e
+            # Exponential back-off on DNS / transient HTTP errors. Don't blow
+            # up the whole pull because one frame timed out.
+            time.sleep(2 ** attempt)
+    raise RuntimeError(f"failed to fetch {url} after {max_retries} retries: {last_exc}")
 
 
 def _pull_window(seq: str, gpstimes: list[int], dest: Path, label: str) -> int:
@@ -175,14 +184,23 @@ def _pull_window(seq: str, gpstimes: list[int], dest: Path, label: str) -> int:
     for ts in gpstimes:
         url = f"{S3}/{seq}/camera/{ts}.png"
         jobs.append((url, dest / f"{ts}.png"))
-    print(f"  {label}: downloading {len(jobs)} frames in parallel...")
+    print(f"  {label}: downloading {len(jobs)} frames in parallel...", flush=True)
     total = 0
+    failed = 0
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=8) as ex:
         for fut in as_completed(ex.submit(_download_one, j) for j in jobs):
-            url, size = fut.result()
-            total += size
-    print(f"  {label}: {total / 1024 / 1024:.0f} MB in {time.time() - t0:.0f}s")
+            try:
+                url, size = fut.result()
+                total += size
+            except Exception as e:
+                # Don't kill the whole pull because one frame failed.
+                failed += 1
+                print(f"    [FAIL] {e}", flush=True)
+    msg = f"  {label}: {total / 1024 / 1024:.0f} MB in {time.time() - t0:.0f}s"
+    if failed:
+        msg += f"  ({failed} failed)"
+    print(msg, flush=True)
     return total
 
 
