@@ -20,7 +20,13 @@ outputs/fetch_*.log
 # Phase K (video) — raw clips and renders are large + regenerable.
 data/video/snow/
 data/video/priors/
+data/video/_finnish_winter/
 data/video/tracks/**/frames/
+# Match all mp4s anywhere under outputs/video (incl. subdirs like
+# _v1_canonical_K3/ and _ablation/), not just direct children.
+outputs/video/**/*.mp4
 outputs/video/*/frames/
-outputs/video/*/*.mp4
 outputs/video/*/_cache_*.pkl
+outputs/video/*/_aug_*.pkl
+outputs/video/*/_compose_work/
+outputs/video/_fetch_*.log
