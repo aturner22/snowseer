@@ -1,0 +1,54 @@
+name: lint
+
+# Static checks only — no model loading, no full reproduce. The canonical
+# pipeline (`make reproduce`) requires a Mac with ~16 GB RAM and ~50 min of
+# matching compute, neither of which is appropriate for CI. CI verifies
+# code shape; reproducibility verification is human-in-the-loop.
+
+on:
+  push:
+    branches: [main, video, multi-prior]
+  pull_request:
+    branches: [main, video]
+  workflow_dispatch:
+
+jobs:
+  syntax:
+    name: python syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: compileall (no imports, just AST)
+        run: python -m compileall -q src/ data/ demo/
+
+  ruff-critical:
+    name: ruff (critical errors only)
+    runs-on: ubuntu-latest
+    # Restricted to E9 (syntax errors) + F (pyflakes: undefined names, unused
+    # imports, etc.). We do NOT enforce style (E1-E5, W*) on legacy code —
+    # the project predates ruff and a full pass would alter many existing
+    # files. The user's project rule is "BUILD ON TOP, don't ALTER".
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install ruff
+        run: pip install ruff==0.6.9
+      - name: ruff check (E9 + F only)
+        run: ruff check --select=E9,F63,F7,F82 src/ data/ demo/
+
+  markdown-link-check:
+    name: markdown link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: yes
+          use-verbose-mode: no
+          config-file: .github/markdown-link-check-config.json
+          file-path: ./README.md, ./CHANGELOG.md
