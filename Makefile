@@ -24,7 +24,7 @@
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
         assets extract-stills pages-assets \
-        stills stills-fetch stills-pipeline stills-audit stream writeup notebook pdfs \
+        stills stills-fetch stills-pipeline stills-audit stream slides writeup notebook pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
 
 # ─── Master entry points ────────────────────────────────────────────────────
@@ -46,9 +46,10 @@ help:
 	@echo "    make stream                         Open Streamlit viewer over cached static stills"
 	@echo ""
 	@echo "  Documentation:"
-	@echo "    make writeup                        Render docs/writeup.pdf"
+	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf"
+	@echo "    make slides                         Marp deck (slides + video-plan appendix)"
+	@echo "    make writeup                        Pandoc essay PDF"
 	@echo "    make notebook                       Re-execute notebooks/02_video_walkthrough.ipynb"
-	@echo "                                          (docs/slides.md is a markdown plan, not a deck)"
 	@echo ""
 	@echo "  Asset bundles (slides plan + Pages):"
 	@echo "    make assets                         Render canonical clip's full asset bundle"
@@ -215,10 +216,14 @@ video-recon:
 
 # ─── Documentation ──────────────────────────────────────────────────────────
 
-# docs/slides.md is now a markdown submission-video plan (storyboard +
-# asset inventory), not a Marp slide deck. No Marp render needed.
-# `make pdfs` is just `make writeup` for backwards compatibility.
-pdfs: writeup
+pdfs: slides writeup
+
+# docs/slides.md has two halves: the Marp slide deck (renders to slides.pdf)
+# and a markdown video-plan appendix at the end (read as plain markdown by
+# the editor).
+slides:
+	npx -y --package=@marp-team/marp-cli@latest -- marp docs/slides.md \
+	    -o docs/slides.pdf --allow-local-files --theme-set docs/style/marp.css
 
 writeup:
 	pandoc docs/writeup.md -o docs/writeup.pdf -V geometry:margin=2cm \

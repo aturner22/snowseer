@@ -1,0 +1,350 @@
+/* Snow-Underlay — Marp slide theme.
+ *
+ * Visual identity: charcoal · cream · rust.
+ * Typography: EB Garamond (body) · Inter (headers/UI) · JetBrains Mono (code).
+ * Spacing: generous, hairlines not boxes, one accent only.
+ * See docs/style/style.md.
+ */
+
+/* @theme snow-underlay */
+
+@import "default";
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("../../assets/fonts/EBGaramond-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("../../assets/fonts/EBGaramond-Italic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../assets/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+
+:root {
+  --bg: #f6f3ee;
+  --text: #1c1c1c;
+  --accent: #b34a25;
+  --mute: #8a8780;
+}
+
+section {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "EB Garamond", Georgia, serif;
+  font-size: 28px;
+  line-height: 1.5;
+  padding: 60px 80px;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0 0 0.4em 0;
+}
+
+h1 {
+  font-size: 60px;
+  line-height: 1.1;
+  margin-bottom: 0.3em;
+}
+
+h2 {
+  font-size: 38px;
+  line-height: 1.15;
+}
+
+h3 {
+  font-size: 28px;
+  color: var(--mute);
+  font-weight: 500;
+}
+
+/* The accent bar, used semantically */
+h1::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: var(--accent);
+  margin-top: 0.4em;
+}
+
+/* Body emphasis */
+em, i {
+  font-style: italic;
+  color: var(--text);
+}
+strong {
+  font-weight: 700;
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+/* Code */
+code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85em;
+  background: rgba(28, 28, 28, 0.05);
+  padding: 0.1em 0.3em;
+  border-radius: 2px;
+}
+
+pre {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7em;
+  background: rgba(28, 28, 28, 0.04);
+  padding: 1em 1.2em;
+  border-left: 2px solid var(--accent);
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  font-family: "Inter", sans-serif;
+  font-size: 0.7em;
+  width: 100%;
+}
+
+th {
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 2px solid var(--text);
+  padding: 0.4em 0.8em;
+}
+
+td {
+  border-bottom: 1px solid rgba(28, 28, 28, 0.15);
+  padding: 0.4em 0.8em;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Lists */
+ul, ol {
+  font-size: 0.95em;
+}
+li {
+  margin-bottom: 0.3em;
+}
+
+/* Blockquote — pull-quote style with accent */
+blockquote {
+  font-style: italic;
+  font-size: 1.05em;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+  padding-left: 1em;
+  margin: 1em 0;
+}
+
+/* Title-card layout: large quiet quote, footer marker */
+section.title {
+  padding: 100px 100px;
+}
+section.title h1 {
+  font-size: 72px;
+  margin-bottom: 0.6em;
+}
+section.title h2 {
+  font-family: "EB Garamond", serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--mute);
+  font-size: 30px;
+}
+
+/* Footer / page marker */
+section::after {
+  font-family: "Inter", sans-serif;
+  color: var(--mute);
+  font-size: 0.5em;
+  letter-spacing: 0.1em;
+}
+
+/* Image presentation */
+img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid rgba(28, 28, 28, 0.12);
+}
+
+/* Hairline divider */
+hr {
+  border: 0;
+  border-top: 1px solid rgba(28, 28, 28, 0.2);
+  margin: 1em 0;
+}
+
+/* ─── Layout classes used by slides.md ─────────────────────────────── */
+
+/* Slide whose right half is a background image; left half is text. */
+section.image-right {
+  padding: 80px 80px 80px 80px;
+}
+section.image-right h2 {
+  font-size: 36px;
+  margin-top: 0.4em;
+}
+section.image-right p {
+  max-width: 38ch;
+  font-size: 30px;
+  line-height: 1.45;
+}
+
+/* Pull-quote slide: huge quiet quote, footer line muted. */
+section.pullquote {
+  padding: 140px 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+section.pullquote blockquote {
+  border-left: none;
+  padding-left: 0;
+  font-style: italic;
+  font-size: 50px;
+  line-height: 1.35;
+  color: var(--text);
+  max-width: 22ch;
+  margin: 0 0 0.8em 0;
+}
+section.pullquote blockquote em {
+  color: var(--accent);
+}
+section.pullquote h6 {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  color: var(--mute);
+  letter-spacing: 0.04em;
+}
+
+/* Principle slide: centred headline + breathing body. */
+section.principle {
+  padding: 120px 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+section.principle h1 {
+  font-size: 70px;
+  margin-bottom: 0.6em;
+}
+section.principle h1::after {
+  width: 80px;
+  margin-top: 0.5em;
+}
+section.principle p {
+  font-size: 32px;
+  line-height: 1.5;
+  max-width: 26ch;
+}
+
+/* Recipe block — slightly more breathing room around the numbered list. */
+section .recipe ol {
+  font-size: 26px;
+  line-height: 1.55;
+  margin: 0.6em 0 0.6em 0;
+  padding-left: 1.2em;
+}
+section .recipe li {
+  margin-bottom: 0.45em;
+}
+section .recipe li::marker {
+  color: var(--accent);
+  font-weight: 700;
+  font-family: "Inter", sans-serif;
+}
+
+/* Full-bleed image slide — no padding, image carries the slide. */
+section.full-bleed {
+  padding: 0;
+}
+section.full-bleed::after {
+  /* Page number muted on full-bleed slides. */
+  color: rgba(255, 255, 255, 0.0);
+}
+
+/* Caption slide that follows a full-bleed: tight, scholarly. */
+section.full-bleed + section,
+section.caption {
+  padding: 100px 120px;
+}
+section.caption h2 {
+  font-size: 36px;
+  max-width: 24ch;
+  margin-bottom: 0.4em;
+}
+section.caption h6 {
+  font-family: "Inter", sans-serif;
+  color: var(--mute);
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  margin-bottom: 1.2em;
+}
+section.caption p {
+  font-size: 26px;
+  line-height: 1.55;
+  max-width: 38ch;
+  color: var(--text);
+}
+
+/* Closing repro / footer card. */
+section.footer-card {
+  padding: 100px 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.2em;
+}
+section.footer-card h6 {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--mute);
+  letter-spacing: 0.06em;
+  margin: 0 0 0.3em 0;
+}
+section.footer-card pre {
+  font-size: 18px;
+  margin: 0;
+  background: rgba(28, 28, 28, 0.05);
+}
+section.footer-card p {
+  font-size: 24px;
+  margin: 0;
+}
+
+/* Title-card refinement when used as closing card. */
+section.title h6 {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  color: var(--mute);
+  letter-spacing: 0.06em;
+  margin-top: 1.4em;
+}
