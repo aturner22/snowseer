@@ -1,0 +1,2 @@
+sequence_id,n_images,is_pano,creators,median_frame_dt_ms,first_capture_iso,last_capture_iso,first_image_id,first_lng,first_lat,score,summer_seqs_in_bbox
+SZP4gI0sr3GHeRmFo7852w,400,False,southglos,1000,2025-02-15 14:19,2025-02-15 14:26,1163558312140546,18.98834,69.64802,25.0,0
