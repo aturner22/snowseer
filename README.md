@@ -4,7 +4,7 @@
 
 A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy).
 
-This branch (`video`) is the moving demonstration: the same cross-season principle, now operating frame by frame on a snow plough's live video. The earlier static per-image demo (the precursor) is preserved at `git checkout v1.2-multi-prior-experiment` and is also runnable here via `make stills`.
+This branch (`video`) is the moving demonstration: the same cross-season principle, now operating frame by frame on a snow plough's live video. The earlier static per-image demo (the precursor) is preserved at `git checkout main` (single-prior, the v1 narrative) and `git checkout v1.2-multi-prior-experiment` (the multi-prior fusion ablation), and is also runnable here via `make stills` (single-prior, default) or `make stills-multi`.
 
 ---
 
@@ -93,9 +93,11 @@ That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), b
 | Reproduce the canonical clip | `make reproduce` |
 | Render all 5 layouts (overlay / sidebyside / 3-panel × 2 / quad) | `make reproduce-all-layouts TRACK=boreas_2021_01_26` |
 | Run the pipeline on a different track | `make reproduce-track TRACK=boreas_2024_12_23` |
-| Run the static-stills precursor (Mapillary 14-pair demo) | `make stills` |
+| Run the static-stills precursor (single-prior, v1 narrative) | `make stills` |
+| Run the static-stills multi-prior fusion ablation (Phase J) | `make stills-multi` |
 | Open the Streamlit viewer over cached static stills | `make stream` |
-| Render the writeup + slide PDFs | `make pdfs` |
+| Render the writeup + slide PDFs (local only — gitignored) | `make pdfs` |
+| Open the GitHub Pages site locally | open `docs/index.html` |
 | List all `make` targets | `make help` |
 
 ## Repo layout
