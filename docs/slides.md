@@ -19,7 +19,7 @@ footer: "Constants as the bridge — in motion"
 
 <!-- _class: image-right -->
 
-![bg right:55%](../outputs/video/boreas_2021_01_26/stills/overlay__t01p0.jpg)
+![bg right:55%](../outputs/video/boreas_2021_01_26/stills/overlay__t001p0.jpg)
 
 ## A snow plough's job is short.
 
@@ -37,7 +37,7 @@ that the entire scene is sky.
 
 <!-- _class: image-right -->
 
-![bg right:55%](../outputs/video/boreas_2021_01_26/stills/snow_naive_overlay__t05p0.jpg)
+![bg right:55%](../outputs/video/boreas_2021_01_26/stills/snow_naive_overlay__t005p0.jpg)
 
 ## Off-the-shelf segmentation, applied directly:
 
@@ -134,7 +134,7 @@ The cross-season principle survives motion.
 
 <!-- _class: full-bleed -->
 
-![bg fit](../outputs/video/boreas_2021_01_26/stills/overlay__t05p0.jpg)
+![bg fit](../outputs/video/boreas_2021_01_26/stills/overlay__t005p0.jpg)
 
 ---
 
@@ -291,7 +291,7 @@ Music starts at beat 1 and runs continuously, fading out under beat 10.
 3. **27 million miles** *(0:16–0:24)* — cream card, large EB Garamond italic centred:
 > 27 million miles of road. The long tail of conditions any of them can be in is *longer than the road itself.*
 
-4. **The move** *(0:24–0:34)* — split-screen still: left half snow query, right half summer prior, from `quad__t05p0.jpg` (top-left and top-right). *"Same road. Last July. Match what stays the same."* Cross-dissolve.
+4. **The move** *(0:24–0:34)* — split-screen still: left half snow query, right half summer prior, from `quad__t005p0.jpg` (top-left and top-right). *"Same road. Last July. Match what stays the same."* Cross-dissolve.
 
 5. **The recipe** *(0:34–0:42)* — cream card, six numbered Inter lines, animate each on after 0.6 s.
 
