@@ -24,7 +24,8 @@
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
         assets extract-stills pages-assets \
-        stills stills-fetch stills-pipeline stills-audit stream slides writeup notebook pdfs \
+        stills stills-fetch stills-pipeline stills-audit stills-multi \
+        stream slides writeup notebook pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
 
 # ─── Master entry points ────────────────────────────────────────────────────
@@ -41,8 +42,10 @@ help:
 	@echo "    make reproduce-all-layouts TRACK=<id>  All 5 layouts (overlay/sidebyside/3-panel x2/quad)"
 	@echo "    make reproduce-track TRACK=<id>     Full pipeline on a non-canonical track"
 	@echo ""
-	@echo "  Static-prior quick test (legacy single-prior path):"
-	@echo "    make stills                         Pull 14 curated Mapillary pairs, render panels"
+	@echo "  Static-prior demo (the v1.x narrative):"
+	@echo "    make stills                         Single-prior (default): 14 curated Mapillary pairs"
+	@echo "                                          → outputs/heroes/{matches,naive_baseline,overlay,panel}.png"
+	@echo "    make stills-multi                   Multi-prior fusion ablation (K=5, Phase J)"
 	@echo "    make stream                         Open Streamlit viewer over cached static stills"
 	@echo ""
 	@echo "  Documentation:"
@@ -106,13 +109,27 @@ reproduce-track:
 
 stills: stills-fetch stills-pipeline stills-audit
 	@echo ""
-	@echo "Static stills built. See outputs/heroes/ and outputs/audit/contact_sheet.png."
+	@echo "Static stills built (single-prior, v1.x narrative). See outputs/heroes/"
+	@echo "and outputs/audit/contact_sheet.png."
 
 stills-fetch:
 	uv run python -m data.fetch_mapillary --curated-only
 
+# Default: single-prior (v1.x narrative). The pipeline writes the v1 outputs only:
+#   __matches.png  __naive_baseline.png  __overlay.png  __panel.png
 stills-pipeline:
-	uv run python -m src.pipeline
+	uv run python -m src.pipeline --max-priors 1
+
+# Multi-prior fusion ablation (Phase J). K = 5 priors per pair, three fusion
+# strategies (union / weighted / majority) compared side-by-side. Adds:
+#   __overlay_union.png  __overlay_weighted.png  __overlay_majority.png  __priors.png
+# Substantially slower than single-prior (matching cost scales with K).
+stills-multi: stills-fetch
+	uv run python -m src.pipeline --max-priors 5
+	uv run python -m src.audit
+	@echo ""
+	@echo "Multi-prior fusion ablation built. See outputs/audit/contact_sheet.png"
+	@echo "for the 5-column per-pair comparison."
 
 stills-audit:
 	uv run python -m src.audit

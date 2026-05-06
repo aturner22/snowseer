@@ -1,11 +1,16 @@
-"""Multi-prior contact sheet generator.
+"""Contact sheet generator.
 
-Per pair, two rows:
-  row 1: snow | naive | overlay_union | overlay_weighted | overlay_majority
-  row 2: per-prior overlay strip (K thumbnails)
+Two layouts depending on what the pipeline wrote:
 
-One PNG, scrollable in any image viewer. Use it to A/B the three fusion
-strategies and decide which is the right primary for the demo.
+* **Single-prior** (default, v1.x narrative — `--max-priors=1`):
+    one row per pair: snow | overlay | naive
+
+* **Multi-prior** (Phase J ablation — `--max-priors=N>1`):
+    row 1: snow | naive | overlay_union | overlay_weighted | overlay_majority
+    row 2: per-prior overlay strip (K thumbnails)
+
+Detection is per-pair via filesystem probing (the multi-prior outputs are
+absent in single-prior mode).
 """
 
 from __future__ import annotations
@@ -67,6 +72,7 @@ def _build_row(pair_id: str, summary_entry: dict, manual: dict, ratings: dict) -
         return None
 
     naive = _read(HEROES / f"{pair_id}__naive_baseline.png")
+    over_single = _read(HEROES / f"{pair_id}__overlay.png")
     over_union = _read(HEROES / f"{pair_id}__overlay_union.png")
     over_weighted = _read(HEROES / f"{pair_id}__overlay_weighted.png")
     over_majority = _read(HEROES / f"{pair_id}__overlay_majority.png")
@@ -75,37 +81,47 @@ def _build_row(pair_id: str, summary_entry: dict, manual: dict, ratings: dict) -
     h = 320
     placeholder = _placeholder(snow.shape[1], snow.shape[0], "(missing)")
 
-    # Row 1: snow / naive / union / weighted / majority
-    row1_cells = [
-        snow,
-        naive if naive is not None else placeholder,
-        over_union if over_union is not None else placeholder,
-        over_weighted if over_weighted is not None else placeholder,
-        over_majority if over_majority is not None else placeholder,
-    ]
-    row1 = _hstack_resized(row1_cells, target_h=h)
+    is_single_prior = over_union is None  # multi-prior fusion outputs absent
 
-    # Row 2: priors strip (already wide)
-    if priors_strip is not None:
-        row2 = _resize_to_height(priors_strip, h)
-        # pad/crop to match row1 width
-        if row2.shape[1] < row1.shape[1]:
-            pad = np.zeros((h, row1.shape[1] - row2.shape[1], 3), dtype=np.uint8)
-            row2 = np.hstack([row2, pad])
-        elif row2.shape[1] > row1.shape[1]:
-            row2 = row2[:, : row1.shape[1]]
+    if is_single_prior:
+        # 3-column v1-style row: snow | overlay | naive
+        row_cells = [
+            snow,
+            over_single if over_single is not None else placeholder,
+            naive if naive is not None else placeholder,
+        ]
+        row1 = _hstack_resized(row_cells, target_h=h)
+        row2 = None
+        cell_names = ["snow query", "overlay (green)", "naive (red)"]
     else:
-        row2 = np.full((h, row1.shape[1], 3), 250, dtype=np.uint8)
+        # Multi-prior 5-column row + per-prior strip below
+        row1_cells = [
+            snow,
+            naive if naive is not None else placeholder,
+            over_union if over_union is not None else placeholder,
+            over_weighted if over_weighted is not None else placeholder,
+            over_majority if over_majority is not None else placeholder,
+        ]
+        row1 = _hstack_resized(row1_cells, target_h=h)
+        if priors_strip is not None:
+            row2 = _resize_to_height(priors_strip, h)
+            if row2.shape[1] < row1.shape[1]:
+                pad = np.zeros((h, row1.shape[1] - row2.shape[1], 3), dtype=np.uint8)
+                row2 = np.hstack([row2, pad])
+            elif row2.shape[1] > row1.shape[1]:
+                row2 = row2[:, : row1.shape[1]]
+        else:
+            row2 = np.full((h, row1.shape[1], 3), 250, dtype=np.uint8)
+        cell_names = ["snow query", "naive (red)", "union+erosion", "weighted (primary)", "majority"]
 
     # Per-cell labels above row 1 (grey strip)
-    cell_w = row1.shape[1] // 5
+    cell_w = row1.shape[1] // len(cell_names)
     label_h = 36
     labels_row = np.full((label_h, row1.shape[1], 3), 240, dtype=np.uint8)
-    for i, name in enumerate(["snow query", "naive (red)", "union+erosion", "weighted (primary)", "majority"]):
+    for i, name in enumerate(cell_names):
         cv2.putText(labels_row, name, (i * cell_w + 12, 24),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (28, 28, 28), 1, cv2.LINE_AA)
 
-    # Pair-level header strip
     rating = (ratings.get(pair_id) or {}).get("rating", "—")
     manual_verdict = (manual.get(pair_id) or {}).get("verdict", "—")
     inliers = summary_entry.get("n_inliers", "?")
@@ -116,7 +132,10 @@ def _build_row(pair_id: str, summary_entry: dict, manual: dict, ratings: dict) -
         f"manual_snow={manual_verdict}    rating={rating.upper()}",
     )
 
-    return np.vstack([header, labels_row, row1, row2])
+    parts = [header, labels_row, row1]
+    if row2 is not None:
+        parts.append(row2)
+    return np.vstack(parts)
 
 
 def main() -> None:

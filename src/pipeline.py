@@ -176,14 +176,24 @@ def run_pair(
     *,
     out_dir: Path = OUT_DIR,
     max_dim: int = 1024,
+    max_priors: int | None = 1,
 ) -> PairResult:
-    """Run the multi-prior fusion pipeline on a single pair_dir.
+    """Run the cross-season pipeline on a single pair_dir.
 
-    Reads `meta.json` to discover priors. Each prior contributes one road-mask
-    in snow image space; the K masks are fused via three strategies (union with
-    edge-erosion, weighted soft-average, hard majority vote), foreground-cropped,
-    and saved as separate overlays for downstream comparison. The headline
-    `panel.png` uses the weighted-average fusion as the primary.
+    Reads `meta.json` to discover priors and processes up to `max_priors` of
+    them. The K resulting road masks are fused via three strategies (union
+    with edge-erosion, weighted soft-average, hard majority vote),
+    foreground-cropped, and saved.
+
+    Modes:
+    - **`max_priors=1` (default, the v1.x narrative)**: only the first prior
+      is used. The fusion variants degenerate to a single mask, so they are
+      skipped — only the v1 outputs (`__matches.png`, `__naive_baseline.png`,
+      `__overlay.png`, `__panel.png`) are written.
+    - **`max_priors=N>1` (multi-prior, the Phase J ablation)**: all priors
+      up to N are processed; the three fusion variants and a per-prior
+      strip are written in addition to the v1 outputs.
+    - **`max_priors=None`**: use every prior in `meta.priors`.
 
     Falls back to single-prior behaviour if `meta.priors` is missing.
     """
@@ -198,6 +208,11 @@ def run_pair(
     if not prior_specs:
         # Back-compat: single clear.jpg path.
         prior_specs = [{"file": "clear.jpg", "id": meta.get("clear", {}).get("id", "")}]
+    # Apply max_priors cap. Default 1 = single-prior (v1.x narrative) which
+    # produces only the v1 outputs (matches/naive/overlay/panel) and skips
+    # the multi-prior fusion variants. Set to 5 (or None) to recover Phase J.
+    if max_priors is not None:
+        prior_specs = prior_specs[:max_priors]
 
     # Process each prior independently.
     per_prior: list[dict] = []
@@ -255,17 +270,21 @@ def run_pair(
         m = crop_foreground(m, foreground_y_frac=0.45)
         fused[k] = keep_largest_component(m)
 
-    # Save per-fusion snow overlays.
-    overlay_paths: dict[str, Path] = {}
-    for name, mask in fused.items():
-        snow_overlay = alpha_blend(snow, mask, color=(46, 156, 86), alpha=0.50)
-        ovp = out_dir / f"{pair_id}__overlay_{name}.png"
-        cv2.imwrite(str(ovp), cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR))
-        overlay_paths[name] = ovp
-    # Default `__overlay.png` is the user-picked fusion (from
-    # data/manual_result_curation.json) if one is set for this pair, else
-    # falls back to `weighted` (the modal user pick across the demo set).
+    # In single-prior mode (max_priors=1) the three fusion strategies are
+    # degenerate (all == the single mask), so skip the per-fusion overlays
+    # and the priors strip. The headline `__overlay.png` is still written.
+    is_single_prior = len(per_prior) == 1
     chosen = _user_chosen_fusion(pair_id) or "weighted"
+    if not is_single_prior:
+        # Save per-fusion snow overlays.
+        for name, mask in fused.items():
+            snow_overlay = alpha_blend(snow, mask, color=(46, 156, 86), alpha=0.50)
+            cv2.imwrite(
+                str(out_dir / f"{pair_id}__overlay_{name}.png"),
+                cv2.cvtColor(snow_overlay, cv2.COLOR_RGB2BGR),
+            )
+    # Default `__overlay.png`: in single-prior mode this IS the only mask;
+    # in multi-prior mode it's the user-picked fusion (or `weighted` default).
     cv2.imwrite(
         str(out_dir / f"{pair_id}__overlay.png"),
         cv2.cvtColor(
@@ -274,8 +293,9 @@ def run_pair(
         ),
     )
 
-    # Per-prior thumbnails strip.
-    _save_priors_strip(snow, per_prior, out_dir / f"{pair_id}__priors.png")
+    # Per-prior thumbnails strip — only meaningful for K > 1.
+    if not is_single_prior:
+        _save_priors_strip(snow, per_prior, out_dir / f"{pair_id}__priors.png")
 
     # Headline 2x2 panel uses the user-chosen fusion (or weighted default)
     # + the canonical primary prior's clear+mask. (The clear+mask column
@@ -362,6 +382,7 @@ def run_all(
     max_dim: int = 1024,
     *,
     require_manual_curation: bool = True,
+    max_priors: int | None = 1,
 ) -> list[PairResult]:
     """Run the pipeline on the curated demo set.
 
@@ -373,6 +394,9 @@ def run_all(
     require_manual_curation (default True): the pipeline refuses to run unless
     one of these curation files exists with at least one accept. Pass False
     (or --allow-uncurated on the CLI) to bypass and run on every pair on disk.
+
+    max_priors (default 1): cap on priors per pair. 1 = single-prior (v1.x
+    narrative); 5 / None = multi-prior (Phase J ablation). See run_pair.
     """
     pair_dirs = sorted(p for p in pairs_dir.iterdir() if p.is_dir())
     if not pair_dirs:
@@ -417,7 +441,10 @@ def run_all(
     summary: list[dict] = []
     for d in pair_dirs:
         try:
-            res = run_pair(d, matcher, segmenter, out_dir=out_dir, max_dim=max_dim)
+            res = run_pair(
+                d, matcher, segmenter,
+                out_dir=out_dir, max_dim=max_dim, max_priors=max_priors,
+            )
         except Exception as e:
             print(f"  ! {d.name}: {e}")
             continue
@@ -457,10 +484,16 @@ def _cli() -> None:
     parser.add_argument("--pair-id", default=None, help="Run a single pair by directory name.")
     parser.add_argument("--allow-uncurated", action="store_true",
                         help="Bypass the manual snow curation gate (default: required).")
+    parser.add_argument(
+        "--max-priors", type=int, default=1,
+        help="Priors per pair (default 1 = single-prior v1.x narrative). "
+             "Set to 5 (or 0 for unlimited) to enable Phase J multi-prior fusion.",
+    )
     args = parser.parse_args()
 
     pairs_dir = Path(args.pairs_dir)
     out_dir = Path(args.out_dir)
+    max_priors = None if args.max_priors == 0 else args.max_priors
 
     if args.pair_id:
         single = pairs_dir / args.pair_id
@@ -468,7 +501,10 @@ def _cli() -> None:
             raise SystemExit(f"No such pair: {single}")
         matcher = Matcher()
         segmenter = RoadSegmenter()
-        res = run_pair(single, matcher, segmenter, out_dir=out_dir, max_dim=args.max_dim)
+        res = run_pair(
+            single, matcher, segmenter,
+            out_dir=out_dir, max_dim=args.max_dim, max_priors=max_priors,
+        )
         print(json.dumps(
             {"pair_id": res.pair_id, "n_matches": res.n_matches, "n_inliers": res.n_inliers},
             indent=2,
@@ -477,6 +513,7 @@ def _cli() -> None:
         run_all(
             pairs_dir=pairs_dir, out_dir=out_dir, max_dim=args.max_dim,
             require_manual_curation=not args.allow_uncurated,
+            max_priors=max_priors,
         )
 
 
