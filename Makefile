@@ -248,10 +248,15 @@ submission-bundle:
 	@echo "  → copying writeup + slides PDFs"
 	@cp -f docs/writeup.pdf submission/writeup.pdf 2>/dev/null || echo "  ! writeup.pdf missing — run make writeup first"
 	@cp -f docs/slides.pdf submission/slides.pdf 2>/dev/null || echo "  ! slides.pdf missing — run make slides first"
+	@echo "  → copying analysis notebook (brief-mandated)"
+	@cp -f docs/analysis.ipynb submission/analysis.ipynb 2>/dev/null || echo "  ! analysis.ipynb missing"
+	@cp -f docs/audit_log.md submission/audit_log.md 2>/dev/null || true
+	@cp -f docs/submission_video_plan.md submission/submission_video_plan.md 2>/dev/null || true
+	@cp -f docs/external_datasets.md submission/external_datasets.md 2>/dev/null || true
 	@echo "  → copying canonical overlay clip"
 	@cp -f outputs/video/$(CANONICAL_TRACK)/overlay.mp4 submission/overlay.mp4 2>/dev/null || echo "  ! overlay.mp4 missing — run make reproduce first"
 	@echo "  → copying canonical 5-layout asset bundle"
-	@for f in sidebyside snow_naive_overlay snow_overlay_naive quad; do \
+	@for f in sidebyside matches snow_naive_overlay snow_overlay_naive quad; do \
 	    cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 submission/$$f.mp4 2>/dev/null || true; \
 	done
 	@echo "  → copying alt-track headlines (every track with a built overlay.mp4)"
