@@ -337,15 +337,24 @@ test:
 # regenerate) or outputs/video/<track>/*.mp4 (renders). Run after a long
 # session where stale logs / pycache directories accumulated.
 #
+# **Skips log removal if any python is currently writing to that file** —
+# `lsof` check before rm. This keeps an active cache build's log visible
+# even if the user runs `make tidy` mid-run.
+#
 # For deeper archival cleanup (move stale / experimental outputs to
 # _archive/), see _archive/REFACTOR_NOTES.md or do it manually — these
 # moves are deliberate decisions, not automatable.
 tidy:
 	@echo "  removing stale logs + debug renders + macOS / cache cruft"
 	@rm -rf outputs/video/_match_test/
-	@rm -f outputs/video/_*.log
-	@rm -f outputs/_*.log
-	@rm -f outputs/fetch_*.log outputs/pipeline_run.log
+	@for f in outputs/video/_*.log outputs/_*.log outputs/fetch_*.log outputs/pipeline_run.log; do \
+	    [ -e "$$f" ] || continue; \
+	    if lsof "$$f" >/dev/null 2>&1; then \
+	        echo "  skip $$f (active writer)"; \
+	    else \
+	        rm -f "$$f"; \
+	    fi; \
+	done
 	@rm -f outputs/.DS_Store outputs/heroes/.gitkeep
 	@find . -name '.DS_Store' -not -path './.venv/*' -not -path './.git/*' -delete 2>/dev/null || true
 	@rm -rf .ruff_cache/
