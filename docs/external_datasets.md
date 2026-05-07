@@ -21,51 +21,43 @@ The pipeline is **substrate-agnostic** — any geo-tagged snow video plus any ge
 - **Coverage**: 4006 adverse-condition images split equally across fog / night / rain / snow, plus matching clear-condition reference images of the same scenes. Predominantly urban Switzerland (Zurich + surrounds).
 - **License**: research / non-commercial (CC BY-NC-SA 4.0 in current versions). Cite the ICCV 2021 paper in any publication.
 
+### What the paper guarantees
+
+The ACDC paper confirms three things relevant to us, with direct quotes:
+
+> *"Our dataset and benchmark are publicly available at <https://acdc.vision.ee.ethz.ch>"*
+
+> *"Our camera also provides GPS readings, which allow us to establish image-level correspondences between adverse-condition and normal-condition recordings."*
+
+So per-image GPS metadata is in the dataset, and each adverse image has a paired clear-condition reference established by the authors via dynamic-programming matching of the GPS sequences. Snow split: 1000 images (400 train + 100 val + 500 test).
+
+### What I know about the portal
+
+The site at <https://acdc.vision.ee.ethz.ch/> is a Vue.js single-page app backed by an authenticated **benchmark portal**: registered users browse a list of "packages" (zips uploaded by the admins), request access to the ones they need, and receive a per-package download via the SPA after the access request is approved. The package filenames are admin-set rather than predictable — they follow the conventions the paper hints at (`rgb_anon` for images, `gt_anon` for ground truth, condition-tagged) but the exact names I cannot produce without logging in. The paper itself lists the dataset URL but does not specify package filenames.
+
 ### Steps
 
-1. Visit <https://acdc.vision.ee.ethz.ch/> → click **Download**. Fill the form (name, affiliation, email). Approval is typically instant or within a few hours. Keep the confirmation email.
+1. Go to <https://acdc.vision.ee.ethz.ch/> → click **Register** (top-right). Fill the form (name, affiliation, email). Confirm the email link. Approval is typically same-day.
 
-2. After login, the download grid lists per-condition zips. The minimum set is:
+2. Log in. Navigate to **Downloads** (top nav) — this is where the package list lives.
 
-   - `rgb_anon_trainval_snow.zip` — snow images and their paired clear-condition references. ~250 MB.
-   - `gt_trainval_snow.zip` *(optional)* — pixel-level Cityscapes-class annotations. Useful for the analysis notebook's integrity audit; not required for the pipeline. ~50 MB.
+3. **In the package list, look for the snow-related rows.** Likely one or both of:
+   - A row with **rgb_anon + snow** in its name → request access. This contains the snow images with the matched clear-condition references per frame.
+   - A row with **gt_anon + snow** if you also want the pixel annotations. We don't strictly need them for the pipeline; useful for the notebook's integrity audit.
 
-   Skip `rgb_anon_test_snow.zip` and the other conditions (fog / night / rain) unless you intend to extend the demo into those regimes.
+   You may need to click "Request access" on each row. A second email arrives once an admin grants it (usually quick, sometimes a few hours).
 
-3. Unpack into `data/external/acdc/`:
+4. Once granted, click **Download** on the snow row(s). The SPA will pull the zip via `/api/downloadPackage/...` with your auth token. Save to `~/Downloads/`.
+
+5. **Tell me what filename(s) you got** + paste the top-level `unzip -l <file>.zip | head -30` listing. I'll write `data/fetch_acdc.py` against the actual layout, not an invented one. The paper guarantees the GoPro frame naming (`GOPR<NNNN>_frame_<NNNNNN>_rgb_anon.png`) but the directory wrapper varies.
+
+6. Unpack into `data/external/acdc/` and drop a sentinel:
 
    ```bash
    mkdir -p data/external/acdc
-   cd data/external/acdc
-   unzip ~/Downloads/rgb_anon_trainval_snow.zip
-   # optional:
-   unzip ~/Downloads/gt_trainval_snow.zip
-   ```
-
-4. The expected layout after unzip is roughly:
-
-   ```
-   data/external/acdc/
-   └── rgb_anon/
-       └── snow/
-           ├── train/
-           │   ├── GOPR0122/   ← one directory per physical scene
-           │   │   ├── frame_00.png
-           │   │   ├── frame_01.png
-           │   │   └── …  (typically 4 consecutive frames)
-           │   └── …
-           └── val/
-   ```
-
-   Each `GOPR*` directory is a paired multi-frame clip in the same physical scene. The corresponding clear-condition reference image lives alongside (file naming varies by dataset version; the integration script handles both layouts).
-
-5. Drop a note that the unzip succeeded:
-
-   ```bash
+   unzip ~/Downloads/<the-actual-filename>.zip -d data/external/acdc/
    touch data/external/acdc/.ready
    ```
-
-   The integration script uses this as a sentinel.
 
 ### Integration
 
@@ -110,19 +102,19 @@ The `make oracle` step is mandatory for every new track. It samples per-frame su
 
 ### Steps
 
-1. <https://muses.vision.ee.ethz.ch/> → Download → register.
+1. Visit <https://muses.vision.ee.ethz.ch/> → Download → register. Approval is typically same-day (same group as ACDC).
 
-2. Grab `frame_camera_snow.zip` (the camera-only snow split is sufficient for our use; lidar / radar / event are extras). ~400 MB.
+2. From the portal pick the **camera-only snow split** if it's offered separately; otherwise the full snow archive (lidar / radar / event sensors are extras we don't use). I haven't verified specific zip filenames against the live portal — paste the file list back to me once you've downloaded and I'll write `data/fetch_muses.py` against the actual layout.
 
 3. Unpack into `data/external/muses/`:
 
    ```bash
    mkdir -p data/external/muses
-   unzip ~/Downloads/frame_camera_snow.zip -d data/external/muses/
+   unzip ~/Downloads/<muses-snow-zip>.zip -d data/external/muses/
    touch data/external/muses/.ready
    ```
 
-4. The MUSES layout has explicit `metadata.json` per scene including GPS — easier integration than ACDC because no EXIF probing is needed.
+4. The MUSES paper describes per-scene metadata including GPS, so integration should be cleaner than EXIF-probing. Confirmation pending the actual file tree.
 
 ### Integration
 

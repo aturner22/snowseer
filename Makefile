@@ -20,7 +20,7 @@
 #   make oracle TRACK=<id>                  pre-flight gate before any cache build
 
 .PHONY: help track reproduce reproduce-track reproduce-track-alts reproduce-everything \
-        assets extract-stills pages-assets submission-bundle test oracle demo \
+        assets extract-stills pages-assets submission-bundle test oracle demo notebook \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         slides writeup pdfs \
         video-fetch video-render video-augment clean dist-clean
@@ -50,8 +50,9 @@ help:
 	@echo ""
 	@echo "  Documentation:"
 	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf (gitignored)"
-	@echo "    make slides                         Marp deck (slides + video-plan appendix)"
+	@echo "    make slides                         Marp deck"
 	@echo "    make writeup                        Pandoc essay PDF"
+	@echo "    make notebook                       Re-execute docs/analysis.ipynb in place"
 	@echo ""
 	@echo "  Pre-flight oracle (verify priors + summer segmentation BEFORE cache compute):"
 	@echo "    make oracle TRACK=<id> [STRIDE=10]  Check demo-ability + suggest candidate windows"
@@ -138,6 +139,16 @@ stills-multi: clean-heroes stills-fetch
 
 stills-audit:
 	uv run python -m src.audit
+
+# ─── Analysis notebook ─────────────────────────────────────────────────────
+
+# Re-execute the analysis notebook in place. Loads DISK + LightGlue +
+# Mask2Former and runs the worked-example cells; ~30s on Mac CPU.
+notebook:
+	uv run jupyter nbconvert \
+	    --to notebook --execute --inplace \
+	    --ExecutePreprocessor.timeout=180 \
+	    docs/analysis.ipynb
 
 # ─── Live interactive demo ─────────────────────────────────────────────────
 
