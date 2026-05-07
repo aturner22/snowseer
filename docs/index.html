@@ -140,6 +140,10 @@
   </ol>
 
   <p>The smoothed mask is alpha-blended onto the snow frame in green and emitted. The cached <code>FrameResult</code> makes downstream renders (different smoothers, different layouts) near-instant — the matching pass runs once per track, then is reused across visualisations. The composition is invariant across frames; what changes is which features the matcher anchored on, which prior won, how much of the road is visible.</p>
+
+  <h3 style="margin-top: 2em">What the matcher anchors on</h3>
+  <p>One frame from the canonical clip's <code>matches.mp4</code>: the snow query on the left, the closest summer prior on the right, with a small subset of correspondences drawn between them. The lines connect features the season has not changed — gate posts, fence wires, masonry corners, distant rooflines. There are no correspondences on the road surface itself: the snow has erased the lane markings and the kerb, and the matcher knows there is nothing visually consistent to find there. We are not matching road to road. We are using the constants on the buildings and fences to fix the geometry, then using the geometry to bring the clear image's road mask back to the snow frame.</p>
+  <p><img src="_assets/canonical/stills/matches__t001p0.jpg" alt="Snow query (left) and summer prior (right) with green correspondence lines drawn between matched gate posts, fence wires, and masonry corners. No correspondences on the road itself." /></p>
 </section>
 
 <!-- ─── WATCH IT WORK — CANONICAL + ALTS ──────────────────────────────── -->
