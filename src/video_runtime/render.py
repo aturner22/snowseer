@@ -15,7 +15,13 @@ from pathlib import Path
 from pathlib import Path
 
 from src.video_runtime.pipeline_v import run_track
-from src.video_runtime.overlay_render import render_overlay, render_sidebyside, render_quad, render_three_panel
+from src.video_runtime.overlay_render import (
+    render_matches,
+    render_overlay,
+    render_quad,
+    render_sidebyside,
+    render_three_panel,
+)
 from src.video_runtime.temporal import make_smoother
 
 
@@ -23,7 +29,8 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
     p.add_argument("--mode", choices=["overlay", "sidebyside", "snow_naive_overlay",
-                                       "snow_overlay_naive", "quad", "cache-only"], default="overlay")
+                                       "snow_overlay_naive", "quad", "matches",
+                                       "cache-only"], default="overlay")
     p.add_argument("--start", type=int, default=0)
     p.add_argument("--end", type=int, default=None)
     p.add_argument("--stride", type=int, default=1)
@@ -102,6 +109,24 @@ def main() -> None:
             out_name=args.out_name,
             keep_frames=args.keep_frames,
             label_panels=args.label_panels,
+        )
+    elif args.mode == "matches":
+        import pickle as _pickle
+        sidecar_path = Path(f"outputs/video/{args.track}/_matches_{args.cache_tag}.pkl")
+        if not sidecar_path.exists():
+            raise SystemExit(
+                f"missing matches sidecar {sidecar_path}. "
+                f"Run `uv run python -m src.video_runtime.matches_pass "
+                f"--track {args.track} --cache-tag {args.cache_tag}` first."
+            )
+        with open(sidecar_path, "rb") as fh:
+            sidecar = _pickle.load(fh)
+        out = render_matches(
+            results, args.track,
+            matches_frames=sidecar["frames"],
+            fps=args.fps,
+            out_name=args.out_name,
+            keep_frames=args.keep_frames,
         )
     elif args.mode in ("snow_naive_overlay", "snow_overlay_naive", "quad"):
         import pickle as _pickle

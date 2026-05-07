@@ -4,12 +4,12 @@ Inputs: list[FrameResult] from `pipeline_v.run_track`.
 Outputs: per-frame PNG under `outputs/video/<track_id>/frames/<idx>.png`,
 then a single mp4 stitched with ffmpeg.
 
-Three modes:
+Modes:
   - `overlay`     : alpha-blend of fused mask onto snow (the headline).
   - `sidebyside`  : snow input | overlay output, two panels lockstepped.
-  - `quad`        : snow query / closest summer prior + road mask /
-                    snow + cross-season overlay / snow + naive direct
-                    segmentation. Mirrors the static demo's panel viz.
+  - `quad`        : 2x2 — snow query / naive (red) / summer + road / overlay.
+  - `matches`     : snow + best summer prior with a small subset of
+                    correspondence lines drawn between them.
 """
 
 from __future__ import annotations
@@ -285,6 +285,61 @@ def render_quad(
             top = cv2.resize(top, (target, top.shape[0]), interpolation=cv2.INTER_AREA)
             bot = cv2.resize(bot, (target, bot.shape[0]), interpolation=cv2.INTER_AREA)
         canvas = np.vstack([top, bot])
+        cv2.imwrite(str(frame_dir / f"f{i:04d}.png"),
+                    cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
+
+    out_path = out_dir / out_name
+    _ffmpeg_concat(frame_dir, out_path, fps)
+    if not keep_frames:
+        shutil.rmtree(frame_dir)
+    return out_path
+
+
+def render_matches(
+    results: list[FrameResult],
+    track_id: str,
+    matches_frames: list[dict | None],
+    *,
+    out_name: str = "matches.mp4",
+    fps: float = 10.0,
+    keep_frames: bool = False,
+    max_inliers: int = 25,
+    max_outliers: int = 0,
+) -> Path:
+    """Snow | best-prior side-by-side with a subset of match lines drawn.
+
+    `matches_frames[i]` is the per-frame entry from `_matches_<tag>.pkl`
+    (kpts0, kpts1, inlier_mask, prior_image) or None if matching failed
+    on that frame. Outliers default off and inliers are capped at
+    `max_inliers` for visual clarity in motion.
+    """
+    from src.matching import MatchResult, draw_matches
+
+    out_dir = OUT / track_id
+    frame_dir = out_dir / "frames"
+    if frame_dir.exists():
+        shutil.rmtree(frame_dir)
+    frame_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"[render-matches] writing {len(results)} frames")
+    last_canvas: np.ndarray | None = None
+    for i, r in enumerate(results):
+        m = matches_frames[i]
+        if m is None:
+            if last_canvas is not None:
+                canvas = last_canvas
+            else:
+                canvas = np.hstack([r.snow_image, np.zeros_like(r.snow_image)])
+        else:
+            mr = MatchResult(kpts0=m["kpts0"], kpts1=m["kpts1"],
+                             confidence=np.ones(len(m["kpts0"]), dtype=np.float32))
+            canvas = draw_matches(
+                r.snow_image, m["prior_image"], mr,
+                inlier_mask=m["inlier_mask"],
+                max_inliers=max_inliers,
+                max_outliers=max_outliers,
+            )
+            last_canvas = canvas
         cv2.imwrite(str(frame_dir / f"f{i:04d}.png"),
                     cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
 

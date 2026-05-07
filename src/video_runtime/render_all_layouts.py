@@ -1,4 +1,4 @@
-"""Build matching cache + augmentation cache + render all five layouts for a track.
+"""Build matching cache + augmentation + matches sidecar + render all six layouts.
 
 Usage:
     uv run python -m src.video_runtime.render_all_layouts \\
@@ -6,12 +6,12 @@ Usage:
         [--start N --end N --stride N --K K --ema-alpha A]
 
 Produces outputs/video/<track>/{
-    _cache_<tag>.pkl, _aug_<tag>.pkl,
-    overlay.mp4, sidebyside.mp4,
+    _cache_<tag>.pkl, _aug_<tag>.pkl, _matches_<tag>.pkl,
+    overlay.mp4, sidebyside.mp4, matches.mp4,
     snow_naive_overlay.mp4, snow_overlay_naive.mp4, quad.mp4,
 }.
 
-Cache and aug pass are built automatically if missing.
+Cache, aug pass, and matches sidecar are built automatically if missing.
 """
 
 from __future__ import annotations
@@ -46,6 +46,7 @@ def main() -> None:
 
     aug_path = ROOT / f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl"
     cache_path = ROOT / f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl"
+    matches_path = ROOT / f"outputs/video/{args.track}/_matches_{args.cache_tag}.pkl"
 
     if not cache_path.exists():
         print(f"[render-all] matching cache missing; building...")
@@ -67,6 +68,14 @@ def main() -> None:
             "--K", str(args.K), "--max-dim", str(args.max_dim),
         ])
 
+    if not matches_path.exists():
+        print(f"[render-all] matches sidecar missing; building...")
+        _run([
+            "uv", "run", "python", "-m", "src.video_runtime.matches_pass",
+            "--track", args.track, "--cache-tag", args.cache_tag,
+            "--K", str(args.K), "--max-dim", str(args.max_dim),
+        ])
+
     common = [
         "uv", "run", "python", "-m", "src.video_runtime.render",
         "--track", args.track,
@@ -83,6 +92,7 @@ def main() -> None:
     layouts = [
         ("overlay", "overlay.mp4"),
         ("sidebyside", "sidebyside.mp4"),
+        ("matches", "matches.mp4"),
         ("snow_naive_overlay", "snow_naive_overlay.mp4"),
         ("snow_overlay_naive", "snow_overlay_naive.mp4"),
         ("quad", "quad.mp4"),
@@ -90,7 +100,7 @@ def main() -> None:
     for mode, out_name in layouts:
         _run(common + ["--mode", mode, "--out-name", out_name])
 
-    print(f"\n[render-all] done — wrote 5 mp4s under outputs/video/{args.track}/")
+    print(f"\n[render-all] done — wrote {len(layouts)} mp4s under outputs/video/{args.track}/")
 
 
 if __name__ == "__main__":
