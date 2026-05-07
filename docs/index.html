@@ -244,6 +244,21 @@
 <!-- ─── REPRODUCE ──────────────────────────────────────────────────────── -->
 
 <section class="container">
+  <h4>Try it on your own pair</h4>
+  <h2>The live interactive entry</h2>
+
+  <p>Run the cross-season pipeline on any (snow, clear-prior) image pair:</p>
+
+<pre><code>make demo SNOW=path/to/snow.jpg PRIOR=path/to/clear.jpg</code></pre>
+
+  <p>Outputs the full 15-layout per-pair set under <code>outputs/demo/</code> — matches viz, naive baseline, cross-season overlay, the 4-up panel, plus 11 permutations (singles / 2-ups / 3-up triptychs) for slide-deck arrangement. The example below is one such run, the failure-then-recovery triptych: snow query · naive Cityscapes-direct (red) · cross-season overlay (green).</p>
+
+  <p><img src="_assets/demo_example/triptych_failure_fix.jpg" alt="Triptych: snow query frame, naive Cityscapes road segmentation in red painted over the entire scene, and the cross-season green overlay tracking the actual road. The middle panel is the failure mode; the right panel is the recovery." /></p>
+
+  <p>The same pipeline runs on the canonical Boreas track in motion, on the static-stills precursor across 27 different physical locations, and (in principle) on any geo-tagged snow + clear-weather pair you provide.</p>
+</section>
+
+<section class="container">
   <h4>Reproduce</h4>
   <h2>From a clean clone</h2>
 
@@ -252,9 +267,11 @@ git checkout video
 uv sync --python 3.12
 make reproduce</code></pre>
 
-  <p>~6 GB download (Boreas snow + summer windows) plus ~50 minutes of matching on Mac CPU. Produces <code>outputs/video/boreas_2021_01_26/overlay.mp4</code> — the canonical 15-second clip embedded above.</p>
+  <p>~6 GB download (Boreas snow + summer windows) plus roughly an hour of matching on Mac CPU. Produces <code>outputs/video/boreas_2021_01_26/overlay.mp4</code> — the canonical clip whose hero frame is embedded above.</p>
 
-  <p>Other entry points: <code>make oracle TRACK=&lt;id&gt;</code> for the pre-flight gate before any new track; <code>make reproduce-track TRACK=boreas_2025_02_15</code> for the robustness alt; <code>make assets</code> for the full 5-layout asset bundle; <code>make stills</code> for the static-stills precursor; <code>make help</code> for the full list.</p>
+  <p>Other entry points: <code>make oracle TRACK=&lt;id&gt;</code> for the pre-flight gate before any new track; <code>make reproduce-track TRACK=boreas_2025_02_15</code> for the robustness alt; <code>make assets</code> for the full 6-layout asset bundle; <code>make stills</code> for the static-stills precursor; <code>make demo SNOW=&lt;jpg&gt; PRIOR=&lt;jpg&gt;</code> for the live entry above; <code>make help</code> for the full list.</p>
+
+  <p>Companion documents: <a href="writeup.md">writeup.md</a> (essay) · <a href="analysis.ipynb">analysis.ipynb</a> (the work shown with the work) · <a href="audit_log.md">audit_log.md</a> (every approach we tried and rejected) · <a href="submission_video_plan.md">submission_video_plan.md</a> (90–120s shot list) · <a href="external_datasets.md">external_datasets.md</a> (acquisition guide).</p>
 </section>
 
 <!-- ─── GENERALISING ──────────────────────────────────────────────────── -->
