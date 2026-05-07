@@ -1,10 +1,12 @@
 # Snow-Underlay
 
-> *Constants as the bridge.* Minimal-shot autonomy by extending a model trained on one regime into the regime where we lack data — by anchoring on what stays the same between them.
+> A snow plough's job is short: keep the road clear. While it's doing it, the road is invisible — buried, lane markings gone, curb-line erased. A self-driving stack trained on Cityscapes will report, with calibrated confidence, that the entire scene is sky.
 
-A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy).
+> The contribution this repository ships is *not* a snow plough. It is a primitive — **the constants-bridge** — a composition that takes a model trained on regime A, an inference target in regime B, and a known invariant between A and B, and uses the invariant to transfer the model into B without retraining. The snow plough is one consumer of this primitive, demonstrated in motion on a 15-second snow-buried Toronto street. *Generalisation, not memorisation.*
 
-This branch (`video`) is the moving demonstration: the same cross-season principle, now operating frame by frame on a snow plough's live video. The earlier static per-image demo (the precursor) is preserved at `git checkout main` (single-prior, the v1 narrative) and `git checkout v1.2-multi-prior-experiment` (the multi-prior fusion ablation), and is also runnable here via `make stills` (single-prior, default) or `make stills-multi`.
+A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy). Headline artefact: `outputs/video/boreas_2021_01_26/overlay.mp4`. Reproduce with `make reproduce`.
+
+**Documents**: [`docs/writeup.md`](docs/writeup.md) (the essay) · [`docs/analysis.ipynb`](docs/analysis.ipynb) (the work, shown with the work) · [`docs/audit_log.md`](docs/audit_log.md) (every approach + dataset we tried and rejected, with reasons) · [`docs/submission_video_plan.md`](docs/submission_video_plan.md) (90–120s shot list) · [`docs/external_datasets.md`](docs/external_datasets.md) (acquisition guide for non-Boreas snow datasets) · [`docs/index.html`](docs/index.html) (Pages site).
 
 **Quick start:**
 
@@ -13,10 +15,11 @@ git clone https://github.com/aturner22/snowseer; cd snowseer
 git checkout video
 uv sync --python 3.12
 make reproduce        # canonical 15 s clip; ~50 min cache + ~1 min render
-open docs/index.html  # the GitHub Pages site (static, no server needed)
+make demo SNOW=<jpg> PRIOR=<jpg>   # live: any (snow, prior) pair → 15 panels
+open docs/index.html               # static Pages site, no server needed
 ```
 
-**For judges**: `make help` lists every reproducible target. The canonical clip's matching cache builds in ~50 min on Mac CPU; subsequent renders (5 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min. The `_archive/` directory (gitignored) preserves rejected experiments + the Phase A–J working artefacts; it's not part of the canonical pipeline but is on disk for transparency.
+**For judges**: `make help` lists every reproducible target. The canonical matching cache builds in ~50 min on Mac CPU; subsequent renders (6 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min. The interactive demo (`make demo SNOW=... PRIOR=...`) runs the full pipeline on any user-provided pair and emits 15 layout outputs in `outputs/demo/`. CI runs smoke tests on every push.
 
 ---
 
