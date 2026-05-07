@@ -60,7 +60,7 @@ def main() -> None:
         payload = pickle.load(fh)
     results = payload["results"]
 
-    track = Track.load(args.track)
+    track = Track(args.track)
     pool = PriorPool(track, K=args.K, max_dim=args.max_dim)
     matcher = Matcher()
 
