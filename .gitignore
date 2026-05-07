@@ -16,11 +16,12 @@ _archive/
 docs/*.pdf
 
 # --- generated data (the code generates this; GitHub is for code) ---
-# Whole data/ tree is gitignored. Source code + manifests live under src/data/.
-# Anything under data/ is fetched / cached / scratch material that the code
-# regenerates: pair pulls (data/pairs/), per-track windows (data/video/),
-# external dataset drops (data/external/cadc, etc.), recon CSVs, raw frames.
-data/
+# Whole repo-root data/ tree is gitignored. Source code + manifests live under
+# src/data/. Anything under /data/ is fetched / cached / scratch material that
+# the code regenerates: pair pulls (data/pairs/), per-track windows
+# (data/video/), external dataset drops (data/external/cadc/, etc.), recon
+# CSVs, raw frames.
+/data/
 
 # --- submission bundle (local-only; populated by `make submission-bundle`) ---
 submission/
