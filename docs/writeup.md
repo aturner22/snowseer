@@ -81,6 +81,8 @@ We kept **EMA on the binary mask**, $\alpha = 0.4$. It is the simplest possible 
 
 This pattern — counterintuitive failures of "obvious" improvements that look better in stills — is itself an artefact of the demo. Static frames hide motion artefacts. We learned to verify motion before claiming wins.
 
+A second lesson came out of the alt-track work. We initially picked a different snow drive of the same Toronto loop (Boreas `boreas_2025_02_15`, active snowfall, late afternoon) and tried to demo it on the same window-selection logic as the canonical. Most of the early frames returned no usable priors — not because the matcher was bad, but because the snow trajectory's UTM coordinates lay outside the summer trajectory's coverage on those frames. The pipeline can only succeed where (a) a prior exists *and* (b) the prior's road segmentation is non-degenerate. We added a small pre-flight check (`window_oracle.py`) that verifies both conditions before any cache build is committed. **The discipline that emerged is: never demonstrate the pipeline on data that has no chance of matching, and never trust a "candidate window" before its priors have been segmented and inspected.**
+
 ## What we didn't
 
 We didn't train anything. We didn't fine-tune. We didn't collect a snow corpus. We didn't write a single line of snow-aware logic. The only handle we offered the model on the snow regime was the clear prior of the same place, plus the generic robustness of pretrained matchers and segmenters that have never seen snow.
@@ -99,4 +101,4 @@ We are not going to label our way out of every long-tail regime. But for many of
 
 ---
 
-*Code, video clips, walkthrough notebook, and the static-stills precursor: see the [project repository](README.md). Reproducible from a clean clone via `make reproduce` (canonical 15-second clip) or `make stills` (static-prior 14-pair Mapillary precursor). Boreas dataset (UTIAS-ASRL) under CC BY 4.0. Submission video composed externally; storyboard at `docs/slides.md`. Submitted to SoTA Commission I — Minimal-Shot Autonomy, May 2026.*
+*Code, video clips, and the static-stills precursor: see the [project repository](README.md). Reproducible from a clean clone via `make reproduce` (canonical 15-second clip), `make oracle TRACK=<id>` (pre-flight before any new track), `make reproduce-track TRACK=<id>` (oracle-verified alt window), or `make stills` (static-prior 14-pair Mapillary precursor). Boreas dataset (UTIAS-ASRL) under CC BY 4.0. Submission video composed externally; storyboard at `docs/slides.md`. Submitted to SoTA Commission I — Minimal-Shot Autonomy, May 2026.*
