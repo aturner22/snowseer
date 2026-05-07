@@ -143,11 +143,12 @@ stills-audit:
 # ─── Analysis notebook ─────────────────────────────────────────────────────
 
 # Re-execute the analysis notebook in place. Loads DISK + LightGlue +
-# Mask2Former and runs the worked-example cells; ~30s on Mac CPU.
+# Mask2Former and runs the worked-example cells. First run can take a
+# few minutes for HF cache warm-up; subsequent runs ~30s.
 notebook:
 	uv run jupyter nbconvert \
 	    --to notebook --execute --inplace \
-	    --ExecutePreprocessor.timeout=180 \
+	    --ExecutePreprocessor.timeout=600 \
 	    docs/analysis.ipynb
 
 # ─── Live interactive demo ─────────────────────────────────────────────────

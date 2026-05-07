@@ -42,6 +42,9 @@ outputs/_*.log
 # Phase K (video) — every render and intermediate cache is regenerable.
 outputs/video/
 
+# Live `make demo SNOW=... PRIOR=...` outputs — regenerable.
+outputs/demo/
+
 # --- defensive: never commit large binary blobs anywhere in data/ or outputs/ ---
 # (overrides the broad data/video/ rule above only for the patterns themselves)
 **/*.mp4
