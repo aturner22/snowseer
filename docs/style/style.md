@@ -22,7 +22,7 @@ The accent is plough-yellow infrastructure, not Christmas-sweater festive. Think
 | Captions / UI / code labels | Inter or JetBrains Mono | Mono only for code; sans for everything else short. |
 | Code blocks | JetBrains Mono | 1.5× line-height. |
 
-Source files live in `assets/fonts/`. Open Font License compatible; redistributable.
+Source files live in `docs/_assets/fonts/`. Open Font License compatible; redistributable.
 
 ## Spacing
 

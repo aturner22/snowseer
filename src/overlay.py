@@ -24,7 +24,7 @@ ACCENT = "#b34a25"
 MUTE = "#8a8780"
 
 # Register local fonts on import so figure typography is consistent across runs.
-_FONTS_DIR = Path(__file__).resolve().parents[1] / "assets/fonts"
+_FONTS_DIR = Path(__file__).resolve().parents[1] / "docs/_assets/fonts"
 if _FONTS_DIR.exists():
     for _f in _FONTS_DIR.glob("*.ttf"):
         try:

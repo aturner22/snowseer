@@ -260,7 +260,7 @@ Every asset below is produced by a `make` command. No one-offs.
 | Snow \| overlay \| naive (alt order) | `outputs/video/boreas_2021_01_26/snow_overlay_naive.mp4` | `make assets` |
 | 4-panel quad (snow / summer+road / overlay / naive) | `outputs/video/boreas_2021_01_26/quad.mp4` | `make assets` |
 | Robustness (same intersection, different snowfall): 2025-02-15 | `outputs/video/boreas_2025_02_15/overlay.mp4` | `make oracle TRACK=boreas_2025_02_15 && make reproduce-track TRACK=boreas_2025_02_15` |
-| External scene (TBD — see CHANGELOG) | `outputs/video/<external_track>/overlay.mp4` | `make reproduce-track TRACK=<external_track>` |
+| External scene (TBD — work in progress) | `outputs/video/<external_track>/overlay.mp4` | `make reproduce-track TRACK=<external_track>` |
 
 ### Stills
 
@@ -276,7 +276,7 @@ Bensound — *Slow Motion* (free with attribution). File at `_archive/assets/aud
 
 ### Typography (if title cards added in the editor)
 
-Fonts ship at `assets/fonts/` (OFL): **Inter Regular** (headlines / labels), **EB Garamond Regular / Italic** (body / attributions), **JetBrains Mono Regular** (code / file paths).
+Fonts ship at `docs/_assets/fonts/` (OFL): **Inter Regular** (headlines / labels), **EB Garamond Regular / Italic** (body / attributions), **JetBrains Mono Regular** (code / file paths).
 
 Palette: cream `#f6f3ee` · charcoal `#1c1c1c` · rust `#b34a25` · mute `#8a8780` · road green `#2e9c56` · naive red `#dc3c32`.
 

@@ -28,7 +28,7 @@
         assets extract-stills pages-assets submission-bundle test oracle \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         slides writeup pdfs \
-        video-fetch video-render video-augment video-recon clean dist-clean
+        video-fetch video-render video-augment clean dist-clean
 
 # ─── Master entry points ────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ help:
 	@echo "    make reproduce-track TRACK=<id>     Full pipeline on a non-canonical track"
 	@echo ""
 	@echo "  Static-prior demo (the v1.x narrative):"
-	@echo "    make stills                         Single-prior (default): 14 curated Mapillary pairs"
+	@echo "    make stills                         Single-prior (default): 27 Mapillary demo pairs"
 	@echo "                                          → outputs/heroes/{matches,naive_baseline,overlay,panel}.png"
 	@echo "    make stills-multi                   Multi-prior fusion ablation (K=5, Phase J)"
 	@echo ""
@@ -72,7 +72,6 @@ help:
 	@echo "    make video-fetch TRACK=<id>         Pull snow + summer Boreas track"
 	@echo "    make video-render TRACK=<id> MODE=<m>  Render one layout from cache"
 	@echo "    make video-augment TRACK=<id> CACHE=<tag>  Build naive + summer panels cache"
-	@echo "    make video-recon CITY=<name>        Mapillary winter sequence reconnaissance"
 	@echo ""
 	@echo "  Tests:"
 	@echo "    make test                           Smoke tests (import graph + CLI shape; no compute)"
@@ -182,7 +181,7 @@ pages-assets:
 	    fi; \
 	    echo "  copied canonical assets"; \
 	fi
-	@for track in boreas_2025_02_15 boreas_2021_01_19 boreas_2021_02_02 boreas_2021_03_02; do \
+	@for track in boreas_2025_02_15; do \
 	    if [ -d outputs/video/$$track ]; then \
 	        mkdir -p docs/_assets/$$track; \
 	        for f in overlay sidebyside snow_naive_overlay snow_overlay_naive quad; do \
@@ -249,10 +248,6 @@ video-augment:
 	@if [ -z "$(CACHE)" ]; then echo "usage: make video-augment TRACK=<id> CACHE=<tag>"; exit 2; fi
 	uv run python -m src.video_runtime.augment --track $(TRACK) --cache-tag $(CACHE)
 
-video-recon:
-	@if [ -z "$(CITY)" ]; then echo "usage: make video-recon CITY=<name|all>"; exit 2; fi
-	uv run python -m data.find_snow_sequences --city $(CITY)
-
 # ─── Documentation ──────────────────────────────────────────────────────────
 
 pdfs: slides writeup
@@ -290,7 +285,7 @@ submission-bundle:
 	    cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 submission/$$f.mp4 2>/dev/null || true; \
 	done
 	@echo "  → copying alt-track headlines (every track with a built overlay.mp4)"
-	@for track in boreas_2025_02_15 boreas_2021_01_19 boreas_2021_02_02 boreas_2021_03_02; do \
+	@for track in boreas_2025_02_15; do \
 	    cp -f outputs/video/$$track/overlay.mp4 submission/$$track.mp4 2>/dev/null || true; \
 	done
 	@echo "  → copying source repo URL"

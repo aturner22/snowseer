@@ -115,14 +115,12 @@ That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), b
 | Tidy local clutter (logs, `__pycache__`, `.DS_Store`) | `make tidy` |
 | List all `make` targets | `make help` |
 
-**Registered tracks** (Boreas snow + summer pairings, all Glen Shields loop, Toronto):
+**Registered tracks** (Boreas snow + summer pairings, Glen Shields loop, Toronto):
 
-| Track ID | Snow capture | Notes |
+| Track ID | Snow capture | Role |
 | --- | --- | --- |
 | `boreas_2021_01_26` | Heavy snow, mid-morning | Canonical 15 s clip (`make reproduce`) |
-| `boreas_2024_12_23` | Light dusk snow | Retired (windowing failed oracle) |
-| `boreas_2025_02_15` | Active snowfall, late afternoon | Re-windowed via oracle; robustness clip |
-| `boreas_2021_01_19`, `boreas_2021_02_02`, `boreas_2021_03_02` | Different days, same loop | Bootstrapped + pose-only oracle scored; unfetched |
+| `boreas_2025_02_15` | Active snowfall, late afternoon | Robustness clip — same intersection, different day (`make reproduce-track TRACK=boreas_2025_02_15`) |
 
 ## Repo layout
 
@@ -156,13 +154,11 @@ snow-underlay/
 ├── data/
 │   ├── demo_pairs.json               # demo manifest: 27 Mapillary snow + clear pairs the fetcher pulls
 │   ├── fetch_mapillary.py            # Mapillary v4 fetcher (uses demo_pairs.json with --curated-only)
-│   ├── find_snow_sequences.py        # winter-sequence reconnaissance (Mapillary v4 sequences API)
 │   ├── pairs/                        # fetched pair downloads (gitignored)
 │   └── video/                        # (gitignored — regenerate via `make video-fetch`)
-│       ├── tracks/<track_id>/        # per-track snow + summer windows
-│       │   ├── snow/{frames/, camera_poses.csv, calib/, window.json}
-│       │   └── summer/{frames/, camera_poses.csv, calib/, window.json}
-│       └── recon/                    # Mapillary scanner outputs (gitignored)
+│       └── tracks/<track_id>/        # per-track snow + summer windows
+│           ├── snow/{frames/, camera_poses.csv, calib/, window.json}
+│           └── summer/{frames/, camera_poses.csv, calib/, window.json}
 │
 ├── docs/
 │   ├── style/                        # visual identity (charcoal · cream · rust) + Marp theme
