@@ -59,20 +59,24 @@ class FrameResult:
 
 
 def _process_one_prior(
-    snow_image: np.ndarray, prior: PriorEntry, matcher
-) -> tuple[np.ndarray | None, int, np.ndarray | None]:
+    snow_image: np.ndarray, prior: PriorEntry, matcher,
+    *, min_spatial_diversity: float | None = None,
+) -> tuple[np.ndarray | None, int, float, np.ndarray | None]:
     """Match snow → this prior, warp the prior's road mask back to snow space.
 
-    Returns (warped_mask_in_snow_space, n_inliers, valid_region_in_snow_space)
-    or (None, 0, None) on match failure.
+    Returns (warped_mask_in_snow_space, n_inliers, spatial_diversity_frac,
+    valid_region_in_snow_space) — mask is None on match failure or
+    diversity-gate rejection.
     """
     result = matcher.match(snow_image, prior.image)
-    homo = estimate(result, snow_image.shape[:2], prior.image.shape[:2])
+    homo = estimate(result, snow_image.shape[:2], prior.image.shape[:2],
+                    min_spatial_diversity=min_spatial_diversity)
+    diversity = float(homo.spatial_diversity_frac)
     if homo.H is None or homo.inlier_mask is None:
-        return None, 0, None
+        return None, 0, diversity, None
     n_inliers = int(np.sum(homo.inlier_mask))
     if n_inliers < 8:
-        return None, n_inliers, None
+        return None, n_inliers, diversity, None
     H_inv = np.linalg.inv(homo.H)
     mask_in_snow = warp_mask(prior.road_mask, H_inv, snow_image.shape[:2])
     mask_in_snow = keep_largest_component(mask_in_snow)
@@ -80,7 +84,7 @@ def _process_one_prior(
     # weight only where each prior actually covered.
     valid = warp_mask(np.ones_like(prior.road_mask, dtype=np.uint8), H_inv,
                       snow_image.shape[:2])
-    return mask_in_snow, n_inliers, valid
+    return mask_in_snow, n_inliers, diversity, valid
 
 
 def _atomic_pickle(path: Path, payload: dict) -> None:
@@ -118,6 +122,7 @@ def run_track(
     synthetic_priors: int = 0,
     seg_prob_threshold: float | None = None,
     seg_morph_radius: int = 0,
+    min_spatial_diversity: float | None = None,
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
@@ -240,12 +245,20 @@ def run_track(
         weights: list[float] = []
 
         for prior in priors:
-            mask, n_inliers, valid = _process_one_prior(snow_image, prior, matcher)
+            mask, n_inliers, diversity, valid = _process_one_prior(
+                snow_image, prior, matcher,
+                min_spatial_diversity=min_spatial_diversity,
+            )
+            substrate_name = "unknown"
+            if prior.meta is not None:
+                substrate_name = getattr(prior.meta, "substrate", None) or "unknown"
             per_prior_records.append({
                 "kind": prior.kind,
                 "prior_idx": int(prior.meta.idx) if prior.meta is not None else -1,
                 "distance_m": float(prior.distance_m),
                 "n_inliers": int(n_inliers),
+                "spatial_diversity": float(diversity),
+                "substrate": substrate_name,
                 "ok": mask is not None,
             })
             if mask is not None:
