@@ -131,6 +131,19 @@ def run_track(
         with open(cache_path, "rb") as fh:
             cached = pickle.load(fh)
         cached_results: list[FrameResult] = cached["results"]
+        # Honour --start / --end / --stride when loading from cache. The cache
+        # holds *all* frames matched in the original cache build (e.g. 350);
+        # callers that pass a sub-range want only that sub-range rendered.
+        # Matching is the dominant cost so the cache stays full; rendering
+        # is cheap enough to slice. Build-on-top: existing callers that pass
+        # start=0, end=None, stride=1 are unaffected.
+        n_cached = len(cached_results)
+        sub_end = end if end is not None else n_cached
+        sub_end = min(sub_end, n_cached)
+        if start > 0 or sub_end < n_cached or stride > 1:
+            cached_results = cached_results[start:sub_end:stride]
+            _log(f"[{track_id}] sliced cache to indices [{start}:{sub_end}:{stride}] "
+                 f"→ {len(cached_results)} frames")
         if smoother is not None:
             smoother.reset()
             for r in cached_results:

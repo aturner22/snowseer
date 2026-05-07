@@ -229,6 +229,12 @@ def main() -> None:
     p.add_argument("--track", required=True, choices=list(TRACKS.keys()))
     p.add_argument("--max-frames", type=int, default=350,
                    help="Cap on frames per sequence (default 350 ≈ 35 s @ 10 Hz)")
+    p.add_argument("--snow-start-s", type=float, default=None,
+                   help="Override the snow window start (in sequence-relative seconds). "
+                        "Use when the default window in TRACKS doesn't pass the oracle.")
+    p.add_argument("--snow-end-s", type=float, default=None,
+                   help="Override the snow window end (in sequence-relative seconds). "
+                        "Use with --snow-start-s.")
     args = p.parse_args()
 
     spec = TRACKS[args.track]
@@ -250,8 +256,13 @@ def main() -> None:
     print(f"  snow:   {len(snow_poses)} poses,   t0={snow_poses['GPSTime'][0]},   t-1={snow_poses['GPSTime'][-1]}")
     print(f"  summer: {len(summer_poses)} poses, t0={summer_poses['GPSTime'][0]}, t-1={summer_poses['GPSTime'][-1]}")
 
-    # 2. Pick snow window.
-    t0, t1 = spec["snow_window_seconds"]
+    # 2. Pick snow window. CLI overrides take precedence.
+    t0_default, t1_default = spec["snow_window_seconds"]
+    t0 = args.snow_start_s if args.snow_start_s is not None else t0_default
+    t1 = args.snow_end_s if args.snow_end_s is not None else t1_default
+    if (t0, t1) != (t0_default, t1_default):
+        print(f"  snow window OVERRIDE: ({t0:.1f}s, {t1:.1f}s) "
+              f"(default was ({t0_default:.1f}s, {t1_default:.1f}s))")
     s_start, s_end = _pick_snow_window(snow_poses, t0, t1)
     s_end = min(s_end, s_start + args.max_frames)
     snow_indices = list(range(s_start, s_end))
