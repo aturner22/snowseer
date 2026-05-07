@@ -20,7 +20,7 @@
 #   make oracle TRACK=<id>                  pre-flight gate before any cache build
 
 .PHONY: help track reproduce reproduce-track reproduce-track-alts reproduce-everything \
-        assets extract-stills pages-assets submission-bundle test oracle \
+        assets extract-stills pages-assets submission-bundle test oracle demo \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         slides writeup pdfs \
         video-fetch video-render video-augment clean dist-clean
@@ -45,6 +45,8 @@ help:
 	@echo "    make stills                         Single-prior (default): 27 Mapillary demo pairs"
 	@echo "                                          → outputs/heroes/{matches,naive_baseline,overlay,panel}.png"
 	@echo "    make stills-multi                   Multi-prior fusion ablation (K=5, Phase J)"
+	@echo "    make demo SNOW=<jpg> PRIOR=<jpg>    Run the pipeline on any (snow, prior) pair"
+	@echo "                                          → outputs/demo/<id>__<layout>.png (15 layouts)"
 	@echo ""
 	@echo "  Documentation:"
 	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf (gitignored)"
@@ -136,6 +138,18 @@ stills-multi: clean-heroes stills-fetch
 
 stills-audit:
 	uv run python -m src.audit
+
+# ─── Live interactive demo ─────────────────────────────────────────────────
+
+# Run the cross-season pipeline on any (snow, prior) image pair. Outputs
+# the full 15-layout per-pair set under OUT (default outputs/demo/).
+demo:
+	@if [ -z "$(SNOW)" ] || [ -z "$(PRIOR)" ]; then \
+	    echo "usage: make demo SNOW=<snow.jpg> PRIOR=<clear.jpg> [OUT=outputs/demo]"; exit 2; \
+	fi
+	uv run python -m src.pipeline \
+	    --snow "$(SNOW)" --prior "$(PRIOR)" \
+	    --out-dir $(or $(OUT),outputs/demo)
 
 # ─── Asset bundles (slides plan + GitHub Pages) ─────────────────────────────
 

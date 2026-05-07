@@ -68,6 +68,17 @@ def test_pipeline_cli_max_priors_flag() -> None:
     assert "default 1" in r.stdout.lower()
 
 
+def test_pipeline_cli_demo_flags() -> None:
+    """`--snow` and `--prior` are exposed for the live `make demo` entry."""
+    r = subprocess.run(
+        [sys.executable, "-m", "src.pipeline", "--help"],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    assert r.returncode == 0
+    for flag in ("--snow", "--prior"):
+        assert flag in r.stdout, f"missing flag {flag}"
+
+
 def test_video_render_cli_args() -> None:
     """The video render CLI exposes the canonical args (track / mode /
     cache-tag / temporal). Schema check, no execution."""
