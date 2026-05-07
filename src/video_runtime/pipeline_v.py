@@ -56,6 +56,7 @@ class FrameResult:
     per_prior: list[dict] = field(default_factory=list)   # diagnostic per-prior info
     n_priors_used: int = 0
     elapsed_s: float = 0.0
+    quality_gated: bool = False  # v3.P.3 — frame-level quality gate fired
 
 
 def _process_one_prior(
@@ -125,6 +126,7 @@ def run_track(
     min_spatial_diversity: float | None = None,
     weight_strategy: str = "inliers",
     outlier_drop: bool = False,
+    min_frame_quality: float | None = None,
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
@@ -279,6 +281,7 @@ def run_track(
                 per_prior_records[-1]["weight"] = float(w)
 
         fused: np.ndarray | None = None
+        gated = False
         if masks:
             # v3.P.4 — drop a single outlier prior whose warped mask has
             # IoU < 0.15 with the consensus of the others. Only fires when
@@ -288,16 +291,32 @@ def run_track(
                 masks, valids, weights = drop_outlier_priors(
                     masks, valids, weights, iou_threshold=0.15,
                 )
-            fused_soft = weighted_soft_average(
-                masks, np.array(weights, dtype=np.float32), valids, threshold=0.4)
-            fused_soft = keep_largest_component(fused_soft)
-            fused_soft = crop_foreground(fused_soft, foreground_y_frac=foreground_y_frac)
-            fused = fused_soft
+            # v3.P.3 — frame-level quality gate. The best surviving prior's
+            # quality (n_inliers × max(spatial_diversity, 0.01)) must clear
+            # min_frame_quality, else the frame is gated and the smoother
+            # propagates the previous mask. Prevents a single barely-passing
+            # prior from generating a wrong-region overlay.
+            if min_frame_quality is not None:
+                best_q = 0.0
+                for r in per_prior_records:
+                    if not r["ok"]:
+                        continue
+                    q = float(r["n_inliers"]) * max(float(r.get("spatial_diversity", 0.0)), 0.01)
+                    best_q = max(best_q, q)
+                if best_q < min_frame_quality:
+                    gated = True
+            if not gated:
+                fused_soft = weighted_soft_average(
+                    masks, np.array(weights, dtype=np.float32), valids, threshold=0.4)
+                fused_soft = keep_largest_component(fused_soft)
+                fused_soft = crop_foreground(fused_soft, foreground_y_frac=foreground_y_frac)
+                fused = fused_soft
 
         elapsed = time.time() - frame_t0
         results.append(FrameResult(
             snow_meta=snow_meta, snow_image=snow_image, fused_mask=fused,
             per_prior=per_prior_records, n_priors_used=len(masks), elapsed_s=elapsed,
+            quality_gated=gated,
         ))
 
         if synthetic is not None:
