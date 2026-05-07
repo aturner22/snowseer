@@ -6,6 +6,26 @@ All notable changes to Snow-Underlay are recorded here. Format inspired by [Keep
 
 > Working towards: SoTA Commission I — Minimal-Shot Autonomy submission, deadline 2026-05-10.
 
+### Pre-flight oracle + alt-track recovery (2026-05-07 morning)
+
+- **`src/video_runtime/window_oracle.py`** — pre-flight "is this demo-able?" check. Per snow frame: KD-tree query for K nearest summer poses (rejected if > distance threshold) + Mask2Former coverage check on each candidate prior (rejected if foreground road coverage < threshold). Output: per-frame report + longest contiguous demo-able run. Two modes:
+  - default: full segmentation oracle on the loaded snow window
+  - `--poses-only`: lite mode reading the FULL parent `camera_poses.csv` (pre-windowing); useful for re-windowing decisions before fetching frames.
+- `make oracle TRACK=<id>` Makefile target. Hard rule: **never run `make reproduce-track` without a satisfied oracle first**.
+- `src/video_runtime/fetch_track.py` gains `--snow-start-s/--snow-end-s` overrides so an oracle-chosen window can be fetched without editing the TRACKS registry.
+- `src/video_runtime/pipeline_v.run_track` now honours `start/end/stride` when loading from cache (slices `cached_results` before smoothing). The cache holds the full original matching pass; callers wanting a sub-range get exactly that. Existing callers passing `start=0, end=None, stride=1` are unaffected.
+- **`boreas_2024_12_23` retired** — same Glen Shields loop as canonical, plus the original window picked snow indices outside summer trajectory's spatial coverage (~75 % had zero priors possible by construction). Local cache + mp4s archived under `_archive/outputs/video/boreas_2024_12_23/` for inspection. Pages assets dropped.
+- **`boreas_2025_02_15` re-windowed** via the pose-only oracle. New snow indices `5000..5350` (time 500–535 s in the snow sequence). Full segmentation oracle reports 100 % demo-able with score 1.112 — higher than canonical's 0.565. Robustness clip: same Glen Shields intersection as canonical, different snowfall and time-of-day. Cache build in flight.
+- **L.6.C Mapillary external-scene scripts archived** to `_archive/data/` as work-in-progress: `find_snow_for_video.py` (broader recon with per-frame summer-prior probe), `fetch_mapillary_video.py` (Mapillary→Boreas-track bridge), `preview_candidates.py` (sample-thumbnail audit + HTML preview). The Tromsø candidate was a side-of-bus camera view (caught in user audit before any compute committed). Restoring once Boreas alt is shipping.
+
+### Repo tidying (2026-05-07)
+
+- **Comprehensive archive sweep** — moved `outputs/audit/`, `outputs/heroes/`, retired alt tracks, Phase K ablation videos (`_ablation/`, `_v1_canonical_K3/`), old K=5 / stride-3 caches, the Finnish winter dataset (4.7 GB), `_match_test/`, dev preview scripts to `_archive/`. Working tree dropped from 6.2 GB to 1.0 GB under `outputs/`.
+- `demo/` Streamlit scripts archived (one-shot data curation tools, not on canonical pipeline). `make stream` removed.
+- `.github/workflows/lint.yml` removed — CI was generating failure-email noise. `make test` (smoke tests) retained for local use.
+- Standing directory-tree audit checklist added to plan §L.7.bis.
+- `make tidy` Makefile target — reproducible cleanup of `__pycache__/`, `.DS_Store`, `.ruff_cache/`, scratch logs.
+
 ### Added
 
 - Single-prior mode for the static-stills pipeline (`src/pipeline.py`). New `--max-priors` CLI flag (default `1` = v1 narrative; `5` = Phase J multi-prior fusion ablation; `0` = unlimited). The K = 1 path skips the three fusion-variant overlays and the priors strip — only `__matches.png`, `__naive_baseline.png`, `__overlay.png`, `__panel.png` are written.
