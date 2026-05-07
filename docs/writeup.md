@@ -31,7 +31,7 @@ But the road's *location* hasn't moved. For almost every road in the developed w
 So the system, in six steps:
 
 1. Pull the live snowy frame from the plough's camera.
-2. Pull a clear-season prior of the same coordinates. We use the Boreas dataset's matched summer drives for the canonical demo, and Mapillary for the static-stills precursor.
+2. Pull a clear-season prior of the same coordinates. The substrate is interchangeable — Mapillary, Google Street View, the operator's own clear-weather drives, the host dataset's summer subset. We use Boreas's matched summer captures for the canonical video demo (cm-accurate Applanix poses) and Mapillary for the static-stills precursor (open contributor imagery), but the principle is substrate-agnostic.
 3. Match the two images using a generic, frozen feature matcher. The matcher anchors on what stays constant between the two: buildings, signs, poles, rooflines, distant horizons.
 4. Estimate a homography from the matches, biased toward the ground plane.
 5. Run a generic Cityscapes-trained road segmenter on the **clear** prior — never on the snow frame.
@@ -51,7 +51,7 @@ The video extension wraps that static pipeline in three thin layers:
 
 A pickled cache layer makes the matching pass reusable: subsequent renders that change only the smoother (`temporal=ema|flow|none`) skip the ~50-minute matching pass entirely.
 
-Snow imagery comes from Boreas (Burnett et al., IJRR 2023), CC BY 4.0 on the AWS Open Data registry — same FLIR Blackfly S camera, same Glen Shields loop, with paired summer traversals on the same UTM coordinates. Mapillary remains the open-imagery substrate for the static-stills precursor.
+Snow imagery in the canonical video demo comes from Boreas (Burnett et al., IJRR 2023), CC BY 4.0 on the AWS Open Data registry — same FLIR Blackfly S camera, same Glen Shields loop, with paired summer traversals on the same UTM coordinates. The static-stills precursor uses Mapillary as an example of an open contributor-imagery substrate; in production the choice is open — Google Street View, Bing Streetside, an operator's own clear-weather captures, or any geo-tagged source. The principle is the geometric correspondence, not the substrate.
 
 Every learned component is frozen. Snow appears only at inference, as the runtime input.
 

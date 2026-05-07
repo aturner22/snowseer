@@ -58,8 +58,8 @@ Everything else — the matcher (DISK + LightGlue), the segmenter (Mask2Former-C
 | **LightGlue** | Sparse feature matcher | MegaDepth | Lindenberger et al., *LightGlue: Local Feature Matching at Light Speed*, ICCV 2023 |
 | **USAC-MAGSAC** | Robust homography fit | — | Barath et al., *MAGSAC++, a fast, reliable and accurate robust estimator*, CVPR 2020 |
 | **Mask2Former** | Semantic road segmentation, on the summer prior only | Cityscapes (clear-weather European driving, no snow) | Cheng et al., *Masked-attention Mask Transformer for Universal Image Segmentation*, CVPR 2022 |
-| **Boreas** | Open snow-driving dataset (snow + paired summer captures, cm-accurate Applanix poses) | — | Burnett et al., *Boreas: A Multi-Season Autonomous Driving Dataset*, IJRR 2023, CC BY 4.0 |
-| **Mapillary API v4** | Open imagery substrate (used for the static-stills precursor and for additional priors) | — | mapillary.com/developer/api-documentation |
+| **Boreas** *(canonical video demo)* | Open snow-driving dataset (snow + paired summer captures, cm-accurate Applanix poses) | — | Burnett et al., *Boreas: A Multi-Season Autonomous Driving Dataset*, IJRR 2023, CC BY 4.0 |
+| **Mapillary API v4** *(static-stills demo)* | One example of an open imagery substrate. Any geo-tagged clear-weather imagery would work — Google Street View, Bing Streetside, the operator's own captures. The pipeline is substrate-agnostic. | — | mapillary.com/developer/api-documentation |
 
 Every learned component is **frozen**. Nothing is trained, nothing is fine-tuned. Snowy imagery enters the system only at inference time.
 
