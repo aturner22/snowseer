@@ -182,13 +182,58 @@ The audit-gate discipline is itself part of the contribution: **never demonstrat
 
 ---
 
-## Beyond these four
+## CADC — Canadian Adverse Driving Conditions
 
-The pipeline accepts any geo-tagged snow imagery; these four are the academic candidates that fit our 3-day window. Other plausible substrates we did not try in this submission (each would follow the same `data/external/<name>/` + `data/fetch_<name>.py` pattern):
+**Recommended fallback.** CADC is the cleanest non-Boreas snow scene candidate for this pipeline because the dataset is direct-download (no benchmark portal), GPS / INS poses are bundled per scene, and multi-camera calibration is included.
 
-- **CADC** (Canadian Adverse Driving Conditions) — 50–100 frame scenes with full sensor calibration. Cleanest data; longest integration tail.
+### Source
+
+- **Site**: <http://cadcd.uwaterloo.ca/>
+- **Paper**: Pitropov et al., *Canadian Adverse Driving Conditions Dataset*, IJRR 2021.
+- **Devkit**: <https://github.com/mpitropov/cadc_devkit> — includes `download_cadcd.py` for direct scene downloads.
+- **Coverage**: 7,000 annotated frames across multiple winter weather conditions, Region of Waterloo, ON, Canada. Multi-camera (8 Ximea cameras) + Velodyne VLP-32C lidar + Novatel OEM638 GNSS+INS.
+- **License**: research-permissive (consult site for exact terms).
+- **Sample scenes**: the devkit demos `2019_02_27_0027` and `2019_02_27_0033` — reasonable starter scenes.
+
+### Steps
+
+1. Clone the devkit:
+
+   ```bash
+   git clone https://github.com/mpitropov/cadc_devkit ~/cadc_devkit
+   ```
+
+2. Use `download_cadcd.py` to grab one or two scenes. Example (consult devkit help):
+
+   ```bash
+   python ~/cadc_devkit/download_cadcd.py --date 2019_02_27 --scene 0027 --target data/external/cadc/
+   ```
+
+3. After download, paste the actual top-level layout back to me (`tree -L 3 data/external/cadc/`) and I will write `data/fetch_cadc.py` against the real structure. The paper guarantees per-frame GPS in the GNSS+INS log; the front-facing camera is conventionally one of the eight, and the calibration files include intrinsics + extrinsics. The exact file naming I cannot quote without seeing the actual download.
+
+4. Drop a sentinel:
+
+   ```bash
+   touch data/external/cadc/.ready
+   ```
+
+### Why this is the cleanest fallback
+
+- **Direct download** (no portal access dance, unlike ACDC / MUSES).
+- **GPS bundled** at multi-Hz cadence, so per-frame Mapillary `closeto` summer-prior queries work out of the box.
+- **Snow-specific** by design (the dataset's whole point is adverse winter conditions).
+- **Forward-facing dashcam geometry** is genuinely there (Ximea cameras mounted on the Autonomoose vehicle), so the pipeline's "where is the road in front of the camera" question is well-posed.
+
+The only friction is the manual download step; the pipeline integration is straightforward once a scene is on disk.
+
+---
+
+## Beyond these candidates
+
+The pipeline accepts any geo-tagged snow imagery; the candidates above are the academic ones that fit our 3-day window. Other plausible substrates we did not try in this submission (each would follow the same `data/external/<name>/` + `data/fetch_<name>.py` pattern):
+
 - **DENSE / SeeingThroughFog** (Daimler) — dense adverse-weather coverage. Heavier sensor suite.
-- **Public dashcam YouTube** — abundant snowy footage but GPS extraction is unreliable.
+- **Public dashcam YouTube** — abundant snowy footage but GPS extraction is unreliable. Russian-style "Registrator" dashcams write GPS to a sidecar log; most other YouTube clips do not.
 - **Operator's own captures** — the production case. Same pipeline; tighter geometric prior; no contributor-coverage gaps.
 
 The substrate question is interchangeable. The geometric correspondence is the load-bearing piece.
