@@ -81,8 +81,37 @@ TRACKS = {
         "snow_seq": "boreas-2025-02-15-16-58",
         "summer_seq": "boreas-2021-07-27-14-43",
         # Late afternoon active snowfall, commercial street with traffic and
-        # apartment blocks. Most cinematic of the alt set.
-        "snow_window_seconds": (80.0, 115.0),
+        # apartment blocks. Most cinematic of the alt set. Original window
+        # (80-115s) had bad summer-prior segmentation; oracle-verified
+        # re-window (500-535s) ships.
+        "snow_window_seconds": (500.0, 535.0),
+        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
+        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
+    },
+    # Additional candidates — pose-only oracle can score these once metadata
+    # is bootstrapped (`fetch_track` with `--max-frames 0` or similar).
+    # Default windows are placeholders; find a window via:
+    #   uv run python -m src.video_runtime.window_oracle \\
+    #       --track <id> --poses-only --distance-thresh 30
+    # then fetch with `--snow-start-s/--snow-end-s` overrides.
+    "boreas_2021_01_19": {
+        "snow_seq": "boreas-2021-01-19-15-08",
+        "summer_seq": "boreas-2021-07-27-14-43",
+        "snow_window_seconds": (100.0, 135.0),  # placeholder; verify via oracle
+        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
+        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
+    },
+    "boreas_2021_02_02": {
+        "snow_seq": "boreas-2021-02-02-14-07",
+        "summer_seq": "boreas-2021-07-27-14-43",
+        "snow_window_seconds": (100.0, 135.0),  # placeholder; verify via oracle
+        "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
+        "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
+    },
+    "boreas_2021_03_02": {
+        "snow_seq": "boreas-2021-03-02-13-38",
+        "summer_seq": "boreas-2021-07-27-14-43",
+        "snow_window_seconds": (100.0, 135.0),  # placeholder; verify via oracle
         "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
         "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
     },
