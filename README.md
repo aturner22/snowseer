@@ -120,11 +120,12 @@ snow-underlay/
 │       ├── track.py                  # snow stream + summer stream loaders
 │       ├── prior_pool.py             # K-NN prior selection by UTM
 │       ├── pipeline_v.py             # run_track entry point + cache + checkpoint resume
+│       ├── window_oracle.py          # pre-flight: priors-exist + summer-segmentation check
 │       ├── temporal.py               # EMA / flow smoothers (EMA wins)
 │       ├── overlay_render.py         # render_overlay / sidebyside / 3-panel / quad
 │       ├── augment.py                # naive baseline + summer panel cache
 │       ├── extract_assets.py         # extract preset stills (1.0/5.0/10.0/14.0 s) from mp4s
-│       ├── fetch_track.py            # Boreas S3 fetcher with retry
+│       ├── fetch_track.py            # Boreas S3 fetcher with retry + --snow-start-s/--snow-end-s overrides
 │       ├── render.py                 # CLI entry
 │       └── render_all_layouts.py     # batch renderer (5 layouts)
 │
@@ -133,17 +134,12 @@ snow-underlay/
 │   ├── manual_*_curation.json        # Streamlit curator state
 │   ├── fetch_mapillary.py            # Mapillary v4 fetcher
 │   ├── find_snow_sequences.py        # winter-sequence reconnaissance
-│   ├── preview_sequence.py           # thumbnail montage tool
 │   ├── pairs/                        # static-stills pair downloads (gitignored)
 │   └── video/                        # (gitignored — regenerate via `make video-fetch`)
 │       ├── tracks/<track_id>/        # per-track snow + summer windows
 │       │   ├── snow/{frames/, camera_poses.csv, calib/, window.json}
 │       │   └── summer/{frames/, camera_poses.csv, calib/, window.json}
-│       └── recon/                    # Mapillary scanner outputs
-│
-├── demo/
-│   ├── streamlit_app.py              # cached-output viewer
-│   └── curate_snow.py                # Streamlit big-image accept/reject
+│       └── recon/                    # Mapillary scanner outputs (gitignored)
 │
 ├── docs/
 │   ├── style/                        # visual identity (charcoal · cream · rust) + Marp theme
