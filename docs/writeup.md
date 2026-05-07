@@ -61,7 +61,7 @@ A 15-second clip from a snow-buried Toronto residential street (Boreas `boreas-2
 
 We render the same clip in five layouts (single overlay, snow-vs-overlay sidebyside, two 3-panel orderings with the naive baseline, and a 2 × 2 quad with the summer prior visible) so the audience can see the same evidence at different depths. The single overlay is the headline; the quad is the receipts.
 
-The static-stills precursor is preserved in the same repository (`make stills`) and produces fourteen user-curated GREAT/OKAY hero pairs over Northern Sweden and Finland — the v1.x demo's foundation, on which the video extension was built.
+The static-stills precursor is preserved in the same repository (`make stills`) and produces twenty-seven snow + clear-season hero pairs across Northern Sweden and Finland — the v1.x demo's foundation, twenty-seven different physical locations on which the video extension was built.
 
 The most interesting honest finding survives from the static work and into the moving demo: **inlier count is not a reliable predictor of overlay quality**. A pair with hundreds of inliers can warp the mask onto the wrong region if the inliers concentrate on building façades. A pair with seventeen inliers can be perfect if those seventeen happen to land on the road. The system therefore needs a human in the loop on the input and the output, even after the matcher succeeds.
 

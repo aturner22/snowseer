@@ -65,7 +65,7 @@ def _hstack_resized(imgs: list[np.ndarray], target_h: int = 320) -> np.ndarray:
     return np.hstack(aligned)
 
 
-def _build_row(pair_id: str, summary_entry: dict, manual: dict, ratings: dict) -> np.ndarray | None:
+def _build_row(pair_id: str, summary_entry: dict) -> np.ndarray | None:
     snow_path = PAIRS / pair_id / "snow.jpg"
     snow = _read(snow_path)
     if snow is None:
@@ -122,14 +122,11 @@ def _build_row(pair_id: str, summary_entry: dict, manual: dict, ratings: dict) -
         cv2.putText(labels_row, name, (i * cell_w + 12, 24),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (28, 28, 28), 1, cv2.LINE_AA)
 
-    rating = (ratings.get(pair_id) or {}).get("rating", "—")
-    manual_verdict = (manual.get(pair_id) or {}).get("verdict", "—")
     inliers = summary_entry.get("n_inliers", "?")
     refined = summary_entry.get("refined", False)
     header = _label_strip(
         row1.shape[1],
-        f"{pair_id}    inliers={inliers}    refined={refined}    "
-        f"manual_snow={manual_verdict}    rating={rating.upper()}",
+        f"{pair_id}    inliers={inliers}    refined={refined}",
     )
 
     parts = [header, labels_row, row1]
@@ -143,15 +140,10 @@ def main() -> None:
     summary_path = HEROES / "summary.json"
     summary = json.loads(summary_path.read_text()) if summary_path.exists() else []
 
-    manual_path = Path("data/manual_snow_curation.json")
-    manual = json.loads(manual_path.read_text()) if manual_path.exists() else {}
-    ratings_path = Path("data/manual_result_curation.json")
-    ratings = json.loads(ratings_path.read_text()) if ratings_path.exists() else {}
-
     rows: list[np.ndarray] = []
     target_w: int | None = None
     for entry in summary:
-        row = _build_row(entry["pair_id"], entry, manual, ratings)
+        row = _build_row(entry["pair_id"], entry)
         if row is None:
             continue
         if target_w is None:

@@ -268,7 +268,7 @@ Every asset below is produced by a `make` command. No one-offs.
 
 ### Static-stills precursor (B-roll for the principle)
 
-`outputs/heroes/<pair_id>__panel.png` (4-column 2×2: snow / clear+mask / overlay / naive), `outputs/heroes/<pair_id>__matches.png` (correspondences), `outputs/heroes/<pair_id>__overlay.png` (snow with green road overlay), `outputs/heroes/<pair_id>__naive_baseline.png` (snow with red naive mask), and `outputs/audit/contact_sheet.png` (27-row sheet: 14 GREAT+OKAY headline rows plus 13 review-pool rows; in single-prior mode each row is snow / overlay / naive). Produced by `make stills` (single-prior, default; `make stills-multi` for the Phase J fusion ablation).
+`outputs/heroes/<pair_id>__panel.png` (4-column 2×2: snow / clear+mask / overlay / naive), `outputs/heroes/<pair_id>__matches.png` (correspondences), `outputs/heroes/<pair_id>__overlay.png` (snow with green road overlay), `outputs/heroes/<pair_id>__naive_baseline.png` (snow with red naive mask), and `outputs/audit/contact_sheet.png` (27-row sheet, one row per demo pair; in single-prior mode each row is snow / overlay / naive). Produced by `make stills` (single-prior, default; `make stills-multi` for the Phase J fusion ablation).
 
 ### Music
 
@@ -350,7 +350,7 @@ After all runs, verify:
 - `outputs/video/boreas_2021_01_26/{sidebyside,snow_naive_overlay,snow_overlay_naive,quad}.mp4` all exist
 - `outputs/video/boreas_2021_01_26/stills/` has ≥ 20 JPEGs
 - `outputs/video/boreas_2025_02_15/overlay.mp4` exists (robustness, oracle-verified window)
-- `outputs/heroes/` has 27 panel PNGs (14 GREAT+OKAY headline + 13 review-pool)
+- `outputs/heroes/` has 27 panel PNGs (one per demo pair)
 - `outputs/audit/contact_sheet.png` exists
 - `_archive/assets/audio/music.mp3` is on disk (if title cards desired)
 

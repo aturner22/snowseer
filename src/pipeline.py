@@ -32,19 +32,18 @@ REFINEMENT_INLIER_TRIGGER = 25
 
 DATA_PAIRS_DIR = Path("data/pairs")
 OUT_DIR = Path("outputs/heroes")
-CURATED_PAIRS_PATH = Path("data/curated_pairs.json")
-RESULT_RATINGS_PATH = Path("data/manual_result_curation.json")
+DEMO_PAIRS_PATH = Path("data/demo_pairs.json")
 
 
 def _display_strings(pair_id: str) -> tuple[str, str]:
-    """(title, subtitle) for a pair_id, sourced from data/curated_pairs.json.
+    """(title, subtitle) for a pair_id, sourced from data/demo_pairs.json.
 
     Title:    'Place, Country — condition phrase'
     Subtitle: 'Snow capture (month yyyy)  ↔  Clear capture (month yyyy)'
     """
-    if not CURATED_PAIRS_PATH.exists():
+    if not DEMO_PAIRS_PATH.exists():
         return (pair_id.replace("__", "  ·  "), "")
-    spec = json.loads(CURATED_PAIRS_PATH.read_text())
+    spec = json.loads(DEMO_PAIRS_PATH.read_text())
     entry = next((p for p in spec.get("pairs", []) if p.get("pair_id") == pair_id), None)
     if entry is None:
         return (pair_id.replace("__", "  ·  "), "")
@@ -57,33 +56,22 @@ def _display_strings(pair_id: str) -> tuple[str, str]:
     return (title, subtitle)
 
 
-def _load_curated_pair_ids() -> set[str]:
-    if not CURATED_PAIRS_PATH.exists():
+def _load_demo_pair_ids() -> set[str]:
+    """Return the pair IDs the static-stills demo uses (from data/demo_pairs.json).
+
+    The file is the demo manifest — a list of (Mapillary snow image id +
+    paired clear-season images) the fetcher pulls and the pipeline runs
+    against. Empty set if the file is missing.
+    """
+    if not DEMO_PAIRS_PATH.exists():
         return set()
-    spec = json.loads(CURATED_PAIRS_PATH.read_text())
+    spec = json.loads(DEMO_PAIRS_PATH.read_text())
     return {p["pair_id"] for p in spec.get("pairs", [])}
 
 
-def _user_chosen_fusion(pair_id: str) -> str | None:
-    """Return the user's per-pair fusion preference if set in
-    data/manual_result_curation.json, otherwise None.
-    """
-    if not RESULT_RATINGS_PATH.exists():
-        return None
-    try:
-        ratings = json.loads(RESULT_RATINGS_PATH.read_text())
-    except json.JSONDecodeError:
-        return None
-    entry = ratings.get(pair_id) or {}
-    pick = entry.get("best_fusion")
-    if pick in ("union", "weighted", "majority"):
-        return pick
-    return None
-
-# Content-level curation threshold. Pairs below this are considered
-# content-mismatched (different scenes despite tight GPS+heading) and are
-# excluded from the curated demo set. They remain on disk and are visible in
-# `outputs/heroes/summary.json` with `accept=false`.
+# Inlier threshold below which a pair is flagged as content-mismatched in
+# the per-pair summary (different scenes despite tight GPS+heading). Pairs
+# remain on disk regardless; the flag is for downstream review.
 ACCEPT_INLIER_MIN = 15
 
 
@@ -274,7 +262,9 @@ def run_pair(
     # degenerate (all == the single mask), so skip the per-fusion overlays
     # and the priors strip. The headline `__overlay.png` is still written.
     is_single_prior = len(per_prior) == 1
-    chosen = _user_chosen_fusion(pair_id) or "weighted"
+    # Default fusion in multi-prior mode: weighted soft-average (best on the
+    # 27-pair manifest by inspection; others are kept available for ablation).
+    chosen = "weighted"
     if not is_single_prior:
         # Save per-fusion snow overlays.
         for name, mask in fused.items():
@@ -362,38 +352,23 @@ def _save_priors_strip(snow: np.ndarray, per_prior: list[dict], out_path: Path) 
     plt.close(fig)
 
 
-MANUAL_CURATION_PATH = Path("data/manual_snow_curation.json")
-
-
-def _load_manual_curation() -> dict[str, str]:
-    """pair_id -> verdict ('accept'|'reject'|'skip'). Empty if file missing."""
-    if not MANUAL_CURATION_PATH.exists():
-        return {}
-    try:
-        raw = json.loads(MANUAL_CURATION_PATH.read_text())
-    except json.JSONDecodeError:
-        return {}
-    return {k: v.get("verdict", "skip") for k, v in raw.items() if isinstance(v, dict)}
-
-
 def run_all(
     pairs_dir: Path = DATA_PAIRS_DIR,
     out_dir: Path = OUT_DIR,
     max_dim: int = 1024,
     *,
-    require_manual_curation: bool = True,
+    require_demo_manifest: bool = True,
     max_priors: int | None = 1,
 ) -> list[PairResult]:
-    """Run the pipeline on the curated demo set.
+    """Run the pipeline on the demo manifest.
 
-    The demo set is the 14 pair IDs in `data/curated_pairs.json`
-    (the GREAT+OKAY pairs from the user's overlay-quality rating).
-    If that file is missing, falls back to the manual snow-curation
-    `accept` set in `data/manual_snow_curation.json`.
+    The demo set is the pair IDs in `data/demo_pairs.json` — a list of
+    Mapillary snow + clear-season image pairs the fetcher pulls and the
+    pipeline runs against.
 
-    require_manual_curation (default True): the pipeline refuses to run unless
-    one of these curation files exists with at least one accept. Pass False
-    (or --allow-uncurated on the CLI) to bypass and run on every pair on disk.
+    require_demo_manifest (default True): the pipeline refuses to run unless
+    `demo_pairs.json` exists. Pass False (or --allow-uncurated on the CLI)
+    to bypass and run on every pair-directory on disk.
 
     max_priors (default 1): cap on priors per pair. 1 = single-prior (v1.x
     narrative); 5 / None = multi-prior (Phase J ablation). See run_pair.
@@ -402,38 +377,21 @@ def run_all(
     if not pair_dirs:
         raise SystemExit(f"No pairs under {pairs_dir}. Run `uv run python -m data.fetch_mapillary` first.")
 
-    curated_ids = _load_curated_pair_ids()
-    manual = _load_manual_curation()
-    if require_manual_curation:
-        if curated_ids:
-            before = len(pair_dirs)
-            pair_dirs = [d for d in pair_dirs if d.name in curated_ids]
-            print(f"curated demo set active: {len(pair_dirs)} / {before} pairs (data/curated_pairs.json)")
-        elif MANUAL_CURATION_PATH.exists():
-            accepted_ids = {pid for pid, v in manual.items() if v == "accept"}
-            if not accepted_ids:
-                raise SystemExit(
-                    f"{MANUAL_CURATION_PATH} has no accepts. Run the snow curator and "
-                    f"accept at least one pair, or pass --allow-uncurated."
-                )
-            before = len(pair_dirs)
-            pair_dirs = [d for d in pair_dirs if d.name in accepted_ids]
-            print(f"manual snow curation active: {len(pair_dirs)} / {before} pairs (manual_snow_curation.json)")
-        else:
+    demo_ids = _load_demo_pair_ids()
+    if require_demo_manifest:
+        if not demo_ids:
             raise SystemExit(
-                "No curation file found. Either:\n"
-                "  - put curated pair IDs in data/curated_pairs.json (the demo path), or\n"
-                "  - run the snow curator (`uv run streamlit run demo/curate_snow.py`) and accept at least one pair, or\n"
-                "  - pass --allow-uncurated to run on every pair on disk."
+                f"No demo manifest found at {DEMO_PAIRS_PATH}. Either:\n"
+                f"  - run `uv run python -m data.fetch_mapillary --curated-only` to populate it, or\n"
+                f"  - pass --allow-uncurated to run on every pair-directory on disk."
             )
-    elif curated_ids:
         before = len(pair_dirs)
-        pair_dirs = [d for d in pair_dirs if d.name in curated_ids]
-        print(f"curated demo set (advisory): {len(pair_dirs)} / {before} pairs")
-    elif manual:
+        pair_dirs = [d for d in pair_dirs if d.name in demo_ids]
+        print(f"demo set active: {len(pair_dirs)} / {before} pairs ({DEMO_PAIRS_PATH})")
+    elif demo_ids:
         before = len(pair_dirs)
-        pair_dirs = [d for d in pair_dirs if manual.get(d.name) == "accept"]
-        print(f"manual snow curation (advisory): {len(pair_dirs)} / {before} pairs")
+        pair_dirs = [d for d in pair_dirs if d.name in demo_ids]
+        print(f"demo set (advisory): {len(pair_dirs)} / {before} pairs")
 
     matcher = Matcher()
     segmenter = RoadSegmenter()
@@ -457,7 +415,6 @@ def run_all(
                 "n_inliers": int(res.n_inliers),
                 "ground_plane_used": bool(res.used_ground_plane_restriction),
                 "refined": bool(res.refined),
-                "manual_verdict": manual.get(res.pair_id, "—"),
                 "iou_overlay_vs_naive": (
                     None if res.iou_overlay_vs_naive is None else round(res.iou_overlay_vs_naive, 4)
                 ),
@@ -483,7 +440,8 @@ def _cli() -> None:
     parser.add_argument("--max-dim", type=int, default=1024)
     parser.add_argument("--pair-id", default=None, help="Run a single pair by directory name.")
     parser.add_argument("--allow-uncurated", action="store_true",
-                        help="Bypass the manual snow curation gate (default: required).")
+                        help="Bypass the demo-manifest gate (default: required). "
+                             "With this flag, run on every pair-directory on disk.")
     parser.add_argument(
         "--max-priors", type=int, default=1,
         help="Priors per pair (default 1 = single-prior v1.x narrative). "
@@ -512,7 +470,7 @@ def _cli() -> None:
     else:
         run_all(
             pairs_dir=pairs_dir, out_dir=out_dir, max_dim=args.max_dim,
-            require_manual_curation=not args.allow_uncurated,
+            require_demo_manifest=not args.allow_uncurated,
             max_priors=max_priors,
         )
 

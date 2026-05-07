@@ -154,11 +154,10 @@ snow-underlay/
 │       └── render_all_layouts.py     # batch renderer (5 layouts)
 │
 ├── data/
-│   ├── curated_pairs.json            # 27 reviewed Mapillary pairs (14 GREAT+OKAY headline + 13 review-pool)
-│   ├── manual_*_curation.json        # Streamlit curator state
-│   ├── fetch_mapillary.py            # Mapillary v4 fetcher
-│   ├── find_snow_sequences.py        # winter-sequence reconnaissance
-│   ├── pairs/                        # static-stills pair downloads (gitignored)
+│   ├── demo_pairs.json               # demo manifest: 27 Mapillary snow + clear pairs the fetcher pulls
+│   ├── fetch_mapillary.py            # Mapillary v4 fetcher (uses demo_pairs.json with --curated-only)
+│   ├── find_snow_sequences.py        # winter-sequence reconnaissance (Mapillary v4 sequences API)
+│   ├── pairs/                        # fetched pair downloads (gitignored)
 │   └── video/                        # (gitignored — regenerate via `make video-fetch`)
 │       ├── tracks/<track_id>/        # per-track snow + summer windows
 │       │   ├── snow/{frames/, camera_poses.csv, calib/, window.json}
@@ -210,4 +209,4 @@ Constants as the bridge.
 
 ---
 
-*Acknowledgements.* Boreas dataset (Burnett et al. 2023, UTIAS-ASRL) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Mapillary imagery under the open-data licence. Visual identity inspired by [SOTA Letters](https://sotaletters.substack.com/). Bensound *Slow Motion* (free with attribution) used in optional title-card composition. Models pretrained by their respective authors and used frozen. Repository licensed under MIT.
+*Acknowledgements.* Boreas dataset (Burnett et al. 2023, UTIAS-ASRL) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Mapillary imagery under the open-data licence. Visual identity inspired by [SOTA Letters](https://sotaletters.substack.com/). Bensound *Slow Motion* (free with attribution) used in optional title-card composition. Models pretrained by their respective authors and used frozen.

@@ -15,8 +15,8 @@
 #   make reproduce-all-layouts TRACK=<id>   — render all 5 layout variants
 #   make reproduce-track TRACK=<id>         — full pipeline on a different track
 #   make stills                             — static-prior precursor (single-prior
-#                                             v1 narrative; 14 GREAT/OKAY pairs +
-#                                             13 review-pool from data/curated_pairs.json)
+#                                             v1 narrative; 27 demo pairs from
+#                                             data/demo_pairs.json)
 #   make oracle TRACK=<id>                  — pre-flight gate before any cache build
 #
 # Project layout: src/video_runtime/ is the per-frame video pipeline; src/
@@ -25,7 +25,7 @@
 
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
-        assets extract-stills pages-assets submission-bundle test tidy oracle \
+        assets extract-stills pages-assets submission-bundle test oracle \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         slides writeup pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
@@ -77,8 +77,7 @@ help:
 	@echo "  Tests:"
 	@echo "    make test                           Smoke tests (import graph + CLI shape; no compute)"
 	@echo ""
-	@echo "  Repo hygiene:"
-	@echo "    make tidy                           Remove stale logs + .DS_Store + .ruff_cache (safe)"
+	@echo "  Cleanup:"
 	@echo "    make clean                          Remove generated outputs (heroes/audit/frames)"
 	@echo "    make dist-clean                     Also remove cached pair downloads"
 
@@ -328,38 +327,6 @@ clean-audit:
 # and safe to run during cache builds.
 test:
 	uv run python tests/test_smoke.py
-
-# ─── Repo hygiene ─────────────────────────────────────────────────────────
-
-# `make tidy` — reproducible physical cleanup of the working tree.
-# Removes generated logs, .DS_Store, .ruff_cache, __pycache__. Does NOT
-# touch outputs/video/<track>/_cache_*.pkl (matching cache, expensive to
-# regenerate) or outputs/video/<track>/*.mp4 (renders). Run after a long
-# session where stale logs / pycache directories accumulated.
-#
-# **Skips log removal if any python is currently writing to that file** —
-# `lsof` check before rm. This keeps an active cache build's log visible
-# even if the user runs `make tidy` mid-run.
-#
-# For deeper archival cleanup (move stale / experimental outputs to
-# _archive/), see _archive/REFACTOR_NOTES.md or do it manually — these
-# moves are deliberate decisions, not automatable.
-tidy:
-	@echo "  removing stale logs + debug renders + macOS / cache cruft"
-	@rm -rf outputs/video/_match_test/
-	@for f in outputs/video/_*.log outputs/_*.log outputs/fetch_*.log outputs/pipeline_run.log; do \
-	    [ -e "$$f" ] || continue; \
-	    if lsof "$$f" >/dev/null 2>&1; then \
-	        echo "  skip $$f (active writer)"; \
-	    else \
-	        rm -f "$$f"; \
-	    fi; \
-	done
-	@rm -f outputs/.DS_Store outputs/heroes/.gitkeep
-	@find . -name '.DS_Store' -not -path './.venv/*' -not -path './.git/*' -delete 2>/dev/null || true
-	@rm -rf .ruff_cache/
-	@find . -type d -name '__pycache__' -not -path './.venv/*' -not -path './.git/*' -not -path './_archive/*' -exec rm -rf {} + 2>/dev/null || true
-	@echo "  done. \`make clean\` for a deeper sweep."
 
 # ─── Cleanup ────────────────────────────────────────────────────────────────
 

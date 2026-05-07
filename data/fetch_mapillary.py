@@ -1,14 +1,13 @@
 """Fetch paired snowy/clear image pairs from Mapillary.
 
 Two modes:
-  - `--curated-only` (default for `make demo`): pull *only* the 14 pairs in
-    `data/curated_pairs.json` by their image IDs. This is the canonical
-    reproducibility path; produces the exact demo set on a fresh clone.
+  - `--curated-only` (default for `make stills`): pull *only* the pairs
+    declared in `data/demo_pairs.json` by their image IDs. This is the
+    canonical reproducibility path; produces the exact demo set on a fresh
+    clone.
   - exploration mode (no flag): query each REGIONS entry by bbox+date and
-    pair winter+summer images. Use this when curating a new demo set; the
-    output is then run through `demo/curate_snow.py` and
-    `demo/curate_results.py`, and the GREAT+OKAY survivors are baked into
-    `data/curated_pairs.json` for future reproducibility.
+    pair winter+summer images. Use this when looking for additional
+    candidate pairs; the output goes into `data/pairs/` for offline review.
 
 Usage:
     export MAPILLARY_TOKEN=<your token from https://www.mapillary.com/dashboard/developers>
@@ -309,7 +308,7 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
         os.environ.setdefault(k, v)
 
 
-CURATED_PATH = Path("data/curated_pairs.json")
+DEMO_PAIRS_PATH = Path("data/demo_pairs.json")
 
 
 def _save_multi_prior_pair(pair_id: str, region: str, snow: ImageMeta,
@@ -372,16 +371,16 @@ def _save_multi_prior_pair(pair_id: str, region: str, snow: ImageMeta,
 
 
 def _fetch_curated(token: str) -> int:
-    """Fetch only the pairs declared in data/curated_pairs.json. Each entry's
+    """Fetch only the pairs declared in data/demo_pairs.json. Each entry's
     Mapillary IDs are queried fresh (URLs are signed and expire), so this
     works on a clean clone.
 
     Supports both v1 (single clear_id) and v2 (prior_ids list) schemas.
     """
-    if not CURATED_PATH.exists():
-        print(f"!! {CURATED_PATH} not found.", file=sys.stderr)
+    if not DEMO_PAIRS_PATH.exists():
+        print(f"!! {DEMO_PAIRS_PATH} not found.", file=sys.stderr)
         return 1
-    spec = json.loads(CURATED_PATH.read_text())
+    spec = json.loads(DEMO_PAIRS_PATH.read_text())
     pairs = spec.get("pairs", [])
     schema_v2 = spec.get("version", "").startswith("v2")
     print(f"[curated] {len(pairs)} pairs ({'v2 multi-prior' if schema_v2 else 'v1 single-prior'})")
@@ -431,7 +430,7 @@ def main() -> None:
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--curated-only", action="store_true",
-                    help="Pull only pairs listed in data/curated_pairs.json (the demo set). "
+                    help="Pull only pairs listed in data/demo_pairs.json (the demo set). "
                          "Default behaviour explores all REGIONS by bbox+date.")
     args = ap.parse_args()
 

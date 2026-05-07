@@ -1,6 +1,6 @@
 {
   "version": "v2.0",
-  "description": "Demo set with adaptive 1-5 clear-season priors per snow query, fused via mask voting. priors[0] is the canonical primary. Entries with rating='review_pool' are extra pairs (snow-accepted, not in the GREAT+OKAY demo) included for re-evaluation under multi-prior; demote them once rated.",
+  "description": "Demo manifest: 27 Mapillary snow + clear-season image pairs the fetcher pulls and the static-stills pipeline runs against. Each entry's `priors` lists 1-5 clear-season candidates per snow query (priors[0] is the primary; in multi-prior mode the K-best are fused via union/weighted/majority voting).",
   "fusion": {
     "max_priors": 5,
     "search_radius_m": 30.0,
@@ -10,7 +10,6 @@
     {
       "pair_id": "gallivare_se__1107706673896225__892247655024233",
       "region": "gallivare_se",
-      "rating": "great",
       "snow_id": "1107706673896225",
       "prior_ids": [
         "892247655024233",
@@ -74,7 +73,6 @@
     {
       "pair_id": "gallivare_se__1113124103239974__202392698419785",
       "region": "gallivare_se",
-      "rating": "great",
       "snow_id": "1113124103239974",
       "prior_ids": [
         "202392698419785",
@@ -138,7 +136,6 @@
     {
       "pair_id": "gallivare_se__345189905208531__154885286595910",
       "region": "gallivare_se",
-      "rating": "great",
       "snow_id": "345189905208531",
       "prior_ids": [
         "154885286595910",
@@ -202,7 +199,6 @@
     {
       "pair_id": "gallivare_se__7240084582787704__332803601580326",
       "region": "gallivare_se",
-      "rating": "great",
       "snow_id": "7240084582787704",
       "prior_ids": [
         "332803601580326",
@@ -266,7 +262,6 @@
     {
       "pair_id": "gallivare_se__724743419870843__1232870027145826",
       "region": "gallivare_se",
-      "rating": "great",
       "snow_id": "724743419870843",
       "prior_ids": [
         "1232870027145826",
@@ -330,7 +325,6 @@
     {
       "pair_id": "kiruna_se__1661386470711759__471612343955040",
       "region": "kiruna_se",
-      "rating": "great",
       "snow_id": "1661386470711759",
       "prior_ids": [
         "471612343955040",
@@ -394,7 +388,6 @@
     {
       "pair_id": "kiruna_se__173943764513956__2572648156371424",
       "region": "kiruna_se",
-      "rating": "great",
       "snow_id": "173943764513956",
       "prior_ids": [
         "2572648156371424",
@@ -458,7 +451,6 @@
     {
       "pair_id": "kiruna_se__245577317324651__633925574672091",
       "region": "kiruna_se",
-      "rating": "great",
       "snow_id": "245577317324651",
       "prior_ids": [
         "633925574672091",
@@ -522,7 +514,6 @@
     {
       "pair_id": "kiruna_se__4126780297420111__308352860669123",
       "region": "kiruna_se",
-      "rating": "great",
       "snow_id": "4126780297420111",
       "prior_ids": [
         "308352860669123",
@@ -586,7 +577,6 @@
     {
       "pair_id": "lulea_se__1235981388376274__771512076886521",
       "region": "lulea_se",
-      "rating": "great",
       "snow_id": "1235981388376274",
       "prior_ids": [
         "771512076886521",
@@ -620,7 +610,6 @@
     {
       "pair_id": "gallivare_se__1074104257224613__317074743121442",
       "region": "gallivare_se",
-      "rating": "okay",
       "snow_id": "1074104257224613",
       "prior_ids": [
         "317074743121442",
@@ -684,7 +673,6 @@
     {
       "pair_id": "gallivare_se__406156588778534__151656736926906",
       "region": "gallivare_se",
-      "rating": "okay",
       "snow_id": "406156588778534",
       "prior_ids": [
         "151656736926906",
@@ -748,7 +736,6 @@
     {
       "pair_id": "kiruna_se__5529843027088716__1189235864845198",
       "region": "kiruna_se",
-      "rating": "okay",
       "snow_id": "5529843027088716",
       "prior_ids": [
         "1189235864845198",
@@ -812,7 +799,6 @@
     {
       "pair_id": "rovaniemi_fi__856601484101706__474387813773207",
       "region": "rovaniemi_fi",
-      "rating": "okay",
       "snow_id": "856601484101706",
       "prior_ids": [
         "474387813773207",
@@ -876,7 +862,6 @@
     {
       "pair_id": "gallivare_se__948371859886087__492553082027614",
       "region": "gallivare_se",
-      "rating": "review_pool",
       "snow_id": "948371859886087",
       "prior_ids": [
         "492553082027614",
@@ -940,7 +925,6 @@
     {
       "pair_id": "gallivare_se__432410789201829__1301469893584230",
       "region": "gallivare_se",
-      "rating": "review_pool",
       "snow_id": "432410789201829",
       "prior_ids": [
         "1301469893584230",
@@ -1004,7 +988,6 @@
     {
       "pair_id": "lulea_se__1663156397999851__521505352597267",
       "region": "lulea_se",
-      "rating": "review_pool",
       "snow_id": "1663156397999851",
       "prior_ids": [
         "521505352597267",
@@ -1068,7 +1051,6 @@
     {
       "pair_id": "lulea_se__2293127254488678__227895282221380",
       "region": "lulea_se",
-      "rating": "review_pool",
       "snow_id": "2293127254488678",
       "prior_ids": [
         "227895282221380",
@@ -1132,7 +1114,6 @@
     {
       "pair_id": "kiruna_se__469089707711944__142992787757322",
       "region": "kiruna_se",
-      "rating": "review_pool",
       "snow_id": "469089707711944",
       "prior_ids": [
         "142992787757322",
@@ -1196,7 +1177,6 @@
     {
       "pair_id": "kiruna_se__191430299489835__1372566446455224",
       "region": "kiruna_se",
-      "rating": "review_pool",
       "snow_id": "191430299489835",
       "prior_ids": [
         "1372566446455224",
@@ -1260,7 +1240,6 @@
     {
       "pair_id": "lulea_se__1416606716782053__100703328886972",
       "region": "lulea_se",
-      "rating": "review_pool",
       "snow_id": "1416606716782053",
       "prior_ids": [
         "100703328886972",
@@ -1324,7 +1303,6 @@
     {
       "pair_id": "rovaniemi_fi__1457451495738922__1203351467651542",
       "region": "rovaniemi_fi",
-      "rating": "review_pool",
       "snow_id": "1457451495738922",
       "prior_ids": [
         "1203351467651542",
@@ -1388,7 +1366,6 @@
     {
       "pair_id": "rovaniemi_fi__851945714561628__339321642482172",
       "region": "rovaniemi_fi",
-      "rating": "review_pool",
       "snow_id": "851945714561628",
       "prior_ids": [
         "339321642482172",
@@ -1452,7 +1429,6 @@
     {
       "pair_id": "rovaniemi_fi__1263019079098044__275111850989861",
       "region": "rovaniemi_fi",
-      "rating": "review_pool",
       "snow_id": "1263019079098044",
       "prior_ids": [
         "275111850989861",
@@ -1516,7 +1492,6 @@
     {
       "pair_id": "rovaniemi_fi__941648498258328__1025200079010732",
       "region": "rovaniemi_fi",
-      "rating": "review_pool",
       "snow_id": "941648498258328",
       "prior_ids": [
         "1025200079010732",
@@ -1580,7 +1555,6 @@
     {
       "pair_id": "lulea_se__1448494693308466__1442357932767392",
       "region": "lulea_se",
-      "rating": "review_pool",
       "snow_id": "1448494693308466",
       "prior_ids": [
         "1442357932767392",
@@ -1634,7 +1608,6 @@
     {
       "pair_id": "ostersund_e45_se__771172498949499__1015155572438330",
       "region": "ostersund_e45_se",
-      "rating": "review_pool",
       "snow_id": "771172498949499",
       "prior_ids": [
         "1015155572438330",

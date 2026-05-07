@@ -80,11 +80,11 @@ def test_video_render_cli_args() -> None:
         assert flag in r.stdout, f"missing flag {flag}"
 
 
-def test_curated_pairs_well_formed() -> None:
-    """`data/curated_pairs.json` parses + has the expected schema."""
-    spec_path = ROOT / "data" / "curated_pairs.json"
+def test_demo_pairs_well_formed() -> None:
+    """`data/demo_pairs.json` parses + has the expected schema."""
+    spec_path = ROOT / "data" / "demo_pairs.json"
     if not spec_path.exists():
-        # data/ is gitignored by default; tolerated for fresh clones.
+        # Fresh-clone case: file ships in git but tolerate its absence.
         return
     spec = json.loads(spec_path.read_text())
     assert "pairs" in spec
