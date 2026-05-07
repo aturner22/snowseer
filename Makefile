@@ -64,7 +64,7 @@ help:
 	@echo "                                          all mp4s in outputs/video/<id>/"
 	@echo "    make pages-assets                   Copy canonical mp4s + stills into docs/_assets/"
 	@echo "                                          for GitHub Pages deployment"
-	@echo "    make submission-bundle              Stage submission/ dir (PDFs + mp4s, local-only)"
+	@echo "    make submission-bundle              Stage docs/submission/ dir (PDFs + mp4s, local-only)"
 	@echo "    make reproduce-everything           Full bundle: canonical + all alts + stills +"
 	@echo "                                          static panels + writeup PDF + pages assets"
 	@echo ""
@@ -238,37 +238,37 @@ writeup:
 
 # ─── Submission bundle (manual, local-only — not in git) ───────────────────
 
-# Copies the submission deliverables into ./submission/ so the user has a
+# Copies the submission deliverables into ./docs/submission/ so the user has a
 # single directory to upload from. The bundle is local-only — it contains
 # binaries (mp4s, PDFs) that we do NOT commit. Run AFTER `make assets`,
 # `make pages-assets`, and `make pdfs`.
 .PHONY: submission-bundle
 submission-bundle:
-	@mkdir -p submission
+	@mkdir -p docs/submission
 	@echo "  → copying writeup + slides PDFs"
-	@cp -f docs/writeup.pdf submission/writeup.pdf 2>/dev/null || echo "  ! writeup.pdf missing — run make writeup first"
-	@cp -f docs/slides.pdf submission/slides.pdf 2>/dev/null || echo "  ! slides.pdf missing — run make slides first"
+	@cp -f docs/writeup.pdf docs/submission/writeup.pdf 2>/dev/null || echo "  ! writeup.pdf missing — run make writeup first"
+	@cp -f docs/slides.pdf docs/submission/slides.pdf 2>/dev/null || echo "  ! slides.pdf missing — run make slides first"
 	@echo "  → copying analysis notebook (brief-mandated)"
-	@cp -f docs/analysis.ipynb submission/analysis.ipynb 2>/dev/null || echo "  ! analysis.ipynb missing"
-	@cp -f docs/audit_log.md submission/audit_log.md 2>/dev/null || true
-	@cp -f docs/submission_video_plan.md submission/submission_video_plan.md 2>/dev/null || true
-	@cp -f docs/external_datasets.md submission/external_datasets.md 2>/dev/null || true
+	@cp -f docs/analysis.ipynb docs/submission/analysis.ipynb 2>/dev/null || echo "  ! analysis.ipynb missing"
+	@cp -f docs/audit_log.md docs/submission/audit_log.md 2>/dev/null || true
+	@cp -f docs/submission_video_plan.md docs/submission/submission_video_plan.md 2>/dev/null || true
+	@cp -f docs/external_datasets.md docs/submission/external_datasets.md 2>/dev/null || true
 	@echo "  → copying canonical overlay clip"
-	@cp -f outputs/video/$(CANONICAL_TRACK)/overlay.mp4 submission/overlay.mp4 2>/dev/null || echo "  ! overlay.mp4 missing — run make reproduce first"
+	@cp -f outputs/video/$(CANONICAL_TRACK)/overlay.mp4 docs/submission/overlay.mp4 2>/dev/null || echo "  ! overlay.mp4 missing — run make reproduce first"
 	@echo "  → copying canonical 5-layout asset bundle"
 	@for f in sidebyside matches snow_naive_overlay snow_overlay_naive quad; do \
-	    cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 submission/$$f.mp4 2>/dev/null || true; \
+	    cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 docs/submission/$$f.mp4 2>/dev/null || true; \
 	done
 	@echo "  → copying alt-track headlines (every track with a built overlay.mp4)"
 	@for track in boreas_2025_02_15; do \
-	    cp -f outputs/video/$$track/overlay.mp4 submission/$$track.mp4 2>/dev/null || true; \
+	    cp -f outputs/video/$$track/overlay.mp4 docs/submission/$$track.mp4 2>/dev/null || true; \
 	done
 	@echo "  → copying source repo URL"
-	@echo "https://github.com/aturner22/snowseer" > submission/REPO.txt
-	@echo "Submitted to SoTA Commission I — Minimal-Shot Autonomy" >> submission/REPO.txt
+	@echo "https://github.com/aturner22/snowseer" > docs/submission/REPO.txt
+	@echo "Submitted to SoTA Commission I — Minimal-Shot Autonomy" >> docs/submission/REPO.txt
 	@echo ""
-	@echo "Submission bundle staged at ./submission/. Contents:"
-	@ls -la submission/
+	@echo "Submission bundle staged at ./docs/submission/. Contents:"
+	@ls -la docs/submission/
 
 # ─── Hygiene helpers ──────────────────────────────────────────────────────
 
