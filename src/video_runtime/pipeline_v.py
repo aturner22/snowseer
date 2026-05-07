@@ -160,6 +160,30 @@ def run_track(
         return cached_results
 
     track = Track(track_id)
+
+    # Pre-flight pose-only sanity guard: cheap KD-tree query to confirm the
+    # snow track has summer poses in the neighbourhood. Catches structurally
+    # broken windows before we pay matcher compute. Dev-time error signal,
+    # not a curation tool — that lives in `window_oracle.curate_from_cache`.
+    try:
+        from scipy.spatial import cKDTree
+        summer_xy = np.array([[m.easting, m.northing] for m in track.summer_meta],
+                             dtype=np.float64)
+        snow_xy = np.array([[m.easting, m.northing] for m in track.snow_meta],
+                           dtype=np.float64)
+        if len(summer_xy) > 0 and len(snow_xy) > 0:
+            tree = cKDTree(summer_xy)
+            d, _ = tree.query(snow_xy, k=1)
+            n_within = int(np.sum(d <= 30.0))
+            n_total = len(snow_xy)
+            if n_within < 0.5 * n_total:
+                _log(f"[{track_id}] PRE-FLIGHT WARN: only {n_within}/{n_total} "
+                     f"({100 * n_within // max(n_total, 1)}%) snow poses within "
+                     f"30m of any summer pose; the matcher will probably fail "
+                     f"on most frames. Continuing anyway.")
+    except Exception as _exc:
+        _log(f"[{track_id}] pre-flight pose check skipped ({_exc}); proceeding")
+
     pool = PriorPool(
         track, K=K, max_dim=max_dim,
         seg_prob_threshold=seg_prob_threshold,
@@ -167,7 +191,9 @@ def run_track(
     )
     synthetic = SyntheticPriorQueue(max_size=synthetic_priors) if synthetic_priors > 0 else None
 
-    end = end or track.snow_frame_count()
+    n_avail = track.snow_frame_count()
+    end = min(end, n_avail) if end is not None else n_avail
+    start = min(max(start, 0), n_avail)
     indices = list(range(start, end, stride))
     syn_label = f", synth_priors={synthetic_priors}" if synthetic_priors > 0 else ""
 

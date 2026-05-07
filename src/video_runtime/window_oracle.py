@@ -1,260 +1,240 @@
-"""Pre-flight 'is this demo-able?' oracle — never burn cache compute on a
-structurally broken window again.
+"""Curation tool — *not* part of the runtime path.
 
-The pipeline works only when (a) the snow frame has a *summer prior* in the
-neighbourhood and (b) the summer prior has *visible road* that the
-segmenter can find. If either fails, the matcher has nothing to anchor on
-and the EMA just holds a stale mask. That's not the same as a good demo.
+Reads an existing matching cache and recommends the cleanest sub-window
+of demo-able frames. The shipped reproduction does not run this; clean
+clips have hardcoded windows in the Make targets / `track.json`.
+This module is what we run *during curation* to choose those windows.
 
-This module verifies both conditions before the user pays cache-build cost:
+Two cheap modes:
 
-  1. Prior availability — KD-tree query of summer UTM poses; reject snow
-     frames whose K-nearest summer pose is farther than `distance_thresh`
-     metres.
-  2. Summer-segmentation quality — Mask2Former on each candidate summer
-     prior; reject priors whose road-mask coverage in the foreground (lower
-     70 % of the image) is below `coverage_thresh`.
+  - **default** (cache-backed) — sub-second; reads
+    `outputs/video/<track>/_cache_<tag>.pkl` and derives per-frame
+    quality from `FrameResult.n_priors_used`. Applies a hole-tolerant
+    morphological closing on the OK signal so a single bad frame in
+    the middle of a long run doesn't split the candidate window.
+    Appends a markdown row to `docs/audit_log.md` recording the chosen
+    window for posterity.
 
-Output:
-  - per-frame report: (snow_idx, n_priors_ok, distances, coverages)
-  - longest contiguous run of OK frames
-  - candidate windows (top N by score)
+  - **--poses-only** — sub-second; reads the FULL parent
+    `camera_poses.csv` (no cache needed) and reports rows whose nearest
+    summer pose is within `--distance-thresh` metres. Used during
+    re-windowing decisions before any cache build.
+
+The pre-flight pose-only sanity guard at the head of a cache build
+lives in `pipeline_v.run_track`, not here. This module is purely
+retrospective.
 
 CLI:
-  uv run python -m src.video_runtime.window_oracle --track <id> \
-      [--stride 1] [--K 3] [--max-dim 1024] \
-      [--distance-thresh 30] [--coverage-thresh 0.05] \
-      [--out-json outputs/<track>_oracle.json]
+  uv run python -m src.video_runtime.window_oracle --track <id>
+  uv run python -m src.video_runtime.window_oracle --track <id> --poses-only
 
-The user reads the printed table, picks a window, then commits to a cache
-build (`make reproduce-track TRACK=<id>` with the chosen --start/--end).
-
-Compute cost: dominated by the segmentation pass, which is one-shot per
-unique summer frame and cached. With stride 10 over a 9 000-frame snow
-track + K=3 priors the typical hit is ~500 unique summer segmentations
-(~5–10 min on Mac CPU).
+The legacy Mask2Former-based oracle (`evaluate_track`) is at
+`_archive/src/video_runtime/window_oracle_legacy_pre_rewrite.py` and is
+not imported anywhere; it's kept on disk for reference.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import time
-from dataclasses import dataclass, field
+import pickle
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
-from src.video_runtime.track import Track
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @dataclass
 class FrameOracle:
-    """Per-snow-frame oracle result."""
-    snow_idx: int
-    snow_seq_idx: int
-    n_priors_total: int
-    n_priors_ok: int            # priors that passed BOTH distance + coverage
-    distances: list[float]
-    coverages: list[float]      # mean road coverage per prior (0..1)
+    """Per-snow-frame quality summary derived from cache data."""
+    snow_idx: int           # local index in the cache (sequential)
+    snow_seq_idx: int       # absolute index in the original snow stream
+    n_priors_used: int      # how many of K priors produced a usable mask
 
     @property
     def is_ok(self) -> bool:
-        return self.n_priors_ok >= 1
-
-    @property
-    def mean_coverage_ok(self) -> float:
-        good = [c for c, d in zip(self.coverages, self.distances) if d <= 9999]
-        return float(np.mean(good)) if good else 0.0
+        return self.n_priors_used >= 1
 
 
 @dataclass
 class CandidateWindow:
-    """A contiguous run of demo-able snow frames."""
-    start_idx: int           # local snow index
-    end_idx: int             # inclusive
-    n_frames: int
-    score: float             # ≥ 1 priors_ok per frame; score = mean(n_priors_ok) × mean(coverage)
+    """A contiguous (after hole-tolerant smoothing) run of demo-able frames."""
+    start_idx: int          # local snow index (cache position)
+    end_idx: int            # inclusive
+    n_frames: int           # frames in [start_idx, end_idx]
+    n_ok: int               # frames in window where n_priors_used >= 1
+    pct_ok: float           # n_ok / n_frames
+    score: float            # length × OK% × mean(n_priors_used) — bigger is better
+    snow_seq_start: int     # absolute snow stream index of start
+    snow_seq_end: int       # absolute snow stream index of end (inclusive)
 
     def __str__(self) -> str:
-        return (f"frames {self.start_idx:>4d}–{self.end_idx:<4d} "
+        return (f"frames {self.start_idx:>4d}–{self.end_idx:<4d}  "
                 f"({self.n_frames:>4d} frames, ~{self.n_frames/10:5.1f} s @ 10 fps)  "
-                f"score={self.score:.3f}")
+                f"OK={100*self.pct_ok:5.1f}%  score={self.score:.3f}")
 
 
-def _foreground_coverage(mask: np.ndarray, foreground_y_frac: float = 0.30) -> float:
-    """Fraction of road pixels in the lower (1 - foreground_y_frac) of the image.
+def _hole_tolerant_runs(ok_signal: list[bool], hole_tolerance: int) -> list[tuple[int, int]]:
+    """Find runs of True in ok_signal, filling any False stretch shorter than
+    or equal to hole_tolerance. Returns inclusive (start, end) index pairs.
 
-    The Boreas roof-mounted camera puts road in the bottom ~70 %; the upper
-    portion is sky / building tops which the segmenter can hallucinate as
-    road on bad summer frames. Restrict the coverage measure to the
-    informative region.
+    Equivalent to a binary morphological closing with a flat structuring
+    element of width 2*hole_tolerance + 1, then run-length encoding the
+    surviving True regions.
     """
-    h = mask.shape[0]
-    cut = int(round(foreground_y_frac * h))
-    fg = mask[cut:]
-    fg_pixels = fg.size
-    road_pixels = int(np.count_nonzero(fg))
-    return road_pixels / fg_pixels if fg_pixels else 0.0
-
-
-def evaluate_track(
-    track_id: str,
-    *,
-    K: int = 3,
-    max_dim: int = 1024,
-    stride: int = 1,
-    distance_thresh: float = 30.0,
-    coverage_thresh: float = 0.05,
-    foreground_y_frac: float = 0.30,
-) -> tuple[list[FrameOracle], Track]:
-    """Run the oracle over all snow frames at the given stride.
-
-    Returns the per-frame results in snow-window order (filtered by stride)
-    plus the loaded Track for the caller's use.
-    """
-    from scipy.spatial import cKDTree
-    from src.segmentation import RoadSegmenter
-    from src.overlay import keep_largest_component
-
-    track = Track(track_id)
-    n_snow = len(track.snow_meta)
-    n_summer = len(track.summer_meta)
-    print(f"[oracle] {track_id}  snow={n_snow}  summer={n_summer}  "
-          f"K={K}  stride={stride}  d_thresh={distance_thresh}m  "
-          f"cov_thresh={coverage_thresh:.2f}", flush=True)
-
-    summer_xy = np.array([[m.easting, m.northing] for m in track.summer_meta],
-                         dtype=np.float64)
-    tree = cKDTree(summer_xy)
-
-    segmenter = RoadSegmenter()
-    coverage_cache: dict[int, float] = {}
-
-    def _summer_coverage(summer_local_idx: int) -> float:
-        if summer_local_idx in coverage_cache:
-            return coverage_cache[summer_local_idx]
-        m = track.summer_meta[summer_local_idx]
-        img = track.load_frame(m, max_dim=max_dim)
-        mask = keep_largest_component(segmenter.segment_road(img))
-        cov = _foreground_coverage(mask, foreground_y_frac=foreground_y_frac)
-        coverage_cache[summer_local_idx] = cov
-        return cov
-
-    results: list[FrameOracle] = []
-    snow_indices = range(0, n_snow, stride)
-    t0 = time.time()
-    for n, snow_idx in enumerate(snow_indices):
-        sm = track.snow_meta[snow_idx]
-        d, idx = tree.query([sm.easting, sm.northing], k=K)
-        if np.isscalar(d):
-            d = np.array([d])
-            idx = np.array([idx])
-        coverages = []
-        n_ok = 0
-        for di, ii in zip(d, idx):
-            if di > distance_thresh:
-                coverages.append(0.0)
-                continue
-            cov = _summer_coverage(int(ii))
-            coverages.append(cov)
-            if cov >= coverage_thresh:
-                n_ok += 1
-        results.append(FrameOracle(
-            snow_idx=snow_idx,
-            snow_seq_idx=sm.seq_idx,
-            n_priors_total=K,
-            n_priors_ok=n_ok,
-            distances=[float(x) for x in d],
-            coverages=[float(c) for c in coverages],
-        ))
-        if (n + 1) % 50 == 0:
-            elapsed = time.time() - t0
-            rate = (n + 1) / elapsed if elapsed else 0.0
-            n_remaining = len(snow_indices) - (n + 1)
-            eta = n_remaining / rate if rate else 0.0
-            print(f"[oracle]   evaluated {n+1}/{len(snow_indices)}  "
-                  f"({len(coverage_cache)} unique summer segments cached)  "
-                  f"elapsed={elapsed:.0f}s  ETA={eta:.0f}s", flush=True)
-
-    print(f"[oracle] done in {time.time() - t0:.0f}s  "
-          f"{len(coverage_cache)} unique summer segments cached", flush=True)
-    return results, track
-
-
-def find_candidate_windows(
-    results: list[FrameOracle],
-    *,
-    min_window: int = 50,
-    top_n: int = 5,
-) -> list[CandidateWindow]:
-    """Find contiguous runs of demo-able snow frames, ranked by score."""
+    n = len(ok_signal)
+    if n == 0:
+        return []
+    smoothed = list(ok_signal)
+    if hole_tolerance > 0:
+        # Find runs of False; fill them if length <= hole_tolerance.
+        i = 0
+        while i < n:
+            if not smoothed[i]:
+                j = i
+                while j < n and not smoothed[j]:
+                    j += 1
+                gap_len = j - i
+                # Only fill internal gaps (bordered by True on both sides);
+                # leading and trailing False stretches stay False — the
+                # window selection should not blindly extend past the run.
+                bordered = (i > 0 and smoothed[i - 1]) and (j < n and j < n and smoothed[j] if j < n else False)
+                # Re-evaluate: smoothed is being mutated; check original ok_signal.
+                left_ok = i > 0 and smoothed[i - 1]
+                right_ok = j < n and smoothed[j]
+                if left_ok and right_ok and gap_len <= hole_tolerance:
+                    for k in range(i, j):
+                        smoothed[k] = True
+                i = j
+            else:
+                i += 1
     runs: list[tuple[int, int]] = []
     in_run = False
     start = 0
-    for i, r in enumerate(results):
-        if r.is_ok and not in_run:
+    for i, ok in enumerate(smoothed):
+        if ok and not in_run:
             start = i
             in_run = True
-        elif not r.is_ok and in_run:
+        elif not ok and in_run:
             runs.append((start, i - 1))
             in_run = False
     if in_run:
-        runs.append((start, len(results) - 1))
+        runs.append((start, n - 1))
+    return runs
+
+
+def find_candidate_windows(
+    frame_oracles: list[FrameOracle],
+    *,
+    min_window: int = 50,
+    top_n: int = 5,
+    hole_tolerance: int = 5,
+) -> list[CandidateWindow]:
+    """Find the top candidate windows after hole-tolerant smoothing.
+
+    A window of length `min_window` need not be strictly contiguous; runs
+    of bad frames shorter than or equal to `hole_tolerance` are filled.
+    This matches how the renderer experiences the track: EMA holds
+    previous good masks across short failure stretches, so isolated
+    bad frames do not visibly degrade the clip.
+    """
+    ok_signal = [r.is_ok for r in frame_oracles]
+    runs = _hole_tolerant_runs(ok_signal, hole_tolerance)
 
     out: list[CandidateWindow] = []
     for s, e in runs:
         n = e - s + 1
         if n < min_window:
             continue
-        # snow-window indices (account for stride)
-        snow_s = results[s].snow_idx
-        snow_e = results[e].snow_idx
-        n_frames_in_snow_space = snow_e - snow_s + 1
-        priors_ok = [results[i].n_priors_ok for i in range(s, e + 1)]
-        coverages = [results[i].mean_coverage_ok for i in range(s, e + 1)]
-        score = float(np.mean(priors_ok) * np.mean(coverages))
+        window_oracles = frame_oracles[s:e + 1]
+        n_ok = sum(1 for r in window_oracles if r.is_ok)
+        pct = n_ok / n
+        mean_priors = float(np.mean([r.n_priors_used for r in window_oracles]))
+        score = n * pct * (1.0 + mean_priors)
         out.append(CandidateWindow(
-            start_idx=snow_s,
-            end_idx=snow_e,
-            n_frames=n_frames_in_snow_space,
+            start_idx=s,
+            end_idx=e,
+            n_frames=n,
+            n_ok=n_ok,
+            pct_ok=pct,
             score=score,
+            snow_seq_start=window_oracles[0].snow_seq_idx,
+            snow_seq_end=window_oracles[-1].snow_seq_idx,
         ))
     out.sort(key=lambda w: -w.score)
     return out[:top_n]
 
 
-def print_report(results: list[FrameOracle], windows: list[CandidateWindow], track_id: str) -> None:
-    n_total = len(results)
-    n_ok = sum(1 for r in results if r.is_ok)
-    print(f"\n=== oracle report — {track_id} ===")
-    print(f"  evaluated:        {n_total} snow frames")
-    print(f"  demo-able:        {n_ok} ({100 * n_ok // max(n_total, 1)} %)")
-    print(f"  candidate windows (top {len(windows)} by score):")
+def curate_from_cache(track_id: str, cache_tag: str = "canonical", *,
+                      hole_tolerance: int = 5,
+                      min_window: int = 50,
+                      top_n: int = 5) -> tuple[list[FrameOracle], list[CandidateWindow]]:
+    """Read the matching cache for a track + return per-frame quality
+    + ranked candidate windows. Sub-second; no model loading."""
+    cache_path = ROOT / f"outputs/video/{track_id}/_cache_{cache_tag}.pkl"
+    if not cache_path.exists():
+        raise SystemExit(
+            f"No cache at {cache_path}. Run `make track TRACK={track_id}` "
+            f"first; this module curates an existing cache, it does not "
+            f"compute one."
+        )
+    with open(cache_path, "rb") as fh:
+        payload = pickle.load(fh)
+    results = payload["results"]
+
+    frame_oracles = [
+        FrameOracle(
+            snow_idx=i,
+            snow_seq_idx=int(r.snow_meta.idx),
+            n_priors_used=int(r.n_priors_used),
+        )
+        for i, r in enumerate(results)
+    ]
+    windows = find_candidate_windows(
+        frame_oracles,
+        hole_tolerance=hole_tolerance,
+        min_window=min_window,
+        top_n=top_n,
+    )
+    return frame_oracles, windows
+
+
+def print_report(frame_oracles: list[FrameOracle],
+                 windows: list[CandidateWindow],
+                 track_id: str,
+                 hole_tolerance: int) -> None:
+    n = len(frame_oracles)
+    n_ok = sum(1 for r in frame_oracles if r.is_ok)
+    print(f"\n=== curation report — {track_id} ===")
+    print(f"  frames evaluated:   {n}")
+    print(f"  frames with priors: {n_ok} ({100 * n_ok // max(n, 1)} %)")
+    print(f"  hole tolerance:     {hole_tolerance} frames "
+          f"(~{hole_tolerance/10:.1f} s @ 10 fps)")
+    print(f"  candidate windows (top {len(windows)} by score, after smoothing):")
     if not windows:
-        print(f"    (none — track has no contiguous demo-able run ≥ 50 frames)")
+        print(f"    (none meeting min-window threshold; cache may be too sparse)")
         return
     for i, w in enumerate(windows):
         marker = "★" if i == 0 else " "
         print(f"    {marker} {w}")
+    top = windows[0]
+    print()
+    print(f"  recommended `make track` window:  "
+          f"TRACK_START={top.snow_seq_start} TRACK_END={top.snow_seq_end + 1}")
 
+
+# ── Pose-only mode (re-windowing aid) ───────────────────────────────────
 
 def evaluate_full_track_poses_only(
     track_id: str,
     *,
     distance_thresh: float = 30.0,
 ) -> list[dict]:
-    """Lite oracle on the FULL parent camera_poses.csv (no segmentation).
-
-    Bypasses the 350-frame snow window; reads `data/video/tracks/<id>/
-    snow/camera_poses.csv` directly to find the best contiguous range
-    where summer coverage exists. Useful for re-windowing decisions
-    BEFORE fetching frames for the new window.
-
-    Returns a list of per-row dicts: {idx, easting, northing, dist_m}.
-    The full segmentation oracle (`evaluate_track`) should run on the
-    chosen window once frames are downloaded.
-    """
+    """Read the full parent camera_poses.csv (no cache, no segmentation)
+    and report the nearest-summer-pose distance per snow frame."""
     from scipy.spatial import cKDTree
     from src.video_runtime.track import TRACKS_DIR
 
@@ -274,63 +254,139 @@ def evaluate_full_track_poses_only(
     rows: list[dict] = []
     for i in range(len(snow)):
         e = float(snow["easting"][i])
-        n = float(snow["northing"][i])
-        d, _ = tree.query([e, n], k=1)
-        rows.append({"idx": i, "easting": e, "northing": n, "dist_m": float(d)})
+        nrt = float(snow["northing"][i])
+        d, _ = tree.query([e, nrt], k=1)
+        rows.append({"idx": i, "easting": e, "northing": nrt, "dist_m": float(d)})
     return rows
 
 
 def find_pose_only_windows(rows: list[dict], distance_thresh: float = 30.0,
-                           min_window: int = 100) -> list[CandidateWindow]:
-    """Longest contiguous runs of rows with dist_m ≤ threshold."""
-    runs: list[tuple[int, int]] = []
-    in_run = False
-    start = 0
-    for i, r in enumerate(rows):
-        ok = r["dist_m"] <= distance_thresh
-        if ok and not in_run:
-            start = i
-            in_run = True
-        elif not ok and in_run:
-            runs.append((start, i - 1))
-            in_run = False
-    if in_run:
-        runs.append((start, len(rows) - 1))
+                           min_window: int = 100,
+                           hole_tolerance: int = 5) -> list[CandidateWindow]:
+    """Hole-tolerant runs of rows with dist_m ≤ threshold."""
+    ok_signal = [r["dist_m"] <= distance_thresh for r in rows]
+    runs = _hole_tolerant_runs(ok_signal, hole_tolerance)
 
     out: list[CandidateWindow] = []
     for s, e in runs:
-        n = e - s + 1
-        if n < min_window:
+        nframes = e - s + 1
+        if nframes < min_window:
             continue
+        n_ok = sum(1 for i in range(s, e + 1) if ok_signal[i])
+        pct = n_ok / nframes
         dists = [rows[i]["dist_m"] for i in range(s, e + 1)]
-        # Score: longer + lower mean distance is better
-        score = float(n / (1.0 + np.mean(dists)))
-        out.append(CandidateWindow(start_idx=s, end_idx=e, n_frames=n, score=score))
+        # Score: longer + lower mean distance is better.
+        score = float(nframes * pct / (1.0 + np.mean(dists)))
+        out.append(CandidateWindow(
+            start_idx=s,
+            end_idx=e,
+            n_frames=nframes,
+            n_ok=n_ok,
+            pct_ok=pct,
+            score=score,
+            snow_seq_start=s,
+            snow_seq_end=e,
+        ))
     out.sort(key=lambda w: -w.score)
     return out
 
 
+# ── Persistent curation log ─────────────────────────────────────────────
+
+_AUDIT_LOG_PATH = ROOT / "docs" / "audit_log.md"
+_CURATION_HEADING = "## Curation decisions per track"
+
+
+def append_audit_log_row(track_id: str, top_window: CandidateWindow,
+                         hole_tolerance: int) -> None:
+    """Append (or update) a row in docs/audit_log.md under a stable
+    'Curation decisions per track' section. Idempotent: re-running the
+    oracle replaces the previous row for the same track_id."""
+    if not _AUDIT_LOG_PATH.exists():
+        return  # don't auto-create; the doc is hand-curated
+    text = _AUDIT_LOG_PATH.read_text()
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    row = (
+        f"| `{track_id}` | "
+        f"frames {top_window.snow_seq_start}–{top_window.snow_seq_end} "
+        f"({top_window.n_frames}) | "
+        f"{100 * top_window.pct_ok:.1f}% | "
+        f"hole≤{hole_tolerance}f | "
+        f"{today} |"
+    )
+
+    if _CURATION_HEADING not in text:
+        # Append a new section at the end of the file with the table header.
+        section = (
+            f"\n\n---\n\n{_CURATION_HEADING}\n\n"
+            f"Generated by `src.video_runtime.window_oracle` "
+            f"after each `make track`.\n\n"
+            f"| Track | Best window (snow stream indices) | OK% | Smoothing | Curated |\n"
+            f"|---|---|---|---|---|\n"
+            f"{row}\n"
+        )
+        _AUDIT_LOG_PATH.write_text(text + section)
+        return
+
+    # Section exists. Replace any previous row for this track_id, or append.
+    lines = text.splitlines()
+    # Find the table block under our heading.
+    in_section = False
+    table_start = None
+    table_end = None
+    for i, line in enumerate(lines):
+        if line.strip() == _CURATION_HEADING:
+            in_section = True
+            continue
+        if in_section and line.startswith("## "):
+            break
+        if in_section and line.startswith("|---"):
+            table_start = i + 1
+        if in_section and table_start is not None and table_end is None:
+            if i >= table_start and (not line.startswith("|") or line.strip() == ""):
+                table_end = i
+                break
+    if table_start is None:
+        return  # malformed; leave alone
+    if table_end is None:
+        table_end = len(lines)
+
+    new_lines: list[str] = []
+    replaced = False
+    for i, line in enumerate(lines):
+        if table_start <= i < table_end and line.startswith(f"| `{track_id}`"):
+            new_lines.append(row)
+            replaced = True
+        else:
+            new_lines.append(line)
+    if not replaced:
+        new_lines.insert(table_end, row)
+    _AUDIT_LOG_PATH.write_text("\n".join(new_lines) + "\n")
+
+
+# ── CLI ────────────────────────────────────────────────────────────────
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
-    p.add_argument("--K", type=int, default=3, help="number of summer priors per snow frame")
-    p.add_argument("--max-dim", type=int, default=1024)
-    p.add_argument("--stride", type=int, default=1,
-                   help="evaluate every Nth snow frame (≥10 recommended for long tracks)")
-    p.add_argument("--distance-thresh", type=float, default=30.0,
-                   help="reject priors whose UTM distance exceeds this (metres)")
-    p.add_argument("--coverage-thresh", type=float, default=0.05,
-                   help="reject priors whose foreground road coverage is below this fraction")
-    p.add_argument("--foreground-y-frac", type=float, default=0.30,
-                   help="cut off the top fraction of the image when measuring road coverage")
+    p.add_argument("--cache-tag", default="canonical")
+    p.add_argument("--hole-tolerance", type=int, default=5,
+                   help="Frames-of-bad-priors gap to bridge during smoothing "
+                        "(default 5 ≈ 0.5 s at 10 fps).")
     p.add_argument("--min-window", type=int, default=50,
-                   help="minimum contiguous OK frames to qualify as a candidate window")
+                   help="Reject candidate windows shorter than this many frames.")
     p.add_argument("--top-n", type=int, default=5)
     p.add_argument("--out-json", default=None,
-                   help="write the full per-frame report to this JSON path")
+                   help="Write the per-frame report + candidate windows here.")
     p.add_argument("--poses-only", action="store_true",
-                   help="lite mode: evaluate full parent camera_poses.csv WITHOUT segmentation. "
-                        "Use to find re-windowing candidates before fetching new frames.")
+                   help="Skip cache-reading; report nearest-summer-pose "
+                        "distance from the full parent camera_poses.csv.")
+    p.add_argument("--no-audit-log", action="store_true",
+                   help="Skip appending a row to docs/audit_log.md.")
+    p.add_argument("--distance-thresh", type=float, default=30.0,
+                   help="(--poses-only) reject snow frames whose nearest "
+                        "summer pose is farther than this many metres.")
     args = p.parse_args()
 
     if args.poses_only:
@@ -340,13 +396,14 @@ def main() -> None:
         windows = find_pose_only_windows(
             rows, distance_thresh=args.distance_thresh,
             min_window=max(args.min_window, 100),
+            hole_tolerance=args.hole_tolerance,
         )
         n_ok = sum(1 for r in rows if r["dist_m"] <= args.distance_thresh)
         print(f"\n=== pose-only oracle — {args.track} ===")
-        print(f"  total rows in full snow camera_poses.csv: {len(rows)}")
-        print(f"  rows within {args.distance_thresh}m of any summer pose: "
+        print(f"  total snow rows:        {len(rows)}")
+        print(f"  within {args.distance_thresh}m of summer:  "
               f"{n_ok} ({100 * n_ok // max(len(rows), 1)}%)")
-        print(f"  candidate windows (top {min(args.top_n, len(windows))} by score):")
+        print(f"  candidate windows (after hole={args.hole_tolerance} smoothing):")
         if not windows:
             print(f"    (none ≥ {max(args.min_window, 100)} contiguous frames)")
         for i, w in enumerate(windows[:args.top_n]):
@@ -359,54 +416,53 @@ def main() -> None:
                 "track": args.track,
                 "mode": "poses_only",
                 "params": {"distance_thresh": args.distance_thresh,
+                           "hole_tolerance": args.hole_tolerance,
                            "min_window": args.min_window},
                 "n_total_rows": len(rows),
                 "n_within_threshold": n_ok,
                 "candidate_windows": [
                     {"start_idx": w.start_idx, "end_idx": w.end_idx,
-                     "n_frames": w.n_frames, "score": w.score}
+                     "n_frames": w.n_frames, "pct_ok": w.pct_ok,
+                     "score": w.score}
                     for w in windows[:args.top_n]
                 ],
             }, indent=2))
             print(f"  → wrote {out}")
         return
 
-    results, track = evaluate_track(
+    # Default: cache-backed curation report.
+    frame_oracles, windows = curate_from_cache(
         args.track,
-        K=args.K, max_dim=args.max_dim, stride=args.stride,
-        distance_thresh=args.distance_thresh,
-        coverage_thresh=args.coverage_thresh,
-        foreground_y_frac=args.foreground_y_frac,
+        cache_tag=args.cache_tag,
+        hole_tolerance=args.hole_tolerance,
+        min_window=args.min_window,
+        top_n=args.top_n,
     )
-    windows = find_candidate_windows(
-        results, min_window=args.min_window, top_n=args.top_n,
-    )
-    print_report(results, windows, args.track)
+    print_report(frame_oracles, windows, args.track, args.hole_tolerance)
+
+    if windows and not args.no_audit_log:
+        append_audit_log_row(args.track, windows[0], args.hole_tolerance)
+        print(f"  → appended row to {_AUDIT_LOG_PATH.relative_to(ROOT)}")
 
     if args.out_json:
         out = Path(args.out_json)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps({
             "track": args.track,
+            "mode": "cache_backed",
+            "cache_tag": args.cache_tag,
             "params": {
-                "K": args.K, "max_dim": args.max_dim, "stride": args.stride,
-                "distance_thresh": args.distance_thresh,
-                "coverage_thresh": args.coverage_thresh,
-                "foreground_y_frac": args.foreground_y_frac,
+                "hole_tolerance": args.hole_tolerance,
+                "min_window": args.min_window,
             },
-            "n_snow_frames": len(track.snow_meta),
-            "n_evaluated": len(results),
-            "n_ok": sum(1 for r in results if r.is_ok),
+            "n_frames": len(frame_oracles),
+            "n_ok": sum(1 for r in frame_oracles if r.is_ok),
             "candidate_windows": [
                 {"start_idx": w.start_idx, "end_idx": w.end_idx,
-                 "n_frames": w.n_frames, "score": w.score}
+                 "snow_seq_start": w.snow_seq_start, "snow_seq_end": w.snow_seq_end,
+                 "n_frames": w.n_frames, "n_ok": w.n_ok, "pct_ok": w.pct_ok,
+                 "score": w.score}
                 for w in windows
-            ],
-            "per_frame": [
-                {"snow_idx": r.snow_idx, "snow_seq_idx": r.snow_seq_idx,
-                 "n_priors_ok": r.n_priors_ok,
-                 "distances": r.distances, "coverages": r.coverages}
-                for r in results
             ],
         }, indent=2))
         print(f"  → wrote {out}")
