@@ -42,11 +42,22 @@ def main() -> None:
     p.add_argument("--ema-alpha", type=float, default=0.4)
     p.add_argument("--max-dim", type=int, default=1024)
     p.add_argument("--fps", type=float, default=10.0)
+    p.add_argument("--seg-prob-threshold", type=float, default=None,
+                   help="optional road-class probability threshold for the "
+                        "summer segmentation. Default = argmax.")
+    p.add_argument("--seg-morph-radius", type=int, default=0,
+                   help="optional morphology radius post-threshold. 0 = off.")
     args = p.parse_args()
 
     aug_path = ROOT / f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl"
     cache_path = ROOT / f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl"
     matches_path = ROOT / f"outputs/video/{args.track}/_matches_{args.cache_tag}.pkl"
+
+    seg_args = []
+    if args.seg_prob_threshold is not None:
+        seg_args += ["--seg-prob-threshold", str(args.seg_prob_threshold)]
+    if args.seg_morph_radius > 0:
+        seg_args += ["--seg-morph-radius", str(args.seg_morph_radius)]
 
     if not cache_path.exists():
         print(f"[render-all] matching cache missing; building...")
@@ -58,6 +69,7 @@ def main() -> None:
             "--temporal", "none",
             "--cache-tag", args.cache_tag,
             "--mode", "cache-only",
+            *seg_args,
         ])
 
     if not aug_path.exists():

@@ -44,14 +44,30 @@ class PriorPool:
     Initialised once per Track. On each call to `select(snow_meta)`, it picks
     K summer priors closest in (easting, northing) and returns them with
     cached image + segmentation already attached.
+
+    The summer-side segmentation can be tightened with `seg_prob_threshold`
+    (keep road only where road class score exceeds this; default None =
+    argmax) and `seg_morph_radius` (post-threshold open/close cleanup).
+    Tighter settings suppress mask leakage onto sidewalks / parking lots
+    on tracks where the segmenter over-claims road class.
     """
 
-    def __init__(self, track: "Track", *, K: int = 3, max_dim: int = 1024):
+    def __init__(
+        self,
+        track: "Track",
+        *,
+        K: int = 3,
+        max_dim: int = 1024,
+        seg_prob_threshold: float | None = None,
+        seg_morph_radius: int = 0,
+    ):
         from scipy.spatial import cKDTree
 
         self.track = track
         self.K = K
         self.max_dim = max_dim
+        self.seg_prob_threshold = seg_prob_threshold
+        self.seg_morph_radius = seg_morph_radius
         self._summer_xy = np.array(
             [[m.easting, m.northing] for m in track.summer_meta],
             dtype=np.float64,
@@ -84,7 +100,11 @@ class PriorPool:
     def _summer_mask(self, m: "FrameMeta", img: np.ndarray) -> np.ndarray:
         if m.idx not in self._mask_cache:
             from src.overlay import keep_largest_component
-            mask = self.segmenter().segment_road(img)
+            mask = self.segmenter().segment_road(
+                img,
+                prob_threshold=self.seg_prob_threshold,
+                morph_radius=self.seg_morph_radius,
+            )
             mask = keep_largest_component(mask)
             self._mask_cache[m.idx] = mask
         return self._mask_cache[m.idx]

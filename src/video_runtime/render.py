@@ -60,6 +60,15 @@ def main() -> None:
                         "change the matching itself.")
     p.add_argument("--rebuild-cache", action="store_true",
                    help="Force re-matching even if a cache file exists.")
+    p.add_argument("--seg-prob-threshold", type=float, default=None,
+                   help="If set (e.g. 0.6), keep summer road-class pixels only "
+                        "where the per-pixel road score exceeds this threshold. "
+                        "Default = argmax. Useful when the segmenter over-claims "
+                        "road class on a given track.")
+    p.add_argument("--seg-morph-radius", type=int, default=0,
+                   help="Open+close morphology radius applied to summer road masks "
+                        "after thresholding. 0 = off. Suppresses one- or two-pixel "
+                        "jaggies that warp into amplified jitter.")
     p.add_argument("--debug-strip", action="store_true",
                    help="overlay mode: include the diagnostic strip "
                         "(frame index + priors_used). Off for final renders.")
@@ -88,6 +97,8 @@ def main() -> None:
         cache_path=cache_path,
         rebuild_cache=args.rebuild_cache,
         synthetic_priors=args.synthetic_priors,
+        seg_prob_threshold=args.seg_prob_threshold,
+        seg_morph_radius=args.seg_morph_radius,
     )
 
     if args.mode == "cache-only":

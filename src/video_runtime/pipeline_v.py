@@ -116,6 +116,8 @@ def run_track(
     cache_path: Path | None = None,
     rebuild_cache: bool = False,
     synthetic_priors: int = 0,
+    seg_prob_threshold: float | None = None,
+    seg_morph_radius: int = 0,
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
@@ -153,7 +155,11 @@ def run_track(
         return cached_results
 
     track = Track(track_id)
-    pool = PriorPool(track, K=K, max_dim=max_dim)
+    pool = PriorPool(
+        track, K=K, max_dim=max_dim,
+        seg_prob_threshold=seg_prob_threshold,
+        seg_morph_radius=seg_morph_radius,
+    )
     synthetic = SyntheticPriorQueue(max_size=synthetic_priors) if synthetic_priors > 0 else None
 
     end = end or track.snow_frame_count()
