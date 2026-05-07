@@ -159,10 +159,10 @@
   <p class="note">The clip itself is a large binary artefact produced by <code>make reproduce</code> on a clean clone — it is not committed. The frame above is the t = 5 s sample from the overlay layout (extracted by <code>make assets</code>). Five further layouts (sidebyside, two 3-panel orderings with the naive baseline, and a 2 × 2 quad with the summer prior visible) are produced by <code>make assets</code> for downstream composition.</p>
 
   <h3 style="margin-top: 2em">Robustness — same place, two snowfalls</h3>
-  <p>An early-evening drive of the same intersection on <code>2025-02-15</code> (active snowfall, late afternoon, different lighting and traffic) produced an oracle-verified second clip. Same pipeline, same parameters, different weather and time-of-day. Posted as supporting evidence rather than scene variety: it's the <em>same</em> Glen Shields loop, on a different winter day. <em>(Coming soon — re-rendering after the window-oracle pre-flight.)</em></p>
+  <p>A second snow drive of the same Toronto intersection on <code>2025-02-15</code> (active snowfall, late afternoon, different lighting and traffic) runs the same pipeline with the same parameters. Same code, same models, different weather and time-of-day. Evidence that the principle is robust to the conditions inside the snow regime, not just to the canonical capture. Reproduce with <code>make reproduce-track TRACK=boreas_2025_02_15</code>.</p>
 
-  <h3 style="margin-top: 2em">A genuinely different scene</h3>
-  <p>To show the pipeline works beyond the Glen Shields loop the canonical was recorded on, we have surveyed external datasets (ACDC Zurich, MUSES Switzerland, BDD100K, DENSE, broader Mapillary contributor coverage) for a different physical location. <em>(Work in progress.)</em></p>
+  <h3 style="margin-top: 2em">A different physical scene — Waterloo, Ontario</h3>
+  <p>A short clip from CADC (Canadian Adverse Driving Conditions, U Waterloo) — different city, different vehicle, different camera, different snowfall, different driving day. Same pipeline produces the cross-season overlay. The clip is short by design: the substrate of the clear-weather prior is what bounds the demo length, not the principle. Reproduce with <code>make reproduce-track TRACK=cadc_2019_02_27_0027</code>.</p>
 </section>
 
 <!-- ─── WHAT WE TRIED THAT DIDN'T WORK ─────────────────────────────────── -->
@@ -271,7 +271,7 @@ make reproduce</code></pre>
 
   <p>Other entry points: <code>make oracle TRACK=&lt;id&gt;</code> for the pre-flight gate before any new track; <code>make reproduce-track TRACK=boreas_2025_02_15</code> for the robustness alt; <code>make assets</code> for the full 6-layout asset bundle; <code>make stills</code> for the static-stills precursor; <code>make demo SNOW=&lt;jpg&gt; PRIOR=&lt;jpg&gt;</code> for the live entry above; <code>make help</code> for the full list.</p>
 
-  <p>Companion documents: <a href="writeup.md">writeup.md</a> (essay) · <a href="analysis.ipynb">analysis.ipynb</a> (the work shown with the work) · <a href="audit_log.md">audit_log.md</a> (every approach we tried and rejected) · <a href="submission_video_plan.md">submission_video_plan.md</a> (90–120s shot list) · <a href="external_datasets.md">external_datasets.md</a> (acquisition guide).</p>
+  <p>Companion documents: <a href="writeup.md">writeup.md</a> (essay) · <a href="analysis.ipynb">analysis.ipynb</a> (the work shown with the work) · <a href="slides.md">slides.md</a> (Marp deck source).</p>
 </section>
 
 <!-- ─── GENERALISING ──────────────────────────────────────────────────── -->

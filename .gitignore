@@ -12,6 +12,10 @@ __pycache__/
 # pipeline. Kept on local disk for reference; not shipped.
 _archive/
 
+# Developer notes — audit log, v3 plans, etc. Working artefacts that
+# aren't part of the submission.
+docs/dev/
+
 # --- generated documents (PDFs render from .md, never commit) ---
 docs/*.pdf
 

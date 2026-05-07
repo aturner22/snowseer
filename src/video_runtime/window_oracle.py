@@ -293,7 +293,7 @@ def find_pose_only_windows(rows: list[dict], distance_thresh: float = 30.0,
 
 # ── Persistent curation log ─────────────────────────────────────────────
 
-_AUDIT_LOG_PATH = ROOT / "docs" / "audit_log.md"
+_AUDIT_LOG_PATH = ROOT / "docs" / "dev" / "audit_log.md"
 _CURATION_HEADING = "## Curation decisions per track"
 
 

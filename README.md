@@ -6,7 +6,7 @@
 
 A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy). Headline artefact: `outputs/video/boreas_2021_01_26/overlay.mp4`. Reproduce with `make reproduce`.
 
-**Documents**: [`docs/writeup.md`](docs/writeup.md) (the essay) · [`docs/analysis.ipynb`](docs/analysis.ipynb) (the work, shown with the work) · [`docs/audit_log.md`](docs/audit_log.md) (every approach + dataset we tried and rejected, with reasons) · [`docs/submission_video_plan.md`](docs/submission_video_plan.md) (90–120s shot list) · [`docs/external_datasets.md`](docs/external_datasets.md) (acquisition guide for non-Boreas snow datasets) · [`docs/index.html`](docs/index.html) (Pages site).
+**Documents**: [`docs/writeup.md`](docs/writeup.md) (the essay) · [`docs/analysis.ipynb`](docs/analysis.ipynb) (the work, shown with the work) · [`docs/index.html`](docs/index.html) (Pages site) · [`docs/slides.md`](docs/slides.md) (Marp deck).
 
 **Quick start:**
 
