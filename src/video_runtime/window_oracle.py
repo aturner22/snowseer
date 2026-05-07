@@ -239,6 +239,77 @@ def print_report(results: list[FrameOracle], windows: list[CandidateWindow], tra
         print(f"    {marker} {w}")
 
 
+def evaluate_full_track_poses_only(
+    track_id: str,
+    *,
+    distance_thresh: float = 30.0,
+) -> list[dict]:
+    """Lite oracle on the FULL parent camera_poses.csv (no segmentation).
+
+    Bypasses the 350-frame snow window; reads `data/video/tracks/<id>/
+    snow/camera_poses.csv` directly to find the best contiguous range
+    where summer coverage exists. Useful for re-windowing decisions
+    BEFORE fetching frames for the new window.
+
+    Returns a list of per-row dicts: {idx, easting, northing, dist_m}.
+    The full segmentation oracle (`evaluate_track`) should run on the
+    chosen window once frames are downloaded.
+    """
+    from scipy.spatial import cKDTree
+    from src.video_runtime.track import TRACKS_DIR
+
+    snow_csv = TRACKS_DIR / track_id / "snow" / "camera_poses.csv"
+    summer_csv = TRACKS_DIR / track_id / "summer" / "camera_poses.csv"
+    if not snow_csv.exists() or not summer_csv.exists():
+        raise FileNotFoundError(
+            f"need both {snow_csv} and {summer_csv}. "
+            f"Run `make video-fetch TRACK={track_id}` first to bootstrap."
+        )
+
+    snow = np.genfromtxt(snow_csv, delimiter=",", names=True, dtype=None, encoding="utf-8")
+    summer = np.genfromtxt(summer_csv, delimiter=",", names=True, dtype=None, encoding="utf-8")
+    summer_xy = np.column_stack([summer["easting"], summer["northing"]])
+    tree = cKDTree(summer_xy)
+
+    rows: list[dict] = []
+    for i in range(len(snow)):
+        e = float(snow["easting"][i])
+        n = float(snow["northing"][i])
+        d, _ = tree.query([e, n], k=1)
+        rows.append({"idx": i, "easting": e, "northing": n, "dist_m": float(d)})
+    return rows
+
+
+def find_pose_only_windows(rows: list[dict], distance_thresh: float = 30.0,
+                           min_window: int = 100) -> list[CandidateWindow]:
+    """Longest contiguous runs of rows with dist_m ≤ threshold."""
+    runs: list[tuple[int, int]] = []
+    in_run = False
+    start = 0
+    for i, r in enumerate(rows):
+        ok = r["dist_m"] <= distance_thresh
+        if ok and not in_run:
+            start = i
+            in_run = True
+        elif not ok and in_run:
+            runs.append((start, i - 1))
+            in_run = False
+    if in_run:
+        runs.append((start, len(rows) - 1))
+
+    out: list[CandidateWindow] = []
+    for s, e in runs:
+        n = e - s + 1
+        if n < min_window:
+            continue
+        dists = [rows[i]["dist_m"] for i in range(s, e + 1)]
+        # Score: longer + lower mean distance is better
+        score = float(n / (1.0 + np.mean(dists)))
+        out.append(CandidateWindow(start_idx=s, end_idx=e, n_frames=n, score=score))
+    out.sort(key=lambda w: -w.score)
+    return out
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
@@ -257,7 +328,48 @@ def main() -> None:
     p.add_argument("--top-n", type=int, default=5)
     p.add_argument("--out-json", default=None,
                    help="write the full per-frame report to this JSON path")
+    p.add_argument("--poses-only", action="store_true",
+                   help="lite mode: evaluate full parent camera_poses.csv WITHOUT segmentation. "
+                        "Use to find re-windowing candidates before fetching new frames.")
     args = p.parse_args()
+
+    if args.poses_only:
+        rows = evaluate_full_track_poses_only(
+            args.track, distance_thresh=args.distance_thresh,
+        )
+        windows = find_pose_only_windows(
+            rows, distance_thresh=args.distance_thresh,
+            min_window=max(args.min_window, 100),
+        )
+        n_ok = sum(1 for r in rows if r["dist_m"] <= args.distance_thresh)
+        print(f"\n=== pose-only oracle — {args.track} ===")
+        print(f"  total rows in full snow camera_poses.csv: {len(rows)}")
+        print(f"  rows within {args.distance_thresh}m of any summer pose: "
+              f"{n_ok} ({100 * n_ok // max(len(rows), 1)}%)")
+        print(f"  candidate windows (top {min(args.top_n, len(windows))} by score):")
+        if not windows:
+            print(f"    (none ≥ {max(args.min_window, 100)} contiguous frames)")
+        for i, w in enumerate(windows[:args.top_n]):
+            mark = "★" if i == 0 else " "
+            print(f"    {mark} {w}")
+        if args.out_json:
+            out = Path(args.out_json)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps({
+                "track": args.track,
+                "mode": "poses_only",
+                "params": {"distance_thresh": args.distance_thresh,
+                           "min_window": args.min_window},
+                "n_total_rows": len(rows),
+                "n_within_threshold": n_ok,
+                "candidate_windows": [
+                    {"start_idx": w.start_idx, "end_idx": w.end_idx,
+                     "n_frames": w.n_frames, "score": w.score}
+                    for w in windows[:args.top_n]
+                ],
+            }, indent=2))
+            print(f"  → wrote {out}")
+        return
 
     results, track = evaluate_track(
         args.track,
