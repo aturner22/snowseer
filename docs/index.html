@@ -88,36 +88,21 @@
 
 <!-- ─── WATCH IT WORK — CANONICAL + ALTS ──────────────────────────────── -->
 
-<section class="wide">
-  <div class="container">
-    <h4>Watch it work</h4>
-    <h2>Three different snow scenes, one pipeline.</h2>
-    <p>Same per-frame algorithm; different snow conditions and aesthetics. The road overlay tracks the buried road in each case.</p>
-  </div>
+<section class="container">
+  <h4>Watch it work</h4>
+  <h2>The canonical clip.</h2>
 
-  <div class="container track-grid">
-    <div class="track">
-      <h3>Canonical · 2021-01-26 residential</h3>
-      <p class="meta">Heavy snow on a residential street near UTIAS. Lens-water blob visible on some frames. The strongest matches concentrate on the gate post, fence wires, and distant rooflines.</p>
-      <img src="_assets/canonical/stills/overlay__t005p0.jpg" alt="Canonical overlay frame at t = 5.0 s." />
-    </div>
+  <p>15 s, Boreas <code>boreas-2021-01-26-11-22</code>, residential street near UTIAS in Toronto. Heavy snow, road buried, lane markings invisible. The strongest matches anchor on the gate post, fence wires, and distant rooflines — features the season can't change.</p>
 
-    <div class="track">
-      <h3>2024-12-23 dusk residential</h3>
-      <p class="meta">Quiet residential street at dusk, light snow. Same pipeline; recent (2024) capture matched against a 2021 summer prior.</p>
-      <img src="_assets/boreas_2024_12_23/stills/overlay__t005p0.jpg" alt="Dusk residential overlay frame at t = 5.0 s." />
-    </div>
+  <p><img src="_assets/canonical/stills/overlay__t005p0.jpg" alt="Canonical overlay frame at t = 5 s — Boreas Toronto, January 2021. Green road overlay transferred from a paired summer prior." /></p>
 
-    <div class="track">
-      <h3>2025-02-15 active snowfall</h3>
-      <p class="meta">Late-afternoon active snowfall on a commercial street with traffic. The same Glen Shields loop; different season, different lighting, different traffic — same overlay.</p>
-      <img src="_assets/boreas_2025_02_15/stills/overlay__t005p0.jpg" alt="Active-snowfall overlay frame at t = 5.0 s." />
-    </div>
-  </div>
+  <p class="note">The clip itself is a large binary artefact produced by <code>make reproduce</code> on a clean clone — it is not committed. The frame above is the t = 5 s sample from the overlay layout (extracted by <code>make assets</code>). Five further layouts (sidebyside, two 3-panel orderings with the naive baseline, and a 2 × 2 quad with the summer prior visible) are produced by <code>make assets</code> for downstream composition.</p>
 
-  <div class="container">
-    <p class="note">The clips themselves are large binary artefacts produced by <code>make reproduce</code> on a clean clone — they are not committed. The frames above are the t = 5 s sample from each track's overlay layout (extracted by <code>make assets</code>).</p>
-  </div>
+  <h3 style="margin-top: 2em">Robustness — same place, two snowfalls</h3>
+  <p>An early-evening drive of the same intersection on <code>2025-02-15</code> (active snowfall, late afternoon, different lighting and traffic) produced an oracle-verified second clip. Same pipeline, same parameters, different weather and time-of-day. Posted as supporting evidence rather than scene variety: it's the <em>same</em> Glen Shields loop, on a different winter day. <em>(Coming soon — re-rendering after the window-oracle pre-flight.)</em></p>
+
+  <h3 style="margin-top: 2em">A genuinely different scene</h3>
+  <p>To show the pipeline works beyond the Glen Shields loop the canonical was recorded on, we have surveyed external datasets (ACDC Zurich, MUSES Switzerland, BDD100K, DENSE, broader Mapillary contributor coverage) for a different physical location. <em>(In progress — see <a href="https://github.com/aturner22/snowseer/blob/video/CHANGELOG.md">CHANGELOG</a> for status.)</em></p>
 </section>
 
 <!-- ─── WHAT WE TRIED THAT DIDN'T WORK ─────────────────────────────────── -->

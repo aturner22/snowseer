@@ -259,8 +259,8 @@ Every asset below is produced by a `make` command. No one-offs.
 | Snow \| naive (red) \| overlay (3-panel) | `outputs/video/boreas_2021_01_26/snow_naive_overlay.mp4` | `make assets` |
 | Snow \| overlay \| naive (alt order) | `outputs/video/boreas_2021_01_26/snow_overlay_naive.mp4` | `make assets` |
 | 4-panel quad (snow / summer+road / overlay / naive) | `outputs/video/boreas_2021_01_26/quad.mp4` | `make assets` |
-| Alt: 2024-12-23 dusk residential | `outputs/video/boreas_2024_12_23/overlay.mp4` | `make reproduce-track TRACK=boreas_2024_12_23` |
-| Alt: 2025-02-15 active snowfall | `outputs/video/boreas_2025_02_15/overlay.mp4` | `make reproduce-track TRACK=boreas_2025_02_15` |
+| Robustness (same intersection, different snowfall): 2025-02-15 | `outputs/video/boreas_2025_02_15/overlay.mp4` | `make oracle TRACK=boreas_2025_02_15 && make reproduce-track TRACK=boreas_2025_02_15` |
+| External scene (TBD — see CHANGELOG) | `outputs/video/<external_track>/overlay.mp4` | `make reproduce-track TRACK=<external_track>` |
 
 ### Stills
 
@@ -331,10 +331,10 @@ make reproduce
 # ≤ 5 min total — reuses caches.
 make assets
 
-# ≤ 30 min compute total for both alts (sequential — never parallel on ≤ 16 GB RAM).
-make reproduce-track TRACK=boreas_2024_12_23
+# Robustness alt (same Glen Shields intersection, different snowfall).
+# Always run the oracle first to verify priors exist + summer segmentation is good.
+make oracle TRACK=boreas_2025_02_15
 make reproduce-track TRACK=boreas_2025_02_15
-make extract-stills TRACK=boreas_2024_12_23
 make extract-stills TRACK=boreas_2025_02_15
 
 # ≤ 30 min for static-stills precursor (Mapillary pulls + pipeline).
@@ -344,15 +344,15 @@ make stills
 make pages-assets
 ```
 
-After all four runs, verify:
+After all runs, verify:
 
-- `outputs/video/boreas_2021_01_26/overlay.mp4` exists (~7 MB)
+- `outputs/video/boreas_2021_01_26/overlay.mp4` exists (~7 MB, canonical)
 - `outputs/video/boreas_2021_01_26/{sidebyside,snow_naive_overlay,snow_overlay_naive,quad}.mp4` all exist
 - `outputs/video/boreas_2021_01_26/stills/` has ≥ 20 JPEGs
-- `outputs/video/boreas_2024_12_23/overlay.mp4` and `outputs/video/boreas_2025_02_15/overlay.mp4` exist
-- `outputs/heroes/` has 14 panel PNGs
+- `outputs/video/boreas_2025_02_15/overlay.mp4` exists (robustness, oracle-verified window)
+- `outputs/heroes/` has 27 panel PNGs (14 GREAT+OKAY headline + 13 review-pool)
 - `outputs/audit/contact_sheet.png` exists
-- `_archive/assets/audio/music.mp3` is on disk
+- `_archive/assets/audio/music.mp3` is on disk (if title cards desired)
 
 ## Editor notes
 
