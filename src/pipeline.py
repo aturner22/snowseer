@@ -231,7 +231,7 @@ def run_pair(
     primary = per_prior[0]
     # Save matches.png from the highest-inlier prior (best diagnostic).
     best_for_matches = max(per_prior, key=lambda r: r["homo"].n_inliers)
-    draw_matches(
+    matches_canvas = draw_matches(
         snow, best_for_matches["prior"], best_for_matches["matches"],
         inlier_mask=best_for_matches["homo"].inlier_mask,
         out_path=out_dir / f"{pair_id}__matches.png",
@@ -300,6 +300,18 @@ def run_pair(
         snow, primary_clear, primary_road_mask_clear, panel_overlay,
         snowy_naive=snow_naive,
         title=title, subtitle=subtitle, out_path=figure_path,
+    )
+
+    from src.layouts import save_extra_layouts
+    save_extra_layouts(
+        snow=snow,
+        clear=primary_clear,
+        road_mask_clear=primary_road_mask_clear,
+        snow_naive=snow_naive,
+        snow_overlay=panel_overlay,
+        matches_canvas=matches_canvas,
+        out_dir=out_dir,
+        pair_id=pair_id,
     )
 
     # IoU metrics — measured against the chosen fusion (the one we ship).
