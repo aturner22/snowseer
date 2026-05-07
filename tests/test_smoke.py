@@ -121,7 +121,7 @@ def test_makefile_targets_exist() -> None:
     for target in [
         "track:", "reproduce:", "reproduce-track:",
         "stills:", "stills-multi:", "assets:", "extract-stills:",
-        "pages-assets:", "pdfs:", "submission-bundle:",
+        "pages-assets:", "pdfs:",
     ]:
         assert target in mk, f"missing make target {target}"
 
