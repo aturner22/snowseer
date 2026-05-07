@@ -119,7 +119,7 @@ stills: clean-heroes stills-fetch stills-pipeline stills-audit
 	@echo "and outputs/audit/contact_sheet.png."
 
 stills-fetch:
-	uv run python -m data.fetch_mapillary --curated-only
+	uv run python -m src.data.fetch_mapillary --curated-only
 
 # Default: single-prior (v1.x narrative). The pipeline writes the v1 outputs only:
 #   __matches.png  __naive_baseline.png  __overlay.png  __panel.png

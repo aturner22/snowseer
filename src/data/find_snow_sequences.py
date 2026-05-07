@@ -8,8 +8,8 @@ candidate sequences by:
   - existence of a clear-season counterpart sequence at the same coords
 
 Usage:
-    uv run python -m data.find_snow_sequences --city tromso
-    uv run python -m data.find_snow_sequences --city all
+    uv run python -m src.data.find_snow_sequences --city tromso
+    uv run python -m src.data.find_snow_sequences --city all
 
 Outputs a ranked CSV under data/video/recon/<city>__<date_range>.csv plus
 a summary JSON.
@@ -214,7 +214,7 @@ def main() -> None:
     args = p.parse_args()
 
     # Mirror the existing fetcher's env loading.
-    from data.fetch_mapillary import _load_dotenv
+    from src.data.fetch_mapillary import _load_dotenv
     _load_dotenv()
     token = os.environ.get("MAPILLARY_TOKEN")
     if not token:

@@ -92,8 +92,8 @@ def test_video_render_cli_args() -> None:
 
 
 def test_demo_pairs_well_formed() -> None:
-    """`data/demo_pairs.json` parses + has the expected schema."""
-    spec_path = ROOT / "data" / "demo_pairs.json"
+    """`src/data/demo_pairs.json` parses + has the expected schema."""
+    spec_path = ROOT / "src" / "data" / "demo_pairs.json"
     if not spec_path.exists():
         # Fresh-clone case: file ships in git but tolerate its absence.
         return

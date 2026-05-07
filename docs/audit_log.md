@@ -65,7 +65,7 @@ The list is grouped by category. Each entry follows the same shape: **what we tr
 
 ### Tromsø, Norway — Mapillary 400-frame winter sequence (audited, rejected)
 
-**What we tried.** A 400-frame sequence from contributor "southglos" in Tromsø, Norway, identified by `data/find_snow_sequences.py` during the broader Mapillary recon. Geographic novelty (Norway, not Toronto), cadence within range, non-pano, GPS metadata present.
+**What we tried.** A 400-frame sequence from contributor "southglos" in Tromsø, Norway, identified by `src/data/find_snow_sequences.py` during the broader Mapillary recon. Geographic novelty (Norway, not Toronto), cadence within range, non-pano, GPS metadata present.
 
 **What we observed.** A smoke fetch (30 frames + per-frame Mapillary closeto summer priors) passed every numeric check — inlier counts looked healthy, oracle gave the candidate window a green light. *On closer inspection of the actual snow frames*, the imagery was shot **out the side of a moving bus**. The matcher was anchoring on whatever the bus happened to drive past — none of which was the road in front of any forward-facing camera. The numeric checks did not detect this because the matcher's job was satisfied per-frame; the *use case* was wrong.
 
@@ -75,7 +75,7 @@ The list is grouped by category. Each entry follows the same shape: **what we tr
 
 ### Broader Mapillary winter recon (19 cities) — null result
 
-**What we tried.** Extended `data/find_snow_sequences.py` from 7 to 19 cold-climate city bboxes (Tromsø, Reykjavík, Bergen, Quebec, Innsbruck, Sapporo, Kiruna, plus added: Trondheim, Helsinki, Anchorage, Saskatoon, Winnipeg, Longyearbyen, Yellowknife, Tórshavn, plus widened bboxes for Kiruna / Bergen / Reykjavík / Sapporo). Two recent winter date ranges. Ranked candidate sequences by frame count, cadence, non-pano, and feature density.
+**What we tried.** Extended `src/data/find_snow_sequences.py` from 7 to 19 cold-climate city bboxes (Tromsø, Reykjavík, Bergen, Quebec, Innsbruck, Sapporo, Kiruna, plus added: Trondheim, Helsinki, Anchorage, Saskatoon, Winnipeg, Longyearbyen, Yellowknife, Tórshavn, plus widened bboxes for Kiruna / Bergen / Reykjavík / Sapporo). Two recent winter date ranges. Ranked candidate sequences by frame count, cadence, non-pano, and feature density.
 
 **What we observed.** Out of 19 cities × 2 winter ranges × bbox queries, the only non-trivial returns were Tromsø (the rejected bus sequence) and Sapporo (a 2-image sequence — useless for a video demo).
 

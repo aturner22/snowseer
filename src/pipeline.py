@@ -32,7 +32,7 @@ REFINEMENT_INLIER_TRIGGER = 25
 
 DATA_PAIRS_DIR = Path("data/pairs")
 OUT_DIR = Path("outputs/heroes")
-DEMO_PAIRS_PATH = Path("data/demo_pairs.json")
+DEMO_PAIRS_PATH = Path(__file__).resolve().parent / "data" / "demo_pairs.json"
 
 
 def _display_strings(pair_id: str) -> tuple[str, str]:
@@ -387,14 +387,14 @@ def run_all(
     """
     pair_dirs = sorted(p for p in pairs_dir.iterdir() if p.is_dir())
     if not pair_dirs:
-        raise SystemExit(f"No pairs under {pairs_dir}. Run `uv run python -m data.fetch_mapillary` first.")
+        raise SystemExit(f"No pairs under {pairs_dir}. Run `uv run python -m src.data.fetch_mapillary` first.")
 
     demo_ids = _load_demo_pair_ids()
     if require_demo_manifest:
         if not demo_ids:
             raise SystemExit(
                 f"No demo manifest found at {DEMO_PAIRS_PATH}. Either:\n"
-                f"  - run `uv run python -m data.fetch_mapillary --curated-only` to populate it, or\n"
+                f"  - run `uv run python -m src.data.fetch_mapillary --curated-only` to populate it, or\n"
                 f"  - pass --allow-uncurated to run on every pair-directory on disk."
             )
         before = len(pair_dirs)

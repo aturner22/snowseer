@@ -11,8 +11,8 @@ Two modes:
 
 Usage:
     export MAPILLARY_TOKEN=<your token from https://www.mapillary.com/dashboard/developers>
-    uv run python -m data.fetch_mapillary --curated-only      # the demo set
-    uv run python -m data.fetch_mapillary                     # exploration
+    uv run python -m src.data.fetch_mapillary --curated-only      # the demo set
+    uv run python -m src.data.fetch_mapillary                     # exploration
 
 Snow appears only at INFERENCE TIME as the runtime input. No model weights are
 fine-tuned on snowy images anywhere in this codebase.
@@ -308,7 +308,7 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
         os.environ.setdefault(k, v)
 
 
-DEMO_PAIRS_PATH = Path("data/demo_pairs.json")
+DEMO_PAIRS_PATH = Path(__file__).resolve().parent / "demo_pairs.json"
 
 
 def _save_multi_prior_pair(pair_id: str, region: str, snow: ImageMeta,
