@@ -6,6 +6,18 @@ A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletter
 
 This branch (`video`) is the moving demonstration: the same cross-season principle, now operating frame by frame on a snow plough's live video. The earlier static per-image demo (the precursor) is preserved at `git checkout main` (single-prior, the v1 narrative) and `git checkout v1.2-multi-prior-experiment` (the multi-prior fusion ablation), and is also runnable here via `make stills` (single-prior, default) or `make stills-multi`.
 
+**Quick start:**
+
+```bash
+git clone https://github.com/aturner22/snowseer; cd snowseer
+git checkout video
+uv sync --python 3.12
+make reproduce        # canonical 15 s clip; ~50 min cache + ~1 min render
+open docs/index.html  # the GitHub Pages site (static, no server needed)
+```
+
+**For judges**: `make help` lists every reproducible target. The canonical clip's matching cache builds in ~50 min on Mac CPU; subsequent renders (5 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min. The `_archive/` directory (gitignored) preserves rejected experiments + the Phase A–J working artefacts; it's not part of the canonical pipeline but is on disk for transparency.
+
 ---
 
 ## What this project is really about
@@ -91,14 +103,26 @@ That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), b
 | Want to … | Run |
 | --- | --- |
 | Reproduce the canonical clip | `make reproduce` |
-| Render all 5 layouts (overlay / sidebyside / 3-panel × 2 / quad) | `make reproduce-all-layouts TRACK=boreas_2021_01_26` |
-| Run the pipeline on a different track | `make reproduce-track TRACK=boreas_2024_12_23` |
+| Render all 5 layouts of the canonical (overlay / sidebyside / 3-panel × 2 / quad) | `make reproduce-all-layouts TRACK=boreas_2021_01_26` |
+| Pre-flight an alt track (verify priors-exist + summer-segmentation) | `make oracle TRACK=<id>` |
+| Run the pipeline on a registered alt track | `make reproduce-track TRACK=<id>` (e.g. `boreas_2025_02_15`) |
+| Bundle stills for the GitHub Pages site | `make pages-assets` |
 | Run the static-stills precursor (single-prior, v1 narrative) | `make stills` |
 | Run the static-stills multi-prior fusion ablation (Phase J) | `make stills-multi` |
-| Open the Streamlit viewer over cached static stills | `make stream` |
 | Render the writeup + slide PDFs (local only — gitignored) | `make pdfs` |
-| Open the GitHub Pages site locally | open `docs/index.html` |
+| Open the GitHub Pages site locally | `open docs/index.html` |
+| Smoke-test the import graph + CLI shape | `make test` |
+| Tidy local clutter (logs, `__pycache__`, `.DS_Store`) | `make tidy` |
 | List all `make` targets | `make help` |
+
+**Registered tracks** (Boreas snow + summer pairings, all Glen Shields loop, Toronto):
+
+| Track ID | Snow capture | Notes |
+| --- | --- | --- |
+| `boreas_2021_01_26` | Heavy snow, mid-morning | Canonical 15 s clip (`make reproduce`) |
+| `boreas_2024_12_23` | Light dusk snow | Retired (windowing failed oracle) |
+| `boreas_2025_02_15` | Active snowfall, late afternoon | Re-windowed via oracle; robustness clip |
+| `boreas_2021_01_19`, `boreas_2021_02_02`, `boreas_2021_03_02` | Different days, same loop | Bootstrapped + pose-only oracle scored; unfetched |
 
 ## Repo layout
 

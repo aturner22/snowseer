@@ -14,8 +14,10 @@
 #
 #   make reproduce-all-layouts TRACK=<id>   — render all 5 layout variants
 #   make reproduce-track TRACK=<id>         — full pipeline on a different track
-#   make stills                             — static-prior quick test (the original
-#                                             14-pair Mapillary demo, panels only)
+#   make stills                             — static-prior precursor (single-prior
+#                                             v1 narrative; 14 GREAT/OKAY pairs +
+#                                             13 review-pool from data/curated_pairs.json)
+#   make oracle TRACK=<id>                  — pre-flight gate before any cache build
 #
 # Project layout: src/video_runtime/ is the per-frame video pipeline; src/
 # top level is the static-prior pipeline used by `make stills`. Legacy code
@@ -181,7 +183,7 @@ pages-assets:
 	    fi; \
 	    echo "  copied canonical assets"; \
 	fi
-	@for track in boreas_2024_12_23 boreas_2025_02_15; do \
+	@for track in boreas_2025_02_15 boreas_2021_01_19 boreas_2021_02_02 boreas_2021_03_02; do \
 	    if [ -d outputs/video/$$track ]; then \
 	        mkdir -p docs/_assets/$$track; \
 	        for f in overlay sidebyside snow_naive_overlay snow_overlay_naive quad; do \
@@ -205,11 +207,13 @@ reproduce-everything: reproduce reproduce-track-alts assets stills writeup pages
 	@echo "Reproduce-everything complete. The canonical + alts + stills + static"
 	@echo "panels + writeup PDF + Pages assets are all up to date."
 
-# Helper: run reproduce-track for each known alt sequentially. Sequential is
+# Helper: run reproduce-track for each shipping alt sequentially. Sequential is
 # critical — running two cache builds in parallel on a Mac with ≤16 GB RAM
 # guarantees swap thrashing and silently degrades both.
+#
+# `boreas_2024_12_23` retired (window failed oracle, same loop as canonical).
+# Add new tracks here once their oracle pass + window picked.
 reproduce-track-alts:
-	$(MAKE) reproduce-track TRACK=boreas_2024_12_23
 	$(MAKE) reproduce-track TRACK=boreas_2025_02_15
 
 # ─── Oracle (pre-flight before any cache build) ─────────────────────────────
@@ -286,8 +290,8 @@ submission-bundle:
 	@for f in sidebyside snow_naive_overlay snow_overlay_naive quad; do \
 	    cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 submission/$$f.mp4 2>/dev/null || true; \
 	done
-	@echo "  → copying alt-track headlines"
-	@for track in boreas_2024_12_23 boreas_2025_02_15; do \
+	@echo "  → copying alt-track headlines (every track with a built overlay.mp4)"
+	@for track in boreas_2025_02_15 boreas_2021_01_19 boreas_2021_02_02 boreas_2021_03_02; do \
 	    cp -f outputs/video/$$track/overlay.mp4 submission/$$track.mp4 2>/dev/null || true; \
 	done
 	@echo "  → copying source repo URL"
