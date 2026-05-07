@@ -108,7 +108,7 @@ def test_makefile_targets_exist() -> None:
     """Critical Make targets are listed in the Makefile."""
     mk = (ROOT / "Makefile").read_text()
     for target in [
-        "reproduce:", "reproduce-track:", "reproduce-all-layouts:",
+        "track:", "reproduce:", "reproduce-track:",
         "stills:", "stills-multi:", "assets:", "extract-stills:",
         "pages-assets:", "pdfs:", "submission-bundle:",
     ]:

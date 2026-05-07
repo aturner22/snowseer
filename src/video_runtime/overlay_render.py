@@ -237,7 +237,17 @@ def render_quad(
     keep_frames: bool = False,
     label_panels: bool = False,
 ) -> Path:
-    """4-panel layout: snow input | summer prior + road | overlay | naive.
+    """4-panel layout: snow query | naive (red) over snow / summer prior + road (green) | cross-season overlay (green).
+
+    Reading order is the failure-then-recovery story:
+
+        ┌─────────────┬─────────────┐
+        │ snow query  │ naive (red) │   ← what arrives + what off-the-shelf
+        │             │             │     segmentation says directly on snow
+        ├─────────────┼─────────────┤
+        │ clear prior │ overlay     │   ← what we know (same place, July)
+        │ + green     │ + green     │     and the warp transferred onto snow
+        └─────────────┴─────────────┘
 
     `summer_panels[i]` is a dict {image, road_mask, distance_m} for the
     closest summer prior at frame i, or None to fall back to a black panel.
@@ -252,20 +262,22 @@ def render_quad(
     print(f"[render-quad] writing {len(results)} frames")
     for i, r in enumerate(results):
         target_h = r.snow_image.shape[0]
-        p1 = _compose_input_panel(r, with_label=label_panels)
+        p_snow = _compose_input_panel(r, with_label=label_panels)
+        p_naive = _compose_naive_panel(r, naive_masks[i], with_label=label_panels)
         if summer_panels[i] is not None:
             sp = summer_panels[i]
-            p2 = _resize_to_height(
+            p_summer = _resize_to_height(
                 _compose_summer_panel(sp["image"], sp["road_mask"], with_label=label_panels),
                 target_h,
             )
         else:
-            p2 = np.zeros_like(r.snow_image)
-        p3 = _compose_overlay_panel(r, with_label=label_panels)
-        p4 = _compose_naive_panel(r, naive_masks[i], with_label=label_panels)
-        # 2x2 grid (top: input | summer ; bottom: overlay | naive)
-        top = np.hstack([p1, p2])
-        bot = np.hstack([p3, p4])
+            p_summer = np.zeros_like(r.snow_image)
+        p_overlay = _compose_overlay_panel(r, with_label=label_panels)
+        # 2x2 grid:
+        #   top:    snow query   | naive (red)
+        #   bottom: summer + road | cross-season overlay (green)
+        top = np.hstack([p_snow, p_naive])
+        bot = np.hstack([p_summer, p_overlay])
         # Equalise widths if the summer panel was a different aspect.
         if top.shape[1] != bot.shape[1]:
             tw, bw = top.shape[1], bot.shape[1]

@@ -1,4 +1,4 @@
-"""Render all four layouts for a given track from an existing cache + aug.
+"""Build matching cache + augmentation cache + render all five layouts for a track.
 
 Usage:
     uv run python -m src.video_runtime.render_all_layouts \\
@@ -6,14 +6,12 @@ Usage:
         [--start N --end N --stride N --K K --ema-alpha A]
 
 Produces outputs/video/<track>/{
-    overlay_<tag>.mp4,                # snow + green overlay (single)
-    sidebyside_<tag>.mp4,             # snow | overlay
-    snow_naive_overlay_<tag>.mp4,     # snow | naive | overlay
-    snow_overlay_naive_<tag>.mp4,     # snow | overlay | naive
-    quad_<tag>.mp4,                   # snow / summer+road / overlay / naive
+    _cache_<tag>.pkl, _aug_<tag>.pkl,
+    overlay.mp4, sidebyside.mp4,
+    snow_naive_overlay.mp4, snow_overlay_naive.mp4, quad.mp4,
 }.
 
-Aug pass is run automatically if needed (~3s/frame on CPU).
+Cache and aug pass are built automatically if missing.
 """
 
 from __future__ import annotations
@@ -50,10 +48,16 @@ def main() -> None:
     cache_path = ROOT / f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl"
 
     if not cache_path.exists():
-        sys.exit(f"missing cache {cache_path}; build it first via:\n"
-                 f"  uv run python -m src.video_runtime.render --track {args.track} "
-                 f"--start {args.start} --end {args.end} --stride {args.stride} "
-                 f"--K {args.K} --temporal none --cache-tag {args.cache_tag}")
+        print(f"[render-all] matching cache missing; building...")
+        _run([
+            "uv", "run", "python", "-m", "src.video_runtime.render",
+            "--track", args.track,
+            "--start", str(args.start), "--end", str(args.end), "--stride", str(args.stride),
+            "--K", str(args.K), "--max-dim", str(args.max_dim),
+            "--temporal", "none",
+            "--cache-tag", args.cache_tag,
+            "--mode", "cache-only",
+        ])
 
     if not aug_path.exists():
         print(f"[render-all] augmentation cache missing; building...")

@@ -12,19 +12,14 @@
 #
 # Other entry points:
 #
-#   make reproduce-all-layouts TRACK=<id>   — render all 5 layout variants
-#   make reproduce-track TRACK=<id>         — full pipeline on a different track
-#   make stills                             — static-prior precursor (single-prior
-#                                             v1 narrative; 27 demo pairs from
-#                                             data/demo_pairs.json)
-#   make oracle TRACK=<id>                  — pre-flight gate before any cache build
-#
-# Project layout: src/video_runtime/ is the per-frame video pipeline; src/
-# top level is the static-prior pipeline used by `make stills`. Legacy code
-# is under _archive/ (gitignored).
+#   make track TRACK=<id> [TRACK_START=N TRACK_END=N]  full pipeline, any track
+#   make reproduce-track TRACK=<id>         alias for the above (default 0..350)
+#   make stills                             static-prior precursor (single-prior
+#                                           v1 narrative; 27 demo pairs from
+#                                           data/demo_pairs.json)
+#   make oracle TRACK=<id>                  pre-flight gate before any cache build
 
-.PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
-        reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
+.PHONY: help track reproduce reproduce-track reproduce-track-alts reproduce-everything \
         assets extract-stills pages-assets submission-bundle test oracle \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         slides writeup pdfs \
@@ -39,10 +34,12 @@ help:
 	@echo "Snow-Underlay  ·  make targets"
 	@echo ""
 	@echo "  Reproduce the canonical clip:"
-	@echo "    make reproduce                      One 15s overlay clip from boreas_2021_01_26"
-	@echo "                                          → outputs/video/boreas_2021_01_26/overlay.mp4"
-	@echo "    make reproduce-all-layouts TRACK=<id>  All 5 layouts (overlay/sidebyside/3-panel x2/quad)"
-	@echo "    make reproduce-track TRACK=<id>     Full pipeline on a non-canonical track"
+	@echo "    make reproduce                      Full pipeline on the canonical track:"
+	@echo "                                          cache + 5 layouts + stills"
+	@echo "                                          → outputs/video/boreas_2021_01_26/"
+	@echo "    make reproduce-track TRACK=<id>     Same pipeline on any registered track"
+	@echo "    make track TRACK=<id> TRACK_START=N TRACK_END=N"
+	@echo "                                        Lower-level — explicit window override"
 	@echo ""
 	@echo "  Static-prior demo (the v1.x narrative):"
 	@echo "    make stills                         Single-prior (default): 27 Mapillary demo pairs"
@@ -80,36 +77,34 @@ help:
 	@echo "    make clean                          Remove generated outputs (heroes/audit/frames)"
 	@echo "    make dist-clean                     Also remove cached pair downloads"
 
-# Canonical reproducer — what the user runs from a clean clone.
-# Pulls the boreas_2021_01_26 snow+summer windows (~1.4 GB), builds the
-# matching cache (~50 min), renders the overlay layout (~1 min).
-reproduce:
-	uv run python -m src.video_runtime.fetch_track --track $(CANONICAL_TRACK)
-	uv run python -m src.video_runtime.render --track $(CANONICAL_TRACK) \
-	    --start 100 --end 250 --stride 1 --K 3 \
-	    --temporal ema --ema-alpha 0.4 \
-	    --cache-tag $(CANONICAL_TAG) --out-name overlay.mp4
-	@echo ""
-	@echo "Done. Watch outputs/video/$(CANONICAL_TRACK)/overlay.mp4."
+TRACK_START ?= 0
+TRACK_END   ?= 350
 
-# Render all 5 layouts (overlay / sidebyside / 3-panel x2 / quad) for a track.
-# Reuses the matching cache + augmentation cache; adds ~5 min of render time.
-reproduce-all-layouts:
-	@if [ -z "$(TRACK)" ]; then echo "usage: make reproduce-all-layouts TRACK=<id>"; exit 2; fi
+# Single deterministic full-pipeline target. Every track produces the same
+# output shape under outputs/video/<id>/:
+#   _cache_<tag>.pkl  _aug_<tag>.pkl
+#   overlay.mp4  sidebyside.mp4  snow_naive_overlay.mp4
+#   snow_overlay_naive.mp4  quad.mp4
+#   stills/<layout>__t<NNNN>.jpg
+track:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make track TRACK=<id> [TRACK_START=N TRACK_END=N]"; exit 2; fi
+	uv run python -m src.video_runtime.fetch_track --track $(TRACK)
 	uv run python -m src.video_runtime.render_all_layouts \
 	    --track $(TRACK) --cache-tag $(CANONICAL_TAG) \
-	    --start 100 --end 250 --stride 1 --K 3 --ema-alpha 0.4
+	    --start $(TRACK_START) --end $(TRACK_END) --stride 1 \
+	    --K 3 --ema-alpha 0.4
+	uv run python -m src.video_runtime.extract_assets --track $(TRACK)
+	@echo ""
+	@echo "Done. outputs/video/$(TRACK)/ — overlay.mp4 + 4 alternate layouts + stills/"
 
-# Full pipeline on a non-canonical track.
+# Canonical reproducer — what a clean clone runs to make the headline clip.
+reproduce:
+	$(MAKE) track TRACK=$(CANONICAL_TRACK) TRACK_START=100 TRACK_END=250
+
+# Same pipeline on any other registered track.
 reproduce-track:
 	@if [ -z "$(TRACK)" ]; then echo "usage: make reproduce-track TRACK=<id>"; exit 2; fi
-	uv run python -m src.video_runtime.fetch_track --track $(TRACK)
-	uv run python -m src.video_runtime.render --track $(TRACK) \
-	    --start 0 --end 350 --stride 1 --K 3 \
-	    --temporal ema --ema-alpha 0.4 \
-	    --cache-tag $(CANONICAL_TAG) --out-name overlay.mp4
-	@echo ""
-	@echo "Done. Watch outputs/video/$(TRACK)/overlay.mp4."
+	$(MAKE) track TRACK=$(TRACK)
 
 # ─── Static-prior quick test ────────────────────────────────────────────────
 
@@ -144,60 +139,22 @@ stills-audit:
 
 # ─── Asset bundles (slides plan + GitHub Pages) ─────────────────────────────
 
-# Render the canonical track in all 5 layouts and extract preset stills.
-# Single command, single track. Reuses any existing matching + augment caches.
-assets: reproduce-all-layouts-canonical extract-stills-canonical
-	@echo ""
-	@echo "Canonical asset bundle ready under outputs/video/$(CANONICAL_TRACK)/."
+assets:
+	$(MAKE) track TRACK=$(CANONICAL_TRACK) TRACK_START=100 TRACK_END=250
 
-reproduce-all-layouts-canonical:
-	uv run python -m src.video_runtime.render_all_layouts \
-	    --track $(CANONICAL_TRACK) --cache-tag $(CANONICAL_TAG) \
-	    --start 100 --end 250 --stride 1 --K 3 --ema-alpha 0.4
-
-extract-stills-canonical:
-	uv run python -m src.video_runtime.extract_assets --track $(CANONICAL_TRACK)
-
-# Per-track variant (alts).
 extract-stills:
 	@if [ -z "$(TRACK)" ]; then echo "usage: make extract-stills TRACK=<id>"; exit 2; fi
 	uv run python -m src.video_runtime.extract_assets --track $(TRACK)
 
-# Copy finalised mp4s + a representative still per track into docs/_assets/
-# so the GitHub Pages site (docs/index.html) can reference them via stable
-# relative paths. Run this after `make assets` (and after `make reproduce-track`
-# for any alt tracks you want on Pages).
 pages-assets:
-	@mkdir -p docs/_assets/canonical
-	@if [ -d outputs/video/$(CANONICAL_TRACK) ]; then \
-	    for f in overlay sidebyside snow_naive_overlay snow_overlay_naive quad; do \
-	        if [ -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 ]; then \
-	            cp -f outputs/video/$(CANONICAL_TRACK)/$$f.mp4 docs/_assets/canonical/$$f.mp4; \
-	        fi; \
-	    done; \
-	    if [ -d outputs/video/$(CANONICAL_TRACK)/stills ]; then \
-	        mkdir -p docs/_assets/canonical/stills; \
-	        cp -f outputs/video/$(CANONICAL_TRACK)/stills/*.jpg docs/_assets/canonical/stills/ 2>/dev/null || true; \
-	    fi; \
-	    echo "  copied canonical assets"; \
+	@mkdir -p docs/_assets/canonical/stills
+	@if [ -f outputs/video/$(CANONICAL_TRACK)/stills/overlay__t005p0.jpg ]; then \
+	    cp -f outputs/video/$(CANONICAL_TRACK)/stills/overlay__t005p0.jpg \
+	          docs/_assets/canonical/stills/overlay__t005p0.jpg; \
+	    echo "  staged canonical hero still"; \
+	else \
+	    echo "  [SKIP] outputs/video/$(CANONICAL_TRACK)/stills/overlay__t005p0.jpg missing — run 'make assets' first"; \
 	fi
-	@for track in boreas_2025_02_15; do \
-	    if [ -d outputs/video/$$track ]; then \
-	        mkdir -p docs/_assets/$$track; \
-	        for f in overlay sidebyside snow_naive_overlay snow_overlay_naive quad; do \
-	            if [ -f outputs/video/$$track/$$f.mp4 ]; then \
-	                cp -f outputs/video/$$track/$$f.mp4 docs/_assets/$$track/$$f.mp4; \
-	            fi; \
-	        done; \
-	        if [ -d outputs/video/$$track/stills ]; then \
-	            mkdir -p docs/_assets/$$track/stills; \
-	            cp -f outputs/video/$$track/stills/*.jpg docs/_assets/$$track/stills/ 2>/dev/null || true; \
-	        fi; \
-	        echo "  copied $$track assets"; \
-	    fi; \
-	done
-	@echo ""
-	@echo "Pages assets staged under docs/_assets/. Commit and push to deploy."
 
 # Master "produce every shippable artefact" target. Slow.
 reproduce-everything: reproduce reproduce-track-alts assets stills writeup pages-assets
@@ -205,27 +162,14 @@ reproduce-everything: reproduce reproduce-track-alts assets stills writeup pages
 	@echo "Reproduce-everything complete. The canonical + alts + stills + static"
 	@echo "panels + writeup PDF + Pages assets are all up to date."
 
-# Helper: run reproduce-track for each shipping alt sequentially. Sequential is
-# critical — running two cache builds in parallel on a Mac with ≤16 GB RAM
-# guarantees swap thrashing and silently degrades both.
-#
-# `boreas_2024_12_23` retired (window failed oracle, same loop as canonical).
-# Add new tracks here once their oracle pass + window picked.
 reproduce-track-alts:
 	$(MAKE) reproduce-track TRACK=boreas_2025_02_15
 
 # ─── Oracle (pre-flight before any cache build) ─────────────────────────────
 
-# `make oracle TRACK=<id>` — verify the track has a demo-able window before
-# committing cache compute. Checks (a) UTM distance to nearest summer prior
-# and (b) summer-prior road-segmentation coverage. Reports candidate windows
-# (longest contiguous runs where every frame has ≥ 1 acceptable prior).
-#
-# Hard rule (per memory feedback_phase_l_window_oracle.md): never run
-# `make reproduce-track TRACK=<id>` without a satisfied oracle pass first.
-# Cost: dominated by the segmentation cache (~5–10 min on Mac CPU for a
-# typical 350-frame track + K=3 priors). Cached aggressively per summer
-# frame.
+# Verify a track has a demo-able window before committing cache compute.
+# Checks UTM distance to nearest summer prior + summer-prior road-segmentation
+# coverage; reports candidate windows.
 oracle:
 	@if [ -z "$(TRACK)" ]; then echo "usage: make oracle TRACK=<id> [STRIDE=10]"; exit 2; fi
 	uv run python -m src.video_runtime.window_oracle --track $(TRACK) \

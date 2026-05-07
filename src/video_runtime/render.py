@@ -23,7 +23,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
     p.add_argument("--mode", choices=["overlay", "sidebyside", "snow_naive_overlay",
-                                       "snow_overlay_naive", "quad"], default="overlay")
+                                       "snow_overlay_naive", "quad", "cache-only"], default="overlay")
     p.add_argument("--start", type=int, default=0)
     p.add_argument("--end", type=int, default=None)
     p.add_argument("--stride", type=int, default=1)
@@ -82,6 +82,10 @@ def main() -> None:
         rebuild_cache=args.rebuild_cache,
         synthetic_priors=args.synthetic_priors,
     )
+
+    if args.mode == "cache-only":
+        print(f"[render] cache built at {cache_path}; no mp4 written")
+        return
 
     if args.mode == "overlay":
         out = render_overlay(
