@@ -14,13 +14,13 @@ linkcolor: "gray"
 
 A snow plough's job is short: keep the road clear. The catch is that, while the plough is doing it, the road is invisible. Curbs are buried, lane markings are gone, the seam between asphalt and garden is no longer drawn. A self-driving stack trained on Cityscapes will report, with calibrated confidence, that the entire scene is sky.
 
-The familiar response is *we just need more data*. Annotate snowy roads. Annotate dust storms. Annotate fog, lava, washouts. There are 27 million miles of road in the world, and the long tail of conditions any of them can be in is longer than the road itself. We are not going to label our way out of it.
+Minimal-shot autonomy is the question of how a perception system survives in regimes it has not been heavily trained on. The default answer is *collect more data and retrain*. That answer assumes labelling can keep pace with reality. It cannot — not for snow, dust, ash, washouts, regional construction practices, agricultural off-road, novel industrial sites, or any of the countless conditions a vehicle, robot, or drone meets when it leaves the regime its training set was sampled from. **A perception system that depends on having been trained on each new condition will lag every condition it has not yet been trained on.**
 
-There is a different move available. **For almost every operating regime where autonomy fails for lack of data, there is an adjacent regime — temporally, seasonally, geographically — where we have plenty of data, and where the parts that matter are the same.** A snow plough's road is the same road it was last July. The curb hasn't moved. The hydrant hasn't moved. The road's *appearance* has changed completely; its *position in space* has not.
+There is a different move available, and it doesn't require new training data. **For almost every operating regime where autonomy fails for lack of data, there is an adjacent regime — temporally, seasonally, geographically — where data exists, and where the parts that matter are the same.** A snow plough's road is the same road it was last July. The curb hasn't moved. The hydrant hasn't moved. The road's *appearance* has changed completely; its *position in space* has not.
 
-If we can identify what stays constant between the data-rich regime and the data-poor one, we can extend our existing models into the new regime without learning a single thing about it. We use the constants as a bridge.
+If we can identify what stays constant between the data-rich regime and the data-poor one, we can extend our existing models into the new regime without learning a single thing about it. **We use the constant as a bridge.** This is generalisation, not memorisation: the system reaches a regime its components have never been trained on by anchoring on what does not change between the two.
 
-This essay is one concrete demonstration of that idea, applied to autonomous snow ploughs. The principle is general; the snow plough is the vehicle. The headline artefact is a video: a continuous overlay of road position on a snow-buried street, frame by frame, produced by a pipeline whose only learned components have never seen snow.
+This essay is one concrete instantiation of that idea, applied to autonomous snow ploughs. The principle is general; the snow plough is the demonstration. The headline artefact is a video: a continuous overlay of road position on a snow-buried street, frame by frame, produced by a pipeline whose only learned components have never seen snow — and yet they generalise into snow because the geometric correspondence between snow and clear-season imagery does the bridging for them.
 
 ## The example
 
@@ -42,6 +42,63 @@ The plough now knows where the road is, and where it isn't, even though it canno
 ## Architecture
 
 DISK (Tyszkiewicz et al., NeurIPS 2020) extracts local features. LightGlue (Lindenberger et al., ICCV 2023) matches them. USAC-MAGSAC (Barath et al., CVPR 2020) fits a homography by RANSAC, restricted to lower-image matches to bias toward the ground plane. Mask2Former (Cheng et al., CVPR 2022), pretrained on Cityscapes (Cordts et al., CVPR 2016), produces the road mask on the clear prior. The mask (and its warp into snow image space) is reduced to its single largest connected component, because a plough cares about the *one* drivable surface in front of it.
+
+The dataflow is:
+
+```
+   ┌──────────────┐                    ┌──────────────────────┐
+   │  Snow frame  │                    │  Clear-prior frame    │  any geo-tagged
+   │   (live)     │                    │  (Boreas summer,      │  clear-weather
+   │              │                    │   Mapillary, GSV…)    │  imagery substrate
+   └──────┬───────┘                    └──────────┬────────────┘
+          │                                       │
+          │                                       ▼
+          │                            ┌──────────────────────┐
+          │                            │   Mask2Former         │  frozen
+          │                            │  (Cityscapes road)    │  Cityscapes
+          │                            └──────────┬────────────┘
+          │                                       │ road mask in prior space
+          │                                       │
+          └──────────►  DISK + LightGlue  ◄───────┘             frozen
+                              │                                  MegaDepth
+                              ▼ correspondences
+                    USAC-MAGSAC homography                       classical
+                    (ground-plane biased)
+                              │
+                              ▼ H
+                  warp prior mask → snow space
+                              │
+                              ▼
+              fuse over K=3 priors  +  EMA over time
+                              │
+                              ▼
+                  ┌──────────────────────┐
+                  │  Road overlay on the │
+                  │  snow frame (green)  │
+                  └──────────────────────┘
+```
+
+## How it works — a worked example
+
+Reading the diagram in the abstract is not the same as seeing it operate on one frame, with numbers. We pick frame 137 of the canonical 15 s clip (Boreas snow stream index 237, video time 13.7 s) and trace the pipeline.
+
+The snow frame is 1024 × 857 px, taken at UTM coordinates (-195.55, 126.41) in Boreas's per-sequence local frame. Glen Shields, residential, mid-morning, heavy snow on the pavement.
+
+1. **Prior selection.** The summer prior pool's KD-tree on summer poses returns the three nearest by UTM distance: 0.49 m, 0.68 m, 1.50 m. All three are within two metres of the snow pose — the canonical loop's summer trajectory is sampled densely enough that "nearest summer capture" is sub-metre accurate at this frame.
+
+2. **Match.** DISK runs on the snow frame and on each of the three summer priors, extracting up to 2048 keypoints per image. LightGlue matches them; USAC-MAGSAC fits a homography per (snow, prior) pair, restricted to keypoints in the lower 70 % of the image so the geometry is biased to the ground plane rather than to building façades. After RANSAC the inlier counts are 43, 38, 41 — strong correspondence on this frame.
+
+3. **Segment the prior.** Mask2Former, frozen on Cityscapes, produces a road mask on each of the three summer priors. Mask2Former has never been shown a snowy frame; it doesn't have to be, because it never sees one — it only ever sees the clear prior. Each prior's road mask is reduced to its single largest connected component (a plough cares about the one drivable surface, not parking-lot fragments).
+
+4. **Warp the masks back.** Each prior's road mask is warped via `H⁻¹` into the snow image's pixel space. The pipeline also tracks the warped extent of each prior's full image so the next step can edge-erode where each prior actually covered, rather than dragging mask boundaries across the visible-region edge.
+
+5. **Fuse and crop.** The three warped masks combine via inlier-weighted soft-average; the result is foreground-cropped at y = 0.30 H (the upper 30 % of a roof-mounted forward camera is sky, and we don't claim those pixels as drivable). On this frame the fused mask covers 24.5 % of the foreground — the road occupies roughly a quarter of the lower 70 % of the image.
+
+6. **Smooth over time.** EMA with α = 0.4 blends this frame's raw mask into the previous smoothed mask. On a frame whose matcher fails entirely, the smoothed mask is held — graceful degradation rather than a flicker to nothing.
+
+The resulting road mask is alpha-blended onto the snow frame in green and emitted to the output stream. Frame 137 took 18 s of CPU time; matching dominates. The cached `FrameResult` makes downstream renders that change only the smoother or the layout instant — the matching pass is run once per (track, window).
+
+That is the whole pipeline, on one frame, with real numbers. The dataflow doesn't change between this frame and any other on this track; the inlier counts shift, the prior distances shift, the fused coverage shifts. The composition is invariant.
 
 The video extension wraps that static pipeline in three thin layers:
 

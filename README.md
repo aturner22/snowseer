@@ -22,15 +22,13 @@ open docs/index.html  # the GitHub Pages site (static, no server needed)
 
 ## What this project is really about
 
-Self-driving systems are trained on dry roads, deliberately. Every canonical autonomy dataset — Cityscapes, KITTI, nuScenes, Waymo Open — is dominated by clear-weather European or American highways under daylight. A system trained on this corpus and asked to operate when the road is buried in snow has not been asked a research question. It has been asked the wrong question.
+Minimal-shot autonomy is the question of how a perception system survives in regimes it has not been heavily trained on. The default answer is *collect more data and retrain*. That answer assumes labelling can keep pace with reality. It cannot — not for snow, dust, ash, washouts, regional construction practices, agricultural off-road, or any of the conditions a vehicle, robot, or drone meets when it leaves the regime its training set was sampled from. A perception system that depends on having been trained on each new condition will always lag every condition it has not yet been trained on.
 
-The familiar response is *we just need more data*. Annotate snowy roads. Annotate dust storms. Annotate fog, lava, oil spills, washouts. There are 27 million miles of road in the world, and the long tail of conditions that road can be in is longer than the road itself. We are not going to label our way out of it.
+There is a different move available, and it doesn't require new training data. **For almost every operating regime where autonomy fails for lack of data, there is an adjacent regime — temporally, seasonally, geographically — where data exists, and where the *parts that matter* are the same.** A snow plough's road is the same road it was last July. The curb hasn't moved. The hydrant hasn't moved. The road's *appearance* has changed completely; its *position in space* has not.
 
-There is a different move available. **For almost every operating regime where autonomy fails for lack of data, there is an adjacent regime — temporally, seasonally, geographically — where we have plenty of data, and where the *parts that matter* are the same.** A snow plough's road is the same road it was last July. The curb hasn't moved. The hydrant hasn't moved. The road's *appearance* has changed completely; its *position in space* has not.
+If we can identify what stays constant between the data-rich regime and the data-poor one, we can extend our existing models into the new regime without learning a single thing about it. We use the constant as a bridge. This is generalisation, not memorisation.
 
-If we can identify what stays constant between the data-rich regime and the data-poor one, we can extend our existing models into the new regime without learning a single thing about it. We use the constants as a bridge.
-
-This project is one concrete instantiation of that idea, applied to autonomous snow ploughs. The principle is general; the snow plough is the vehicle.
+This project is one concrete instantiation of that idea, applied to autonomous snow ploughs. The principle is general; the snow plough is the demonstration.
 
 ## The video extension — and why it matters
 
@@ -77,6 +75,21 @@ Every learned component is **frozen**. Nothing is trained, nothing is fine-tuned
 The result is alpha-blended (green, `#2e9c56`) onto the snow frame and emitted to mp4.
 
 `src/video_runtime/render_all_layouts.py` then produces five visual variants from the same matching cache — overlay, side-by-side, two 3-panel orderings, and a 2×2 quad — for whichever framing best fits a given audience.
+
+### Worked example: frame 137 of the canonical clip
+
+Frame 137 of the rendered 15-second canonical clip is Boreas snow stream index 237, taken at video time 13.7 s. The snow image is 1024 × 857 px, captured at UTM coordinates (-195.55, 126.41) in Boreas's per-sequence local frame.
+
+| Step | What happens at frame 137 |
+| --- | --- |
+| **1. Prior selection** | KD-tree returns 3 nearest summer captures by UTM distance: `0.49 m`, `0.68 m`, `1.50 m`. All three sub-2 m. |
+| **2. Match** | DISK extracts up to 2048 keypoints per image; LightGlue matches them; USAC-MAGSAC fits H per pair, restricted to keypoints in the lower 70 % of the image. RANSAC inliers: `43`, `38`, `41`. |
+| **3. Segment the prior** | Mask2Former (frozen, Cityscapes) runs once per summer prior. Each mask is reduced to its single largest connected component. |
+| **4. Warp** | Each prior's road mask is warped via `H⁻¹` into snow image space; the warped extent of each prior's full image is tracked separately for edge-erosion. |
+| **5. Fuse + crop** | Inlier-weighted soft-average over the three warped masks; foreground crop at y = 0.30 H. Final coverage on this frame: **24.5 %** of the foreground. |
+| **6. Smooth** | EMA (α = 0.4) blends with the previous smoothed mask. On a frame whose matcher fails, the previous mask is held — graceful degradation. |
+
+Frame 137 took 18 s of CPU time; matching dominates. Cached `FrameResult`s make downstream renders that change only the smoother or the layout instant — the matching pass runs once per (track, window).
 
 ## Minimal-shot integrity
 

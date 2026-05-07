@@ -52,12 +52,11 @@ no warning issued.
 
 <!-- _class: pullquote -->
 
-> 27 million miles of road.
-> The long tail of conditions
-> any of them can be in
-> is *longer than the road itself*.
+> Minimal-shot autonomy is the question
+> of how a perception system survives
+> in regimes it has not been heavily trained on.
 
-###### We are not going to label our way out of it.
+###### Labelling cannot keep pace with reality. Every condition the training set missed is a regime where memorisation alone fails.
 
 ---
 
@@ -84,6 +83,8 @@ If we can identify what stays constant
 between the data-rich regime and the data-poor one,
 we can extend our existing models into the new regime —
 **without learning a single thing about it.**
+
+###### Generalisation, not memorisation.
 
 ---
 
@@ -117,6 +118,49 @@ It has not been trained on snow.
 
 Every learned component is **frozen**.
 Snow appears only at inference, as the runtime input.
+
+---
+
+## The dataflow
+
+```
+   Snow frame                Clear-prior frame
+        │                            │
+        │                            ▼
+        │                   Mask2Former (frozen)
+        │                            │ road mask in prior space
+        │                            │
+        └──►  DISK + LightGlue  ◄────┘   (frozen)
+                     │
+                     ▼ correspondences
+            USAC-MAGSAC homography  (ground-plane biased)
+                     │
+                     ▼ H
+            warp prior mask → snow space
+                     │
+                     ▼
+            fuse over K=3 priors  +  EMA over time
+                     │
+                     ▼
+            Road overlay on the snow frame
+```
+
+###### The substrate of the clear prior is interchangeable. The geometric correspondence is what does the work.
+
+---
+
+## A worked example — frame 137
+
+| Step | Frame 137 |
+|---|---|
+| Prior selection | 3 nearest summer captures: **0.49 m, 0.68 m, 1.50 m** |
+| Match (DISK + LightGlue + USAC-MAGSAC) | RANSAC inliers: **43, 38, 41** |
+| Segment the *prior* (Mask2Former) | Cityscapes road class · largest connected component |
+| Warp via H⁻¹ | three masks projected back to snow space |
+| Fuse + foreground crop | mask covers **24.5 %** of the lower 70 % of the image |
+| EMA smooth (α = 0.4) | blend with previous frame's smoothed mask |
+
+###### Frame 137 = video time 13.7 s; 18 s of CPU on this frame; matching dominates. Cached `FrameResult` makes downstream renders instant.
 
 ---
 

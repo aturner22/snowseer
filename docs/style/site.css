@@ -315,6 +315,19 @@ pre {
 
 pre code { background: none; padding: 0; }
 
+pre.diagram {
+  font-size: 12px;
+  line-height: 1.35;
+  border-left: none;
+  background: #fafaf7;
+  padding: 1.4em 1em;
+  text-align: center;
+}
+pre.diagram code { font-size: inherit; }
+@media (max-width: 640px) {
+  pre.diagram { font-size: 10px; padding: 0.8em 0.5em; }
+}
+
 /* ─── Footer ─────────────────────────────────────────────────────────── */
 
 footer {
