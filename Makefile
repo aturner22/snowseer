@@ -307,11 +307,14 @@ test:
 # ─── Repo hygiene ─────────────────────────────────────────────────────────
 
 # `make tidy` — reproducible physical cleanup of the working tree.
-# Removes generated logs, debug renders, .DS_Store, .ruff_cache. Does NOT
-# touch outputs/heroes/ (the v1 single-prior heroes), outputs/audit/
-# (the contact sheet), outputs/video/<track>/_cache_*.pkl (matching cache,
-# expensive to regenerate), or outputs/video/<track>/*.mp4 (renders).
-# Run after a long session where stale logs accumulated.
+# Removes generated logs, .DS_Store, .ruff_cache, __pycache__. Does NOT
+# touch outputs/video/<track>/_cache_*.pkl (matching cache, expensive to
+# regenerate) or outputs/video/<track>/*.mp4 (renders). Run after a long
+# session where stale logs / pycache directories accumulated.
+#
+# For deeper archival cleanup (move stale / experimental outputs to
+# _archive/), see _archive/REFACTOR_NOTES.md or do it manually — these
+# moves are deliberate decisions, not automatable.
 tidy:
 	@echo "  removing stale logs + debug renders + macOS / cache cruft"
 	@rm -rf outputs/video/_match_test/
@@ -319,10 +322,10 @@ tidy:
 	@rm -f outputs/_*.log
 	@rm -f outputs/fetch_*.log outputs/pipeline_run.log
 	@rm -f outputs/.DS_Store outputs/heroes/.gitkeep
-	@find . -name '.DS_Store' -delete 2>/dev/null || true
+	@find . -name '.DS_Store' -not -path './.venv/*' -not -path './.git/*' -delete 2>/dev/null || true
 	@rm -rf .ruff_cache/
-	@rm -rf demo/__pycache__/
-	@echo "  done. `make clean` for a deeper sweep."
+	@find . -type d -name '__pycache__' -not -path './.venv/*' -not -path './.git/*' -not -path './_archive/*' -exec rm -rf {} + 2>/dev/null || true
+	@echo "  done. \`make clean\` for a deeper sweep."
 
 # ─── Cleanup ────────────────────────────────────────────────────────────────
 
