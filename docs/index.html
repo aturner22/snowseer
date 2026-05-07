@@ -125,7 +125,7 @@
 <section class="container">
   <h4>Precursor</h4>
   <h2>The static-stills demo (v1.x)</h2>
-  <p>Before the video pipeline, the same principle was demonstrated on individual snow / clear-season image pairs. Fourteen hand-curated GREAT/OKAY hero pairs over Northern Sweden and Finland (Mapillary). The video extension is built on this foundation; the static path stays runnable in the same repo.</p>
+  <p>Before the video pipeline, the same principle was demonstrated on individual snow / clear-season image pairs. Twenty-seven reviewed pairs across Northern Sweden and Finland (Mapillary), of which fourteen earned the headline GREAT/OKAY rating in the user's overlay-quality review. The video extension is built on this foundation; the static path stays runnable in the same repo.</p>
 
   <div class="stills-grid">
     <a href="_assets/v1_heroes/gallivare_se__1113124103239974__202392698419785__panel.jpg"><img src="_assets/v1_heroes/gallivare_se__1113124103239974__202392698419785__panel.jpg" alt="Gällivare residential street with red houses — snow / clear+mask / overlay / naive panels." /></a>
@@ -180,14 +180,14 @@
   <h4>Reproduce</h4>
   <h2>From a clean clone</h2>
 
-<pre><code>git clone &lt;repo&gt;
-cd snow-underlay
+<pre><code>git clone https://github.com/aturner22/snowseer; cd snowseer
+git checkout video
 uv sync --python 3.12
 make reproduce</code></pre>
 
   <p>~6 GB download (Boreas snow + summer windows) plus ~50 minutes of matching on Mac CPU. Produces <code>outputs/video/boreas_2021_01_26/overlay.mp4</code> — the canonical 15-second clip embedded above.</p>
 
-  <p>Other entry points: <code>make reproduce-track TRACK=boreas_2024_12_23</code> for the alts; <code>make assets</code> for the full 5-layout asset bundle; <code>make stills</code> for the static-stills precursor; <code>make help</code> for the full list.</p>
+  <p>Other entry points: <code>make oracle TRACK=&lt;id&gt;</code> for the pre-flight gate before any new track; <code>make reproduce-track TRACK=boreas_2025_02_15</code> for the robustness alt; <code>make assets</code> for the full 5-layout asset bundle; <code>make stills</code> for the static-stills precursor; <code>make help</code> for the full list.</p>
 </section>
 
 <!-- ─── GENERALISING ──────────────────────────────────────────────────── -->
