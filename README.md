@@ -1,5 +1,7 @@
 # Snow-Underlay
 
+[![lint](https://github.com/aturner22/snowseer/actions/workflows/lint.yml/badge.svg?branch=video)](https://github.com/aturner22/snowseer/actions/workflows/lint.yml)
+
 > *Constants as the bridge.* Minimal-shot autonomy by extending a model trained on one regime into the regime where we lack data — by anchoring on what stays the same between them.
 
 A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy).
