@@ -23,9 +23,9 @@
 
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
-        assets extract-stills pages-assets submission-bundle test \
+        assets extract-stills pages-assets submission-bundle test tidy \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
-        stream slides writeup pdfs \
+        slides writeup pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
 
 # ─── Master entry points ────────────────────────────────────────────────────
@@ -46,7 +46,6 @@ help:
 	@echo "    make stills                         Single-prior (default): 14 curated Mapillary pairs"
 	@echo "                                          → outputs/heroes/{matches,naive_baseline,overlay,panel}.png"
 	@echo "    make stills-multi                   Multi-prior fusion ablation (K=5, Phase J)"
-	@echo "    make stream                         Open Streamlit viewer over cached static stills"
 	@echo ""
 	@echo "  Documentation:"
 	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf (gitignored)"
@@ -73,8 +72,9 @@ help:
 	@echo "  Tests:"
 	@echo "    make test                           Smoke tests (import graph + CLI shape; no compute)"
 	@echo ""
-	@echo "  Cleanup:"
-	@echo "    make clean                          Remove generated outputs"
+	@echo "  Repo hygiene:"
+	@echo "    make tidy                           Remove stale logs + .DS_Store + .ruff_cache (safe)"
+	@echo "    make clean                          Remove generated outputs (heroes/audit/frames)"
 	@echo "    make dist-clean                     Also remove cached pair downloads"
 
 # Canonical reproducer — what the user runs from a clean clone.
@@ -138,9 +138,6 @@ stills-multi: clean-heroes stills-fetch
 
 stills-audit:
 	uv run python -m src.audit
-
-stream:
-	uv run streamlit run demo/streamlit_app.py
 
 # ─── Asset bundles (slides plan + GitHub Pages) ─────────────────────────────
 
@@ -306,6 +303,26 @@ clean-audit:
 # and safe to run during cache builds.
 test:
 	uv run python tests/test_smoke.py
+
+# ─── Repo hygiene ─────────────────────────────────────────────────────────
+
+# `make tidy` — reproducible physical cleanup of the working tree.
+# Removes generated logs, debug renders, .DS_Store, .ruff_cache. Does NOT
+# touch outputs/heroes/ (the v1 single-prior heroes), outputs/audit/
+# (the contact sheet), outputs/video/<track>/_cache_*.pkl (matching cache,
+# expensive to regenerate), or outputs/video/<track>/*.mp4 (renders).
+# Run after a long session where stale logs accumulated.
+tidy:
+	@echo "  removing stale logs + debug renders + macOS / cache cruft"
+	@rm -rf outputs/video/_match_test/
+	@rm -f outputs/video/_*.log
+	@rm -f outputs/_*.log
+	@rm -f outputs/fetch_*.log outputs/pipeline_run.log
+	@rm -f outputs/.DS_Store outputs/heroes/.gitkeep
+	@find . -name '.DS_Store' -delete 2>/dev/null || true
+	@rm -rf .ruff_cache/
+	@rm -rf demo/__pycache__/
+	@echo "  done. `make clean` for a deeper sweep."
 
 # ─── Cleanup ────────────────────────────────────────────────────────────────
 
