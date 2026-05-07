@@ -126,20 +126,20 @@
                   │  snow frame (green)  │
                   └──────────────────────┘</code></pre>
 
-  <h3 style="margin-top: 2em">A worked example: frame 137 of the canonical clip</h3>
+  <h3 style="margin-top: 2em">A worked example: one frame</h3>
 
-  <p>Frame 137 of the rendered 15-second canonical clip is Boreas snow stream index 237, taken at video time 13.7 s. The snow image is 1024 × 857 px, captured at UTM coordinates (-195.55, 126.41) in Boreas's per-sequence local frame — Glen Shields, residential, mid-morning, heavy snow on the pavement.</p>
+  <p>A representative frame from late in the canonical clip — Glen Shields, residential, mid-morning, heavy snow on the pavement.</p>
 
   <ol class="recipe">
-    <li><strong>Prior selection.</strong> The summer prior pool's KD-tree on summer poses returns the three nearest by UTM distance: <code>0.49 m</code>, <code>0.68 m</code>, <code>1.50 m</code>. All three are within two metres of the snow pose.</li>
-    <li><strong>Match.</strong> DISK extracts up to 2048 keypoints per image. LightGlue matches them; USAC-MAGSAC fits a homography per (snow, prior) pair, restricted to keypoints in the lower 70 % of the image to bias the fit toward the ground plane. After RANSAC the inlier counts are <code>43</code>, <code>38</code>, <code>41</code> — strong correspondence on this frame.</li>
+    <li><strong>Prior selection.</strong> The summer prior pool's KD-tree on summer poses returns the K=3 nearest summer captures by UTM distance. The canonical loop's summer trajectory is sampled densely; on this frame all three nearest summer captures sit within a couple of metres of the snow pose. Same place, different season.</li>
+    <li><strong>Match.</strong> DISK runs on the snow frame and on each summer prior. LightGlue produces matched correspondences; USAC-MAGSAC fits a homography per (snow, prior) pair, restricted to keypoints in the lower portion of the image so the geometry is biased to the ground plane. The matcher anchors on what the season has not changed: gate posts, fence wires, distant roof edges, masonry corners.</li>
     <li><strong>Segment the prior.</strong> Mask2Former, frozen on Cityscapes, produces a road mask on each summer prior. It has never been shown a snowy frame; it doesn't have to be — it only ever sees the clear prior. Each prior's mask is reduced to its single largest connected component.</li>
     <li><strong>Warp.</strong> Each prior's road mask is warped via <code>H⁻¹</code> back into the snow image's pixel space. The pipeline tracks the warped extent of each prior's full image so the next step can edge-erode where each prior actually covered.</li>
-    <li><strong>Fuse and crop.</strong> The three warped masks combine via inlier-weighted soft-average; the result is foreground-cropped at y = 0.30 H (the upper 30 % is sky). On this frame the fused mask covers <strong>24.5 %</strong> of the foreground — the road occupies roughly a quarter of the lower 70 % of the snow image.</li>
-    <li><strong>Smooth over time.</strong> EMA with α = 0.4 blends this frame's raw mask into the previous smoothed mask. On a frame whose matcher fails entirely, the smoothed mask is held — graceful degradation rather than a flicker to nothing.</li>
+    <li><strong>Fuse and crop.</strong> The three warped masks combine via inlier-weighted soft-average, then are foreground-cropped (the upper region is sky). What survives is a single road region in the lower image — the road, in the right place, on a frame where there is no road visible.</li>
+    <li><strong>Smooth over time.</strong> An EMA on the binary mask blends this frame's raw output into the previous smoothed mask. On a frame whose matcher fails entirely, the smoothed mask is held — graceful degradation rather than a flicker to nothing.</li>
   </ol>
 
-  <p>The smoothed mask is alpha-blended onto the snow frame in green and emitted. Frame 137 took 18 s of CPU time; matching dominates the cost. The cached <code>FrameResult</code> makes downstream renders (different smoothers, different layouts) instant — the matching pass is run once per (track, window). The composition is invariant across frames; the inlier counts and prior distances shift, but the dataflow does not.</p>
+  <p>The smoothed mask is alpha-blended onto the snow frame in green and emitted. The cached <code>FrameResult</code> makes downstream renders (different smoothers, different layouts) near-instant — the matching pass runs once per track, then is reused across visualisations. The composition is invariant across frames; what changes is which features the matcher anchored on, which prior won, how much of the road is visible.</p>
 </section>
 
 <!-- ─── WATCH IT WORK — CANONICAL + ALTS ──────────────────────────────── -->
@@ -216,17 +216,24 @@
 <!-- ─── HONEST LIMITS ──────────────────────────────────────────────────── -->
 
 <section class="container">
+  <h4>The contribution</h4>
+  <h2>Not a snowplough — a primitive</h2>
+
+  <p class="lead"><strong>The contribution is not a snowplough. It is a primitive: <em>the constants-bridge</em>.</strong> A composition that takes a model trained on regime A, an inference target in regime B, and a known invariant between A and B, and uses the invariant to transfer the model into B without retraining. The invariant in this work is geometric — the road sits where it sat last July — but the shape is more general. Anything that stays constant between two regimes is a candidate bridge: anatomy across imaging modalities, terrain across illumination, scene geometry across weather, orbital schedule across polar darkness.</p>
+
+  <p>The snow plough is one consumer of this primitive. The road-overlay channel is what the constants-bridge looks like when consumed for buried-road perception; it is not a replacement for the perception stack. The plough's other channels (lidar, depth, obstacle detection) keep doing their work; this primitive frees them from also having to solve the road-position problem on a buried road. <em>The contribution we are demonstrating is the primitive — not its first application.</em></p>
+</section>
+
+<section class="container">
   <h4>Honest limits</h4>
   <h2>What we do not claim</h2>
 
-  <p class="lead"><strong>This is one channel, not a snowplough.</strong> The output answers <em>where the road should be</em>, not <em>where to drive</em>. A snow-covered car parked on the road would still sit inside the green overlay — the system has no notion of obstacles, drivable surface, or 3D geometry. That is not a bug; it is the scope. This pipeline is designed to feed into a fuller stack alongside lidar, depth, and obstacle detection — not to replace any of them. The contribution we are demonstrating is the <em>move</em>: transferring knowledge across regimes through a learned-invariant constant. Snow on a road is the instance we built.</p>
-
-  <p>Within that scope:</p>
+  <p>The output answers <em>where the road should be</em>, not <em>where to drive</em>. A snow-covered car parked on the road would still sit inside the green overlay — the system has no notion of obstacles, drivable surface, or 3D geometry. That is not a bug; it is the scope. Within that scope:</p>
 
   <ul>
-    <li><strong>This is not real-time.</strong> Matching takes ~5 s per snow→summer pair on Mac CPU; the canonical 15 s clip's matching cache builds in ~50 min. The cache layer makes that cost amortise across renders, but real-time would require a substantially faster correspondence model (a learned component, ideally trained on synthetic snow + clear pairs to preserve the no-snow-in-training guarantee).</li>
-    <li><strong>The homography assumes a near-planar scene.</strong> When matches concentrate on building façades rather than the road plane, the warp can drift. Ground-plane bias mitigates but doesn't eliminate.</li>
-    <li><strong>Inlier count is not a reliable predictor of overlay quality.</strong> A pair with hundreds of inliers can still warp the mask onto the wrong region if the inliers concentrate on building façades. The system needs a human in the loop on input and output, even after the matcher succeeds.</li>
+    <li><strong>This is not real-time.</strong> The matching pass dominates per-frame compute on Mac CPU; the canonical 15 s clip's cache builds in roughly an hour. The cache layer makes that cost amortise across renders, but real-time would require a substantially faster correspondence model (a learned component, ideally trained on synthetic snow + clear pairs to preserve the no-snow-in-training guarantee).</li>
+    <li><strong>The homography assumes a near-planar scene.</strong> When correspondences concentrate on building façades rather than the road plane, the warp can drift. Ground-plane bias mitigates but doesn't eliminate.</li>
+    <li><strong>Inlier count is not a reliable predictor of overlay quality.</strong> Many correspondences can still warp the mask onto the wrong region if they concentrate on building façades. The system needs a human in the loop on input and output, even after the matcher succeeds.</li>
   </ul>
 </section>
 
@@ -250,13 +257,19 @@ make reproduce</code></pre>
 
 <section class="container">
   <h4>Generalising</h4>
-  <h2>The structure of the move</h2>
+  <h2>The shape repeats</h2>
 
-  <blockquote>A model trained on regime A. An inference target in regime B. A known correspondence between the two. Transfer through the correspondence.</blockquote>
+  <blockquote>A model trained on regime A. An inference target in regime B. A known invariant between the two. Transfer through the invariant.</blockquote>
 
-  <p>Snow on a road is one instance. Low-light medical imaging without low-light training data, polar earth observation without polar training data, a manipulator on Mars without Mars training data. Each admits the same structure.</p>
+  <p>Snow on a road is one instantiation. The shape repeats across the long tail of underdata regimes that minimal-shot autonomy faces.</p>
 
-  <p>We are not going to label our way out of every long-tail regime. But for many of them, we don't have to. We just have to find what stays the same and walk across.</p>
+  <ul>
+    <li><strong>Polar Earth observation.</strong> The invariant is the orbital geometry: the same satellite passes over the same coordinates on a known cadence. A model trained on temperate land cover or feature detection transfers into the polar regime through the orbital correspondence — the unlabelled gap closes without polar labels.</li>
+    <li><strong>Low-light medical imaging.</strong> The invariant is the patient's anatomy across imaging conditions. The same vessel runs in the same place; a previous well-lit acquisition or anatomical atlas supplies the constant. The well-lit-trained classifier reaches the low-light regime through registration to the known anatomy.</li>
+    <li><strong>Off-Earth manipulation</strong> (or any environment with no in-distribution training data — deep ocean, decommissioning site, wildfire zone). The invariant is the rigid-body geometry of task and tools; a known robot pose constrains where the wrench has to be. Earth-trained perception transfers into the foreign regime through the geometry the robot already knows it has.</li>
+  </ul>
+
+  <p>In each case there is a regime where data is rich, a regime where data is sparse (sometimes structurally so), and <em>something</em> — a geometric correspondence, an orbital schedule, an anatomical atlas, a robot kinematic chain — connecting the two without needing data from both sides. <strong>Find what stays the same. Walk across.</strong></p>
 </section>
 
 <!-- ─── FOOTER ─────────────────────────────────────────────────────────── -->

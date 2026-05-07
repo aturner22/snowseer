@@ -80,25 +80,23 @@ The dataflow is:
 
 ## How it works — a worked example
 
-Reading the diagram in the abstract is not the same as seeing it operate on one frame, with numbers. We pick frame 137 of the canonical 15 s clip (Boreas snow stream index 237, video time 13.7 s) and trace the pipeline.
+The diagram describes the recipe in the abstract; one frame shows the recipe in operation. We pick a representative frame from late in the canonical clip — Glen Shields, residential, mid-morning, heavy snow on the pavement — and trace it through.
 
-The snow frame is 1024 × 857 px, taken at UTM coordinates (-195.55, 126.41) in Boreas's per-sequence local frame. Glen Shields, residential, mid-morning, heavy snow on the pavement.
+1. **Prior selection.** The summer prior pool's KD-tree on summer poses returns the three nearest summer captures by UTM distance. The canonical loop's summer trajectory is sampled densely; on this frame all three nearest summer captures are within a couple of metres of the snow pose. "Nearest summer capture" is essentially the same place, on a different day, in a different season.
 
-1. **Prior selection.** The summer prior pool's KD-tree on summer poses returns the three nearest by UTM distance: 0.49 m, 0.68 m, 1.50 m. All three are within two metres of the snow pose — the canonical loop's summer trajectory is sampled densely enough that "nearest summer capture" is sub-metre accurate at this frame.
+2. **Match.** DISK runs on the snow frame and on each of the three summer priors. LightGlue produces descriptor-matched correspondence pairs; USAC-MAGSAC fits a homography per (snow, prior) pair, restricted to keypoints in the lower portion of the image so the geometry is biased to the ground plane rather than to building façades. The matcher anchors on what the season has not changed: gate posts, fence wires, distant roof edges, masonry corners.
 
-2. **Match.** DISK runs on the snow frame and on each of the three summer priors, extracting up to 2048 keypoints per image. LightGlue matches them; USAC-MAGSAC fits a homography per (snow, prior) pair, restricted to keypoints in the lower 70 % of the image so the geometry is biased to the ground plane rather than to building façades. After RANSAC the inlier counts are 43, 38, 41 — strong correspondence on this frame.
-
-3. **Segment the prior.** Mask2Former, frozen on Cityscapes, produces a road mask on each of the three summer priors. Mask2Former has never been shown a snowy frame; it doesn't have to be, because it never sees one — it only ever sees the clear prior. Each prior's road mask is reduced to its single largest connected component (a plough cares about the one drivable surface, not parking-lot fragments).
+3. **Segment the prior.** Mask2Former, frozen on Cityscapes, produces a road mask on each of the three summer priors. Mask2Former has never been shown a snowy frame; it doesn't have to be, because it never runs on one — it only ever sees the clear prior. Each prior's road mask is reduced to its single largest connected component (a plough cares about the one drivable surface in front of it, not the long tail of parking-lot fragments).
 
 4. **Warp the masks back.** Each prior's road mask is warped via `H⁻¹` into the snow image's pixel space. The pipeline also tracks the warped extent of each prior's full image so the next step can edge-erode where each prior actually covered, rather than dragging mask boundaries across the visible-region edge.
 
-5. **Fuse and crop.** The three warped masks combine via inlier-weighted soft-average; the result is foreground-cropped at y = 0.30 H (the upper 30 % of a roof-mounted forward camera is sky, and we don't claim those pixels as drivable). On this frame the fused mask covers 24.5 % of the foreground — the road occupies roughly a quarter of the lower 70 % of the image.
+5. **Fuse and crop.** The three warped masks combine via inlier-weighted soft-average; the result is foreground-cropped (the upper portion of a roof-mounted forward camera is sky, and we don't claim those pixels as drivable). What survives is a single road region in the lower image — the road, in the right place, on a frame where there is no road visible.
 
-6. **Smooth over time.** EMA with α = 0.4 blends this frame's raw mask into the previous smoothed mask. On a frame whose matcher fails entirely, the smoothed mask is held — graceful degradation rather than a flicker to nothing.
+6. **Smooth over time.** An EMA on the binary mask blends this frame's raw output into the previous smoothed mask. On a frame whose matcher fails entirely, the smoothed mask is held — graceful degradation rather than a flicker to nothing.
 
-The resulting road mask is alpha-blended onto the snow frame in green and emitted to the output stream. Frame 137 took 18 s of CPU time; matching dominates. The cached `FrameResult` makes downstream renders that change only the smoother or the layout instant — the matching pass is run once per (track, window).
+The resulting road mask is alpha-blended onto the snow frame in green and emitted to the output stream. The cached `FrameResult` makes downstream renders that change only the smoother or the layout near-instant — the matching pass runs once per track, then is reused across visualisations.
 
-That is the whole pipeline, on one frame, with real numbers. The dataflow doesn't change between this frame and any other on this track; the inlier counts shift, the prior distances shift, the fused coverage shifts. The composition is invariant.
+The composition is invariant. The same six steps run on every frame; what changes is which features the matcher anchored on, which prior won, how much of the road is visible. The dataflow does not.
 
 The video extension wraps that static pipeline in three thin layers:
 
@@ -120,11 +118,15 @@ We render the same clip in five layouts (single overlay, snow-vs-overlay sidebys
 
 The static-stills precursor is preserved in the same repository (`make stills`) and produces twenty-seven snow + clear-season hero pairs across Northern Sweden and Finland — the v1.x demo's foundation, twenty-seven different physical locations on which the video extension was built.
 
-The most interesting honest finding survives from the static work and into the moving demo: **inlier count is not a reliable predictor of overlay quality**. A pair with hundreds of inliers can warp the mask onto the wrong region if the inliers concentrate on building façades. A pair with seventeen inliers can be perfect if those seventeen happen to land on the road. The system therefore needs a human in the loop on the input and the output, even after the matcher succeeds.
+The most interesting honest finding survives from the static work and into the moving demo: **inlier count is not a reliable predictor of overlay quality**. A pair with many correspondences can warp the mask onto the wrong region if those correspondences concentrate on building façades. A pair with very few correspondences can be perfect if those few happen to land on the road. The system therefore needs a human in the loop on the input and the output, even after the matcher succeeds.
 
-## Scope of the contribution
+## The contribution
 
-The system answers *where the road should be*. It does not answer *where to drive*. That distinction matters, because the most obvious criticism of a road-overlay pipeline is the obstacle case: a snow-covered car parked on the road would still sit inside the green overlay; the pipeline knows nothing about obstacles, drivable surface, or 3D geometry. That criticism would be fair if the claim were "this replaces a perception stack". It is not the claim. The claim is that this is *one channel* — a 2D road-position prior — to feed alongside lidar, depth estimation, and obstacle detection in a fuller stack. The contribution is the **move**: how to extend a model from a data-rich regime into an adjacent data-poor one, by anchoring on what stays constant between the two. Snow on a road is the instance we built; the structure transfers.
+The contribution is not a snow plough. It is a primitive: **the constants-bridge.**
+
+A constants-bridge is a composition that takes a model trained on regime A, an inference target in regime B, and a known invariant between A and B, and uses the invariant to transfer the model into B without retraining. The invariant in this work is geometric — the road sits where it sat last July — but the shape is more general. Anything that stays constant between two regimes is a candidate bridge: anatomy across imaging modalities, terrain across illumination conditions, scene geometry across weather. The primitive is substrate-agnostic, regime-agnostic, modality-agnostic.
+
+The snow plough is one consumer of this primitive. The road-overlay channel we built is what the constants-bridge *looks like* when consumed for snow-buried road perception; it is not the whole perception stack. The output answers *where the road should be*, not *where to drive*. The most obvious criticism — a snow-covered car parked on the road still sits inside the green overlay — would be fair if the claim were "this replaces a perception stack". It isn't. The plough's perception stack remains a multi-channel system; the constants-bridge contributes one channel and frees the other channels (lidar, depth, obstacle detection) from having to also solve the road-position problem on a buried road. The contribution we are demonstrating is the **primitive**, not its first application.
 
 ## What we extended (and what we tried that didn't work)
 
@@ -152,9 +154,15 @@ We didn't claim novelty in any single component. The novelty, such as it is, is 
 
 ## Generalising
 
-The structure of the move is: a model trained on regime A; an inference target in regime B; a known correspondence between the two; transfer through the correspondence. Snow on a road is one instance. Others admit the same structure: low-light medical imaging without low-light training data, polar earth observation without polar training data, a manipulator on Mars without Mars training data. In each case there is a regime in which we have plenty of data, an adjacent regime in which we don't, and a constant between the two — temporal, geometric, anatomical — that lets us bridge.
+The structure of the constants-bridge is: a model trained on regime A; an inference target in regime B; a known invariant between the two; transfer through the invariant. Snow on a road is one instance. The shape repeats across the long tail of underdata regimes that minimal-shot autonomy has to face.
 
-We are not going to label our way out of every long-tail regime. But for many of them, we don't have to. We just have to find what stays the same and walk across.
+**Polar Earth observation.** Climate scientists, ice-sheet researchers, and shipping-route planners want to apply the rich library of land-cover classifiers and feature detectors trained on temperate satellite imagery to the polar regions, where labelled imagery is sparse and seasonally extreme. The invariant is the orbital geometry: the same satellite passes over the same coordinates on a known cadence; for any polar pixel today, an analyst can look up where on Earth it is and what an unconfounded model would expect to find there if the lighting and surface conditions matched a regime where labels exist. Annotating the long tail of polar conditions exhaustively is uneconomic for the same reason annotating snowy roads is — but if the orbital correspondence carries the rich-regime model into the polar regime, the unlabelled gap closes without new labels.
+
+**Low-light medical imaging.** Endoscopists, ophthalmologists, and any modality where a patient's anatomy is the same body across imaging conditions face the same problem in miniature: their well-trained classifiers fail when the imaging itself drifts (low light, novel scope, unusual contrast agent). The invariant is the patient's anatomy across imaging conditions — the same vessel runs in the same place; the same landmark is the same landmark — and a previous well-lit acquisition (or even just an anatomical atlas) can supply the constant. Labelling each new low-light condition is uneconomic given the long tail of scopes, sensors, and conditions; the constants-bridge moves the model across the imaging gap by registering to the known anatomy.
+
+**Off-Earth manipulation.** A manipulator on Mars (or in any operating environment with no in-distribution training data — the deep ocean, a nuclear-decommissioning site, a wildfire zone) cannot be trained on the operating environment because there is no operating environment data to train on. The invariant is the rigid-body geometry of the task and tools: a wrench is a wrench is a wrench; a known robot pose constrains where the wrench has to be. Labelling Mars is impossible. The constants-bridge transfers Earth-trained perception across the geometry the robot already knows it has.
+
+The pattern is the same in each. There is a regime where data is rich. There is a regime where data is sparse, sometimes structurally so. And there is *something* — a geometric correspondence, an orbital schedule, an anatomical atlas, a robot kinematic chain — that connects the two without needing data from both sides. **Find what stays the same. Walk across.**
 
 ---
 

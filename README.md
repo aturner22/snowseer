@@ -76,20 +76,20 @@ The result is alpha-blended (green, `#2e9c56`) onto the snow frame and emitted t
 
 `src/video_runtime/render_all_layouts.py` then produces five visual variants from the same matching cache — overlay, side-by-side, two 3-panel orderings, and a 2×2 quad — for whichever framing best fits a given audience.
 
-### Worked example: frame 137 of the canonical clip
+### Worked example: one frame, end-to-end
 
-Frame 137 of the rendered 15-second canonical clip is Boreas snow stream index 237, taken at video time 13.7 s. The snow image is 1024 × 857 px, captured at UTM coordinates (-195.55, 126.41) in Boreas's per-sequence local frame.
+A representative frame from late in the canonical clip — Glen Shields, residential, mid-morning, heavy snow on the pavement — traced through the pipeline.
 
-| Step | What happens at frame 137 |
+| Step | What happens |
 | --- | --- |
-| **1. Prior selection** | KD-tree returns 3 nearest summer captures by UTM distance: `0.49 m`, `0.68 m`, `1.50 m`. All three sub-2 m. |
-| **2. Match** | DISK extracts up to 2048 keypoints per image; LightGlue matches them; USAC-MAGSAC fits H per pair, restricted to keypoints in the lower 70 % of the image. RANSAC inliers: `43`, `38`, `41`. |
-| **3. Segment the prior** | Mask2Former (frozen, Cityscapes) runs once per summer prior. Each mask is reduced to its single largest connected component. |
+| **1. Prior selection** | KD-tree returns the K=3 nearest summer captures by UTM distance. The canonical loop's summer trajectory is sampled densely; on this frame all three nearest summer captures are within a couple of metres of the snow pose. |
+| **2. Match** | DISK runs on the snow frame and on each summer prior; LightGlue produces matched correspondences; USAC-MAGSAC fits H per pair, restricted to keypoints in the lower portion of the image to bias the geometry to the ground plane. The matcher anchors on what the season has not changed: gate posts, fence wires, distant roof edges, masonry corners. |
+| **3. Segment the prior** | Mask2Former (frozen, Cityscapes) runs on each summer prior. Each mask is reduced to its single largest connected component — one drivable surface per prior. |
 | **4. Warp** | Each prior's road mask is warped via `H⁻¹` into snow image space; the warped extent of each prior's full image is tracked separately for edge-erosion. |
-| **5. Fuse + crop** | Inlier-weighted soft-average over the three warped masks; foreground crop at y = 0.30 H. Final coverage on this frame: **24.5 %** of the foreground. |
-| **6. Smooth** | EMA (α = 0.4) blends with the previous smoothed mask. On a frame whose matcher fails, the previous mask is held — graceful degradation. |
+| **5. Fuse + crop** | Inlier-weighted soft-average over the three warped masks, then foreground-cropped (the upper region is sky). What survives is a single road region in the lower image — the road, in the right place, on a frame where the road is invisible. |
+| **6. Smooth** | EMA blends with the previous smoothed mask. On a frame whose matcher fails, the previous mask is held — graceful degradation rather than a flicker to nothing. |
 
-Frame 137 took 18 s of CPU time; matching dominates. Cached `FrameResult`s make downstream renders that change only the smoother or the layout instant — the matching pass runs once per (track, window).
+The composition is invariant. The same six steps run on every frame; what changes is which features the matcher anchored on, which prior won, how much road is visible. Cached `FrameResult`s make downstream renders that change only the smoother or the layout near-instant — the matching pass runs once per (track, window).
 
 ## Minimal-shot integrity
 
@@ -191,16 +191,22 @@ snow-underlay/
 
 `_archive/` (gitignored) holds legacy code kept on local disk for reference but not part of the canonical repo: the auto-rendered submission video composer (`compose_final.py`, audio, music — user composes externally now), multi-prior schema migrations from Phase J, the v1 walkthrough notebook, the Phase A audit notes, the deferred 02_video_walkthrough.ipynb (the writeup essay + Pages site replaced its narrative role).
 
+## The contribution
+
+The contribution is not a snow plough. It is a primitive — **the constants-bridge**: a composition that takes a model trained on regime A, an inference target in regime B, and a known invariant between A and B, and uses the invariant to transfer the model into B without retraining. The invariant in this work is geometric (the road sits where it sat last July) but the shape is general: anatomy across imaging modalities, terrain across illumination, scene geometry across weather, orbital schedule across polar darkness.
+
+The snow plough is one consumer of the primitive. The road-overlay channel is what the constants-bridge looks like when consumed for buried-road perception; it is not a replacement for the perception stack. The plough's other channels (lidar, depth, obstacle detection) keep doing their work; this primitive frees them from also having to solve the road-position problem on a buried road.
+
 ## Honest limits
 
-**The contribution is bounded.** Snow-Underlay is one channel of a fuller autonomy stack — a 2D road-position prior — not a complete perception system. The output answers *where the road should be*, not *where to drive*. A snow-covered car parked on the road would still sit inside the green overlay; the system has no notion of obstacles, drivable surface, or 3D geometry. This pipeline is designed to feed into a stack alongside lidar, depth estimation, and obstacle detection — not to replace any of them. The contribution we are demonstrating is the *move* — transferring knowledge across regimes through a learned-invariant constant — not a turnkey snowplough perception system.
+The output answers *where the road should be*, not *where to drive*. A snow-covered car parked on the road would still sit inside the green overlay; the system has no notion of obstacles, drivable surface, or 3D geometry. That is the scope, not a bug.
 
 Within that scope:
 
 - A single homography assumes a near-planar scene. When matches concentrate on building façades rather than the road plane, the warp can drift. Ground-plane bias and iterative refinement mitigate but don't eliminate.
-- Heavy snow on the lens (water droplets, lens-occlusion) reduces match quality on affected frames. The system fails *gracefully* — low inlier counts → EMA holds the previous good mask.
+- Heavy snow on the lens (water droplets, lens-occlusion) reduces match quality on affected frames. The system fails *gracefully* — when the matcher returns few correspondences, EMA holds the previous good mask.
 - Per-sequence Boreas UTM frames don't share a global origin, so summer pairings across years require careful trajectory alignment. The `fetch_track` script handles this for the canonical pairing; non-default summer pairings are a manual operation.
-- **Inlier count is not a reliable predictor of overlay quality.** A pair with hundreds of inliers can warp the mask onto the wrong region if the inliers concentrate on building façades. Empirical, from the static-stills work; survives into video.
+- **Inlier count is not a reliable predictor of overlay quality.** A pair with many correspondences can warp the mask onto the wrong region if those correspondences concentrate on building façades. Empirical, from the static-stills work; survives into video.
 
 ## Future direction
 
@@ -210,9 +216,15 @@ Within that scope:
 
 The principle is unchanged through all three: the plough never has to learn what snow looks like; it only has to find what is constant under the snow.
 
-## Closing
+## Generalising
 
-The contribution is the move, not the parts. Where data is missing, find a regime where it isn't; identify what is constant between the two; transfer through the constant. Snow on a road is one example. Polar imaging without polar training data, low-light medical imaging without low-light training data, a manipulator on Mars without Mars training data — all admit the same structure.
+The constants-bridge is the contribution; snow on a road is one instantiation. The shape repeats across the long tail of underdata regimes that minimal-shot autonomy faces.
+
+- **Polar Earth observation.** The invariant is the orbital geometry: known satellite passes, known coordinates. A model trained on temperate land cover or feature detection transfers into the polar regime through the orbital correspondence, without polar labels.
+- **Low-light medical imaging.** The invariant is the patient's anatomy across imaging conditions. The same vessel runs in the same place; a previous well-lit acquisition or anatomical atlas supplies the constant. The well-lit-trained classifier reaches the low-light regime through registration.
+- **Off-Earth manipulation** (or any environment with no in-distribution training data — deep ocean, decommissioning site, wildfire zone). The invariant is the rigid-body geometry of task and tools; a known robot pose constrains where the wrench has to be. Earth-trained perception transfers into the foreign regime through the geometry the robot already has.
+
+In each case there is a regime where data is rich, a regime where data is sparse (sometimes structurally so), and *something* connecting the two without needing data from both sides. **Find what stays the same. Walk across.**
 
 Constants as the bridge.
 

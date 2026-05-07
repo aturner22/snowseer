@@ -149,18 +149,18 @@ Snow appears only at inference, as the runtime input.
 
 ---
 
-## A worked example — frame 137
+## A worked example — one frame
 
-| Step | Frame 137 |
+| Step | What happens |
 |---|---|
-| Prior selection | 3 nearest summer captures: **0.49 m, 0.68 m, 1.50 m** |
-| Match (DISK + LightGlue + USAC-MAGSAC) | RANSAC inliers: **43, 38, 41** |
+| Prior selection | three nearest summer captures, all within a couple of metres |
+| Match (DISK + LightGlue + USAC-MAGSAC) | matcher anchors on gate posts, fence wires, masonry corners, distant rooflines |
 | Segment the *prior* (Mask2Former) | Cityscapes road class · largest connected component |
 | Warp via H⁻¹ | three masks projected back to snow space |
-| Fuse + foreground crop | mask covers **24.5 %** of the lower 70 % of the image |
-| EMA smooth (α = 0.4) | blend with previous frame's smoothed mask |
+| Fuse + foreground crop | one road region in the lower image — where the road actually is |
+| EMA smooth | blend with previous frame's smoothed mask |
 
-###### Frame 137 = video time 13.7 s; 18 s of CPU on this frame; matching dominates. Cached `FrameResult` makes downstream renders instant.
+###### The composition is invariant across frames. Which features the matcher anchors on shifts; which prior wins shifts; the dataflow does not. Cached `FrameResult` makes downstream renders near-instant.
 
 ---
 
@@ -212,34 +212,33 @@ stretches the previous mask outward at every step. Same outcome, different mecha
 
 ---
 
-## One channel, not a snowplough
+## The contribution is a *primitive*
 
-The output answers *where the road **should be***. **Not** *where to drive*.
+> The constants-bridge: a composition that takes a model trained on regime A,
+> an inference target in regime B, and a known invariant between A and B,
+> and uses the invariant to transfer the model into B without retraining.
 
-A snow-covered car parked on the road would still sit inside the green overlay. The pipeline has no notion of obstacles, drivable surface, or 3D geometry — and that is the **scope**, not a bug.
+The snow plough is one **consumer** of this primitive.
+The road-overlay channel is what the constants-bridge looks like
+when consumed for buried-road perception.
 
-This is **one channel** in a fuller stack. It feeds alongside lidar, depth estimation, and obstacle detection. It does not replace them.
-
-> The contribution we are demonstrating is the *move*: how to extend a model from a data-rich regime into an adjacent data-poor one through a learned-invariant constant. **Snow on a road is the instance we built. The structure transfers.**
+###### The output answers *where the road should be*, not *where to drive*. Other channels (lidar, depth, obstacle detection) keep doing their work; the primitive frees them from solving the road-position problem on a buried road.
 
 ---
 
 ## Generalising
 
-The structure of the move:
+The shape repeats.
 
-> A model trained on regime A.
-> An inference target in regime B.
-> A known correspondence between the two.
-> Transfer through the correspondence.
+| Regime | Invariant | Why labelling fails |
+|---|---|---|
+| **Polar Earth observation** | orbital geometry — known passes, known coordinates | polar conditions are seasonally extreme + sparsely sampled |
+| **Low-light medical imaging** | patient anatomy across imaging conditions | each new scope/sensor/contrast is its own regime |
+| **Off-Earth / hostile manipulation** | rigid-body geometry of task and tools | the operating environment has no in-distribution data |
 
-Snow on a road is one instance.
+Snow on a road is one instantiation. The constants-bridge transfers.
 
-*Low-light medical imaging without low-light training data.
-Polar earth observation without polar training data.
-A manipulator on Mars without Mars training data.*
-
-Each admits the same structure.
+> Find what stays the same. Walk across.
 
 ---
 
