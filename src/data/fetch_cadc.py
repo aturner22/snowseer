@@ -208,12 +208,17 @@ def _mapillary_closeto(token: str, lat: float, lon: float, *,
                        radius_m: float = 50.0,
                        summer_only: bool = True) -> dict | None:
     """Query Mapillary v4 for the single closest summer image to (lat, lon).
-    Returns the API record or None if nothing matches."""
+    Returns the API record or None if nothing matches.
+
+    Mapillary's Graph API uses the lat / lng / radius trio (not 'closeto')
+    on the /images endpoint; radius is capped at 50 m server-side.
+    """
     fields = "id,geometry,captured_at,is_pano,creator,thumb_2048_url"
     params = {
         "access_token": token,
-        "closeto": f"{lon},{lat}",  # NOTE: Mapillary expects lng,lat order
-        "radius": radius_m,
+        "lat": lat,
+        "lng": lon,
+        "radius": min(radius_m, 50.0),  # server-side cap
         "fields": fields,
         "limit": 50,
     }
