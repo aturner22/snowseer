@@ -161,8 +161,7 @@
   <h3 style="margin-top: 2em">Robustness — same place, two snowfalls</h3>
   <p>A second snow drive of the same Toronto intersection on <code>2025-02-15</code> (active snowfall, late afternoon, different lighting and traffic) runs the same pipeline with the same parameters. Same code, same models, different weather and time-of-day. Evidence that the principle is robust to the conditions inside the snow regime, not just to the canonical capture. Reproduce with <code>make reproduce-track TRACK=boreas_2025_02_15</code>.</p>
 
-  <h3 style="margin-top: 2em">A different physical scene — Waterloo, Ontario</h3>
-  <p>A short clip from CADC (Canadian Adverse Driving Conditions, U Waterloo) — different city, different vehicle, different camera, different snowfall, different driving day. Same pipeline produces the cross-season overlay. The clip is short by design: the substrate of the clear-weather prior is what bounds the demo length, not the principle. Reproduce with <code>make reproduce-track TRACK=cadc_2019_02_27_0027</code>.</p>
+  <p class="note">Scene variety beyond the Glen Shields loop is carried by the static-stills precursor (twenty-seven different physical locations across Northern Sweden and Finland). The two video clips speak to robustness inside one well-instrumented capture site; the static set speaks to breadth across many.</p>
 </section>
 
 <!-- ─── WHAT WE TRIED THAT DIDN'T WORK ─────────────────────────────────── -->
