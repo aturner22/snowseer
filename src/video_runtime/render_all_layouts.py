@@ -50,6 +50,11 @@ def main() -> None:
     p.add_argument("--min-spatial-diversity", type=float, default=None,
                    help="optional spatial-diversity inlier-bbox threshold; "
                         "see render.py --min-spatial-diversity for details.")
+    p.add_argument("--weight-strategy", default="inliers",
+                   choices=["inliers", "inliers_x_diversity"],
+                   help="see render.py --weight-strategy")
+    p.add_argument("--outlier-drop", action="store_true",
+                   help="see render.py --outlier-drop")
     args = p.parse_args()
 
     aug_path = ROOT / f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl"
@@ -63,6 +68,10 @@ def main() -> None:
         seg_args += ["--seg-morph-radius", str(args.seg_morph_radius)]
     if args.min_spatial_diversity is not None:
         seg_args += ["--min-spatial-diversity", str(args.min_spatial_diversity)]
+    if args.weight_strategy != "inliers":
+        seg_args += ["--weight-strategy", args.weight_strategy]
+    if args.outlier_drop:
+        seg_args += ["--outlier-drop"]
 
     if not cache_path.exists():
         print(f"[render-all] matching cache missing; building...")

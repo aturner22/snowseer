@@ -78,6 +78,67 @@ def weighted_soft_average(
     return (score >= threshold).astype(np.uint8)
 
 
+def drop_outlier_priors(
+    masks: list[np.ndarray],
+    valid_regions: list[np.ndarray],
+    weights: list[float] | None = None,
+    *,
+    iou_threshold: float = 0.15,
+) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
+    """Identify and remove a single outlier mask whose IoU with the
+    consensus of the others falls below `iou_threshold`.
+
+    Used when one of K priors produces a mask that disagrees wildly with
+    the rest (e.g. it warped to the sky or got the perspective wrong).
+    Returns (filtered_masks, filtered_valids, filtered_weights).
+
+    Implementation:
+    1. For each mask m_i, compute the IoU between m_i and the union of
+       all other masks (restricted to overlap of their valid regions, to
+       avoid penalising priors with smaller coverage).
+    2. The mask with the lowest IoU is dropped if its IoU < threshold AND
+       at least 3 priors are present (need ≥2 left after dropping for
+       fusion to remain meaningful).
+    Returns the inputs unchanged when fewer than 3 priors exist or no
+    outlier is found.
+    """
+    if len(masks) < 3:
+        return masks, valid_regions, list(weights) if weights is not None else [1.0] * len(masks)
+
+    if weights is None:
+        weights = [1.0] * len(masks)
+
+    n = len(masks)
+    ious = []
+    for i in range(n):
+        others = np.zeros_like(masks[0], dtype=bool)
+        others_valid = np.zeros_like(masks[0], dtype=bool)
+        for j in range(n):
+            if j == i:
+                continue
+            others |= masks[j].astype(bool)
+            others_valid |= valid_regions[j].astype(bool)
+        # Restrict to where BOTH this prior's valid_region AND any other
+        # prior's valid_region exist — otherwise we punish small-coverage
+        # priors unfairly.
+        overlap = valid_regions[i].astype(bool) & others_valid
+        m_i = masks[i].astype(bool) & overlap
+        m_others = others & overlap
+        u = (m_i | m_others).sum()
+        if u == 0:
+            ious.append(1.0)  # no overlap region — can't judge; keep.
+        else:
+            ious.append(float((m_i & m_others).sum()) / float(u))
+
+    worst_idx = int(np.argmin(ious))
+    if ious[worst_idx] < iou_threshold:
+        keep = [i for i in range(n) if i != worst_idx]
+        return ([masks[i] for i in keep],
+                [valid_regions[i] for i in keep],
+                [weights[i] for i in keep])
+    return masks, valid_regions, list(weights)
+
+
 def majority_vote(
     masks: list[np.ndarray],
     valid_regions: list[np.ndarray] | None = None,

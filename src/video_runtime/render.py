@@ -77,6 +77,18 @@ def main() -> None:
                         "correspondences but they all lie on one corner feature, "
                         "so the homography projects the road mask to the wrong "
                         "image region. Off by default (v2 behaviour).")
+    p.add_argument("--weight-strategy", default="inliers",
+                   choices=["inliers", "inliers_x_diversity"],
+                   help="How each prior's mask is weighted in the soft-average "
+                        "fusion. 'inliers' (default, v2) uses the RANSAC inlier "
+                        "count. 'inliers_x_diversity' (v3) multiplies by the "
+                        "spatial-diversity score so a tightly-clustered fit is "
+                        "downweighted relative to a spread-out one with the same "
+                        "inlier count.")
+    p.add_argument("--outlier-drop", action="store_true",
+                   help="When K>=3 priors are present, drop the single prior whose "
+                        "warped mask has IoU<0.15 with the consensus of the "
+                        "others. Off by default. v3 robustness improvement.")
     p.add_argument("--debug-strip", action="store_true",
                    help="overlay mode: include the diagnostic strip "
                         "(frame index + priors_used). Off for final renders.")
@@ -108,6 +120,8 @@ def main() -> None:
         seg_prob_threshold=args.seg_prob_threshold,
         seg_morph_radius=args.seg_morph_radius,
         min_spatial_diversity=args.min_spatial_diversity,
+        weight_strategy=args.weight_strategy,
+        outlier_drop=args.outlier_drop,
     )
 
     if args.mode == "cache-only":
