@@ -90,7 +90,11 @@ TRACK_END   ?= 350
 #   stills/<layout>__t<NNNN>.jpg
 track:
 	@if [ -z "$(TRACK)" ]; then echo "usage: make track TRACK=<id> [TRACK_START=N TRACK_END=N]"; exit 2; fi
-	uv run python -m src.video_runtime.fetch_track --track $(TRACK)
+	@if [ -f data/video/tracks/$(TRACK)/snow/camera_poses.csv ]; then \
+	    echo "[track] $(TRACK) already staged on disk — skipping fetch_track"; \
+	else \
+	    uv run python -m src.video_runtime.fetch_track --track $(TRACK); \
+	fi
 	uv run python -m src.video_runtime.render_all_layouts \
 	    --track $(TRACK) --cache-tag $(CANONICAL_TAG) \
 	    --start $(TRACK_START) --end $(TRACK_END) --stride 1 \
