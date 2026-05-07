@@ -23,7 +23,7 @@
 
 .PHONY: help reproduce reproduce-all-layouts reproduce-track reproduce-track-alts \
         reproduce-all-layouts-canonical extract-stills-canonical reproduce-everything \
-        assets extract-stills pages-assets submission-bundle test tidy \
+        assets extract-stills pages-assets submission-bundle test tidy oracle \
         stills stills-fetch stills-pipeline stills-audit stills-multi \
         slides writeup pdfs \
         video-fetch video-render video-augment video-recon clean dist-clean
@@ -51,6 +51,9 @@ help:
 	@echo "    make pdfs                           Render docs/{slides,writeup}.pdf (gitignored)"
 	@echo "    make slides                         Marp deck (slides + video-plan appendix)"
 	@echo "    make writeup                        Pandoc essay PDF"
+	@echo ""
+	@echo "  Pre-flight oracle (verify priors + summer segmentation BEFORE cache compute):"
+	@echo "    make oracle TRACK=<id> [STRIDE=10]  Check demo-ability + suggest candidate windows"
 	@echo ""
 	@echo "  Asset bundles (slides plan + Pages):"
 	@echo "    make assets                         Render canonical clip's full asset bundle"
@@ -208,6 +211,24 @@ reproduce-everything: reproduce reproduce-track-alts assets stills writeup pages
 reproduce-track-alts:
 	$(MAKE) reproduce-track TRACK=boreas_2024_12_23
 	$(MAKE) reproduce-track TRACK=boreas_2025_02_15
+
+# ─── Oracle (pre-flight before any cache build) ─────────────────────────────
+
+# `make oracle TRACK=<id>` — verify the track has a demo-able window before
+# committing cache compute. Checks (a) UTM distance to nearest summer prior
+# and (b) summer-prior road-segmentation coverage. Reports candidate windows
+# (longest contiguous runs where every frame has ≥ 1 acceptable prior).
+#
+# Hard rule (per memory feedback_phase_l_window_oracle.md): never run
+# `make reproduce-track TRACK=<id>` without a satisfied oracle pass first.
+# Cost: dominated by the segmentation cache (~5–10 min on Mac CPU for a
+# typical 350-frame track + K=3 priors). Cached aggressively per summer
+# frame.
+oracle:
+	@if [ -z "$(TRACK)" ]; then echo "usage: make oracle TRACK=<id> [STRIDE=10]"; exit 2; fi
+	uv run python -m src.video_runtime.window_oracle --track $(TRACK) \
+	    $(if $(STRIDE),--stride $(STRIDE)) \
+	    --out-json outputs/video/$(TRACK)/_oracle.json
 
 # ─── Lower-level Phase K targets ────────────────────────────────────────────
 
