@@ -37,6 +37,7 @@ outputs/_video_frames/
 outputs/pipeline_run.log
 outputs/fetch_v2.log
 outputs/fetch_*.log
+outputs/_*.log
 
 # Phase K (video) — every render and intermediate cache is regenerable.
 outputs/video/
