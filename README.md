@@ -1,4 +1,4 @@
-# Snow-Underlay
+# snowseer
 
 > A snow plough's job is short: keep the road clear. While it's doing it, the road is invisible — buried, lane markings gone, curb-line erased. A self-driving stack trained on Cityscapes will report, with calibrated confidence, that the entire scene is sky.
 
@@ -18,7 +18,7 @@ make reproduce        # canonical 15 s clip; ~50 min cache + ~1 min render
 open docs/index.html               # static Pages site, no server needed
 ```
 
-**For judges**: `make help` lists every reproducible target. The canonical matching cache builds in ~50 min on Mac CPU; subsequent renders (6 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min. CI runs smoke tests on every push.
+**For judges**: `make help` lists every reproducible target. The canonical matching cache builds in ~50 min on Mac CPU; subsequent renders (6 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min.
 
 ---
 
@@ -118,16 +118,14 @@ That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), b
 | Want to … | Run |
 | --- | --- |
 | Reproduce the canonical clip | `make reproduce` |
-| Render all 5 layouts of the canonical (overlay / sidebyside / 3-panel × 2 / quad) | `make reproduce-all-layouts TRACK=boreas_2021_01_26` |
-| Pre-flight an alt track (verify priors-exist + summer-segmentation) | `make oracle TRACK=<id>` |
-| Run the pipeline on a registered alt track | `make reproduce-track TRACK=<id>` (e.g. `boreas_2025_02_15`) |
-| Bundle stills for the GitHub Pages site | `make pages-assets` |
-| Run the static-stills precursor (single-prior, v1 narrative) | `make stills` |
-| Run the static-stills multi-prior fusion ablation (Phase J) | `make stills-multi` |
+| Run the pipeline on any registered track (5 layouts + stills) | `make track TRACK=<id>` (e.g. `boreas_2025_02_15`) |
+| Pre-flight a track (verify priors-exist + summer-segmentation) | `make oracle TRACK=<id>` |
+| Run the static-stills precursor | `make stills` |
 | Render the writeup + slide PDFs (local only — gitignored) | `make pdfs` |
+| Re-execute the analysis notebook in place | `make notebook` |
 | Open the GitHub Pages site locally | `open docs/index.html` |
 | Smoke-test the import graph + CLI shape | `make test` |
-| Tidy local clutter (logs, `__pycache__`, `.DS_Store`) | `make tidy` |
+| Wipe generated outputs | `make clean` |
 | List all `make` targets | `make help` |
 
 **Registered tracks** (Boreas snow + summer pairings, Glen Shields loop, Toronto):
@@ -135,12 +133,12 @@ That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), b
 | Track ID | Snow capture | Role |
 | --- | --- | --- |
 | `boreas_2021_01_26` | Heavy snow, mid-morning | Canonical 15 s clip (`make reproduce`) |
-| `boreas_2025_02_15` | Active snowfall, late afternoon | Robustness clip — same intersection, different day (`make reproduce-track TRACK=boreas_2025_02_15`) |
+| `boreas_2025_02_15` | Active snowfall, late afternoon | Robustness clip — same intersection, different day (`make track TRACK=boreas_2025_02_15`) |
 
 ## Repo layout
 
 ```
-snow-underlay/
+snowseer/
 ├── Makefile                          # all reproduce / stills / docs commands
 ├── README.md
 ├── pyproject.toml · uv.lock
@@ -170,7 +168,7 @@ snow-underlay/
 │   ├── demo_pairs.json               # demo manifest: 27 Mapillary snow + clear pairs the fetcher pulls
 │   ├── fetch_mapillary.py            # Mapillary v4 fetcher (uses demo_pairs.json with --curated-only)
 │   ├── pairs/                        # fetched pair downloads (gitignored)
-│   └── video/                        # (gitignored — regenerate via `make video-fetch`)
+│   └── video/                        # (gitignored — auto-fetched by `make track`)
 │       └── tracks/<track_id>/        # per-track snow + summer windows
 │           ├── snow/{frames/, camera_poses.csv, calib/, window.json}
 │           └── summer/{frames/, camera_poses.csv, calib/, window.json}

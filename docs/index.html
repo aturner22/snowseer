@@ -3,18 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Snow-Underlay · Constants as the bridge — in motion</title>
-  <meta name="description" content="Minimal-shot autonomy demonstration: a cross-season road overlay on a snow plough's video, frame by frame. SoTA Commission I." />
+  <title>snowseer · constants as the bridge</title>
+  <meta name="description" content="Minimal-shot autonomy: a cross-season road overlay on a snow plough's video. Frozen pretrained matcher + segmenter, no fine-tuning, no snow in training. SoTA Commission I, May 2026." />
 
-  <!-- Fonts (EB Garamond + Inter + JetBrains Mono via Google Fonts CDN) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="style/site.css" />
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="Snow-Underlay — Constants as the bridge, in motion" />
+  <meta property="og:title" content="snowseer — constants as the bridge" />
   <meta property="og:description" content="Minimal-shot autonomy: cross-season road overlay on a snow plough's live video." />
   <meta property="og:type" content="article" />
 </head>
@@ -23,9 +21,9 @@
 <!-- ─── HERO ────────────────────────────────────────────────────────────── -->
 
 <section class="hero wide">
-  <h4>Snow-Underlay</h4>
+  <h4>snowseer</h4>
   <h1>Constants as the bridge.</h1>
-  <h2>Minimal-shot autonomy, in motion.</h2>
+  <h2>Minimal-shot autonomy via geometric correspondence.</h2>
 
   <div class="hero-video-wrap">
     <img src="_assets/canonical/stills/overlay__t005p0.jpg" alt="Frame from the canonical overlay clip — Boreas Toronto, January 2021. Green road overlay transferred from a paired summer prior." />
@@ -33,38 +31,77 @@
   <p class="hero-caption">15 s clip · Boreas · Toronto · January 2021. Green = the road, transferred from a clear-season prior. Nothing in the pipeline has been trained on snow. <em>(Hero frame above; reproduce the full clip with <code>make reproduce</code>.)</em></p>
 </section>
 
-<!-- ─── PRINCIPLE ────────────────────────────────────────────────────────── -->
+<!-- ─── MOTIVATION ──────────────────────────────────────────────────────── -->
+
+<section class="container">
+  <h4>Motivation</h4>
+  <h2>When labels can&rsquo;t keep up</h2>
+
+  <p class="lead">Minimal-shot autonomy is the question of how a perception system survives in regimes it has not been heavily trained on. The default move &mdash; collect more data and retrain &mdash; does not scale across the long tail. A snow plough drives in a regime that labelled training corpora deliberately exclude; a Cityscapes-trained segmenter applied directly to the snowy frame reports the entire scene as sky.</p>
+
+  <p>For almost every operating regime where autonomy fails for lack of data, an adjacent regime exists &mdash; temporally, seasonally, geographically &mdash; where data is rich, and where the parts that matter are the same. The plough&rsquo;s road is the same road it was last July. Its <em>appearance</em> has changed completely; its <em>position in space</em> has not.</p>
+</section>
+
+<!-- ─── PRINCIPLE ───────────────────────────────────────────────────────── -->
 
 <section class="container">
   <h4>The principle</h4>
-  <p class="lead">A snow plough's job is short — keep the road clear. While it's doing it, the road is invisible. A self-driving stack trained on Cityscapes will report, with calibrated confidence, that the entire scene is sky.</p>
+  <h2>The constants-bridge</h2>
 
-  <p>Minimal-shot autonomy is the question of how a perception system survives in regimes it has not been heavily trained on. The default answer is <em>collect more data and retrain</em>. But labelling cannot keep pace with reality — not for snow, dust, ash, regional construction practices, agricultural off-road, or any of the conditions a vehicle, robot, or drone meets when it leaves the regime its training set was sampled from. <strong>A perception system that depends on having been trained on each new condition will lag every condition it has not yet been trained on.</strong></p>
+  <blockquote>A constants-bridge is a composition that takes a model trained on regime A, an inference target in regime B, and a known invariant linking the two, and uses the invariant to transfer the model into B without retraining.</blockquote>
 
-  <p>There is a different move available, and it doesn't require new training data. <strong>For almost every operating regime where autonomy fails for lack of data, there is an adjacent regime — temporally, seasonally, geographically — where data exists, and where the parts that matter are the same.</strong> A snow plough's road is the same road it was last July. The road's <em>appearance</em> has changed completely; its <em>position in space</em> has not.</p>
+  <p>The invariant in this work is geometric &mdash; the road sits where it sat last summer. The shape is more general: anatomy across imaging conditions, terrain across illumination, scene structure across weather, orbital geometry across polar darkness. The constituent parts (frozen feature matcher + frozen Cityscapes segmenter + classical RANSAC) are not new; the contribution is to identify the composition itself as a primitive worth naming, and to demonstrate it end-to-end on a regime its components have never been trained on.</p>
 
-  <blockquote>If we can identify what stays constant between the data-rich regime and the data-poor one, we can extend our existing models into the new regime — without learning a single thing about it. We use the constant as a bridge. This is generalisation, not memorisation.</blockquote>
+  <pre class="diagram"><code>   Snow frame                Clear-prior frame
+        │                            │
+        │                            ▼
+        │                   Mask2Former (frozen)
+        │                            │ road mask in prior space
+        │                            │
+        └──►  DISK + LightGlue  ◄────┘   (frozen)
+                     │
+                     ▼ correspondences
+            USAC-MAGSAC homography  (ground-plane biased)
+                     │
+                     ▼ H
+            warp prior mask → snow space
+                     │
+                     ▼
+            fuse over K=3 priors  +  EMA over time
+                     │
+                     ▼
+            Road overlay on the snow frame</code></pre>
 </section>
 
-<!-- ─── PIPELINE ────────────────────────────────────────────────────────── -->
+<!-- ─── WATCH IT WORK ──────────────────────────────────────────────────── -->
 
 <section class="container">
-  <h4>The pipeline</h4>
-  <h2>Per snow frame</h2>
+  <h4>Watch it work</h4>
+  <h2>The canonical clip</h2>
 
-  <ol class="recipe">
-    <li>Pull the live snowy frame from the plough's camera.</li>
-    <li>Pull a clear-season prior of the same coordinates (Boreas paired summer drives for the canonical demo).</li>
-    <li>Match the two with a frozen feature matcher — DISK + LightGlue.</li>
-    <li>Fit a homography by RANSAC, biased toward the ground plane.</li>
-    <li>Run a Cityscapes-trained road segmenter — on the <em>clear</em> prior only.</li>
-    <li>Warp the road mask through the homography onto the snowy frame.</li>
-  </ol>
+  <p><img src="_assets/canonical/stills/overlay__t005p0.jpg" alt="Canonical overlay frame at t = 5 s, Boreas Toronto, January 2021. Green road overlay tracks the buried road." /></p>
 
-  <p>The plough now knows where the road is. No model in the pipeline has been trained on snow. The video extension wraps the per-pair pipeline in three thin layers: a <strong>track loader</strong> (snow stream + paired summer stream by GPS pose), a <strong>prior pool</strong> (K = 3 nearest summer captures by UTM distance), and an <strong>EMA temporal smoother</strong> (α = 0.4). A pickled cache layer makes the matching pass reusable.</p>
+  <p>15 s, residential street near UTIAS in Toronto. Heavy snow, road buried, lane markings invisible. The strongest matches anchor on gate posts, fence wires, and distant rooflines &mdash; features the season can&rsquo;t change. <em>The mp4 is regenerated by</em> <code>make reproduce</code>; the frame above is the t = 5 s sample extracted by <code>make track TRACK=boreas_2021_01_26</code>.</p>
+
+  <p>A second canonical run on the same Toronto loop in different snowfall conditions (<code>boreas_2025_02_15</code>) executes the same code with the same parameters. Evidence the principle is robust to the conditions inside the snow regime, not just to one capture.</p>
 </section>
 
-<!-- ─── ARCHITECTURE ─────────────────────────────────────────────────────── -->
+<!-- ─── WORKED EXAMPLE ──────────────────────────────────────────────────── -->
+
+<section class="container">
+  <h4>Worked example</h4>
+  <h2>One frame, four panels</h2>
+
+  <p>What the matcher actually anchors on, on a representative frame:</p>
+
+  <p><img src="_assets/canonical/stills/matches__t001p0.jpg" alt="Snow query (left) and summer prior (right) with green correspondence lines drawn between matched gate posts, fence wires, and masonry corners. No correspondences on the road itself." /></p>
+
+  <p>Left, snow query; right, summer prior; correspondences drawn between matched features. The lines connect features the season has not changed &mdash; gate posts, fence wires, masonry corners, distant rooflines. No correspondences land on the road surface, because the snow has erased the lane markings and the kerb &mdash; the matcher knows there is nothing visually consistent there.</p>
+
+  <p>The geometry from those non-road constants registers the prior&rsquo;s road mask back into the snow frame&rsquo;s pixel coordinates. We are not matching road to road; we are using the constants on the buildings to fix the geometry, then carrying the road across.</p>
+</section>
+
+<!-- ─── ARCHITECTURE ───────────────────────────────────────────────────── -->
 
 <section class="container">
   <h4>Architecture</h4>
@@ -75,116 +112,22 @@
       <tr><th>Component</th><th>Role</th><th>Pretrained on</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>DISK</strong> <em>(NeurIPS '20)</em></td><td>Local features</td><td>MegaDepth · no snow</td></tr>
-      <tr><td><strong>LightGlue</strong> <em>(ICCV '23)</em></td><td>Sparse matcher</td><td>MegaDepth · no snow</td></tr>
-      <tr><td><strong>USAC-MAGSAC</strong> <em>(CVPR '20)</em></td><td>Robust homography</td><td>—</td></tr>
-      <tr><td><strong>Mask2Former</strong> <em>(CVPR '22)</em></td><td>Road segmenter (on the clear prior only)</td><td>Cityscapes · no snow</td></tr>
-      <tr><td><strong>Boreas</strong> <em>(IJRR '23)</em></td><td>Snow + paired summer driving captures (canonical video)</td><td>— (CC BY 4.0)</td></tr>
-      <tr><td><strong>Imagery substrate</strong></td><td>Source of clear-weather imagery for the priors</td><td>Mapillary v4 in this demo. Interchangeable — Google Street View, Bing Streetside, operator's own captures, the host dataset's summer subset all work. The pipeline is substrate-agnostic; only the geometric correspondence matters.</td></tr>
+      <tr><td><strong>DISK</strong> <em>(NeurIPS &lsquo;20)</em></td><td>Local features</td><td>MegaDepth · no snow</td></tr>
+      <tr><td><strong>LightGlue</strong> <em>(ICCV &lsquo;23)</em></td><td>Sparse matcher</td><td>MegaDepth · no snow</td></tr>
+      <tr><td><strong>USAC-MAGSAC</strong> <em>(CVPR &lsquo;20)</em></td><td>Robust homography</td><td>&mdash;</td></tr>
+      <tr><td><strong>Mask2Former</strong> <em>(CVPR &lsquo;22)</em></td><td>Road segmenter (on the clear prior only)</td><td>Cityscapes · no snow</td></tr>
+      <tr><td><strong>Boreas</strong> <em>(IJRR &lsquo;23)</em></td><td>Snow + paired summer driving captures</td><td>&mdash; (CC BY 4.0)</td></tr>
     </tbody>
   </table>
 
-  <p>Every learned component is frozen. Snow appears only at inference, as the runtime input.</p>
-</section>
-
-<!-- ─── HOW IT WORKS — DIAGRAM + WORKED EXAMPLE ──────────────────────── -->
-
-<section class="container">
-  <h4>How it works</h4>
-  <h2>The dataflow, then one frame with numbers</h2>
-
-  <p>The diagram is the recipe seen as data flowing between frozen components. The substrate of the clear prior is interchangeable; the geometric correspondence is what does the work.</p>
-
-  <pre class="diagram"><code>   ┌──────────────┐                    ┌──────────────────────┐
-   │  Snow frame  │                    │  Clear-prior frame    │   any geo-tagged
-   │   (live)     │                    │  (Boreas summer,      │   clear-weather
-   │              │                    │   Mapillary, GSV…)    │   imagery substrate
-   └──────┬───────┘                    └──────────┬────────────┘
-          │                                       │
-          │                                       ▼
-          │                            ┌──────────────────────┐
-          │                            │   Mask2Former         │  frozen
-          │                            │  (Cityscapes road)    │  Cityscapes
-          │                            └──────────┬────────────┘
-          │                                       │ road mask in prior space
-          │                                       │
-          └──────────►  DISK + LightGlue  ◄───────┘             frozen
-                              │                                  MegaDepth
-                              ▼ correspondences
-                    USAC-MAGSAC homography                       classical
-                    (ground-plane biased)
-                              │
-                              ▼ H
-                  warp prior mask → snow space
-                              │
-                              ▼
-              fuse over K=3 priors  +  EMA over time
-                              │
-                              ▼
-                  ┌──────────────────────┐
-                  │  Road overlay on the │
-                  │  snow frame (green)  │
-                  └──────────────────────┘</code></pre>
-
-  <h3 style="margin-top: 2em">A worked example: one frame</h3>
-
-  <p>A representative frame from late in the canonical clip — Glen Shields, residential, mid-morning, heavy snow on the pavement.</p>
-
-  <ol class="recipe">
-    <li><strong>Prior selection.</strong> The summer prior pool's KD-tree on summer poses returns the K=3 nearest summer captures by UTM distance. The canonical loop's summer trajectory is sampled densely; on this frame all three nearest summer captures sit within a couple of metres of the snow pose. Same place, different season.</li>
-    <li><strong>Match.</strong> DISK runs on the snow frame and on each summer prior. LightGlue produces matched correspondences; USAC-MAGSAC fits a homography per (snow, prior) pair, restricted to keypoints in the lower portion of the image so the geometry is biased to the ground plane. The matcher anchors on what the season has not changed: gate posts, fence wires, distant roof edges, masonry corners.</li>
-    <li><strong>Segment the prior.</strong> Mask2Former, frozen on Cityscapes, produces a road mask on each summer prior. It has never been shown a snowy frame; it doesn't have to be — it only ever sees the clear prior. Each prior's mask is reduced to its single largest connected component.</li>
-    <li><strong>Warp.</strong> Each prior's road mask is warped via <code>H⁻¹</code> back into the snow image's pixel space. The pipeline tracks the warped extent of each prior's full image so the next step can edge-erode where each prior actually covered.</li>
-    <li><strong>Fuse and crop.</strong> The three warped masks combine via inlier-weighted soft-average, then are foreground-cropped (the upper region is sky). What survives is a single road region in the lower image — the road, in the right place, on a frame where there is no road visible.</li>
-    <li><strong>Smooth over time.</strong> An EMA on the binary mask blends this frame's raw output into the previous smoothed mask. On a frame whose matcher fails entirely, the smoothed mask is held — graceful degradation rather than a flicker to nothing.</li>
-  </ol>
-
-  <p>The smoothed mask is alpha-blended onto the snow frame in green and emitted. The cached <code>FrameResult</code> makes downstream renders (different smoothers, different layouts) near-instant — the matching pass runs once per track, then is reused across visualisations. The composition is invariant across frames; what changes is which features the matcher anchored on, which prior won, how much of the road is visible.</p>
-
-  <h3 style="margin-top: 2em">What the matcher anchors on</h3>
-  <p>One frame from the canonical clip's <code>matches.mp4</code>: the snow query on the left, the closest summer prior on the right, with a small subset of correspondences drawn between them. The lines connect features the season has not changed — gate posts, fence wires, masonry corners, distant rooflines. There are no correspondences on the road surface itself: the snow has erased the lane markings and the kerb, and the matcher knows there is nothing visually consistent to find there. We are not matching road to road. We are using the constants on the buildings and fences to fix the geometry, then using the geometry to bring the clear image's road mask back to the snow frame.</p>
-  <p><img src="_assets/canonical/stills/matches__t001p0.jpg" alt="Snow query (left) and summer prior (right) with green correspondence lines drawn between matched gate posts, fence wires, and masonry corners. No correspondences on the road itself." /></p>
-</section>
-
-<!-- ─── WATCH IT WORK — CANONICAL + ALTS ──────────────────────────────── -->
-
-<section class="container">
-  <h4>Watch it work</h4>
-  <h2>The canonical clip.</h2>
-
-  <p>15 s, Boreas <code>boreas-2021-01-26-11-22</code>, residential street near UTIAS in Toronto. Heavy snow, road buried, lane markings invisible. The strongest matches anchor on the gate post, fence wires, and distant rooflines — features the season can't change.</p>
-
-  <p><img src="_assets/canonical/stills/overlay__t005p0.jpg" alt="Canonical overlay frame at t = 5 s — Boreas Toronto, January 2021. Green road overlay transferred from a paired summer prior." /></p>
-
-  <p class="note">The clip itself is a large binary artefact produced by <code>make reproduce</code> on a clean clone — it is not committed. The frame above is the t = 5 s sample from the overlay layout (extracted by <code>make assets</code>). Five further layouts (sidebyside, two 3-panel orderings with the naive baseline, and a 2 × 2 quad with the summer prior visible) are produced by <code>make assets</code> for downstream composition.</p>
-
-  <h3 style="margin-top: 2em">Robustness — same place, two snowfalls</h3>
-  <p>A second snow drive of the same Toronto intersection on <code>2025-02-15</code> (active snowfall, late afternoon, different lighting and traffic) runs the same pipeline with the same parameters. Same code, same models, different weather and time-of-day. Evidence that the principle is robust to the conditions inside the snow regime, not just to the canonical capture. Reproduce with <code>make reproduce-track TRACK=boreas_2025_02_15</code>.</p>
-
-  <p class="note">Scene variety beyond the Glen Shields loop is carried by the static-stills precursor (twenty-seven different physical locations across Northern Sweden and Finland). The two video clips speak to robustness inside one well-instrumented capture site; the static set speaks to breadth across many.</p>
-</section>
-
-<!-- ─── WHAT WE TRIED THAT DIDN'T WORK ─────────────────────────────────── -->
-
-<section class="container">
-  <h4>Negative findings</h4>
-  <h2>Why we don't use synthetic priors or optical flow</h2>
-
-  <p><strong>Synthetic priors from past frames.</strong> Snow→snow matching returns 3–7× more inliers than snow→summer because lighting, lens, and viewpoint are identical between consecutive snow frames. In single-frame stills, the resulting masks looked dramatically broader. <em>In motion</em>, each frame's slightly-too-large mask seeded the next frame's prior, which produced a slightly-larger mask, and the road overlay drifted outward into bushes within seconds. A positive feedback loop the static stills hid. We rejected it.</p>
-
-  <p><strong>Optical-flow propagation.</strong> Same outcome, different mechanism: forward-driving cameras have vanishing-point flow that stretches the previous mask outward at every step. Rejected.</p>
-
-  <p><strong>What survived: EMA on the binary mask, α = 0.4.</strong> The simplest possible smoother. It does the least damage: drops jitter without drifting; on a frame where matching fails entirely, it holds the previous good mask rather than flickering empty.</p>
-
-  <p>This pattern — counterintuitive failures of "obvious" improvements that look better in stills — is the lesson. Failure modes are evidence too.</p>
+  <p>Every learned component is frozen. None is fine-tuned on snow. Snow appears only at inference, as the runtime input.</p>
 </section>
 
 <!-- ─── STATIC-STILLS PRECURSOR ────────────────────────────────────────── -->
 
 <section class="container">
-  <h4>Precursor</h4>
-  <h2>The static-stills demo (v1.x)</h2>
-  <p>Before the video pipeline, the same principle was demonstrated on individual snow / clear-season image pairs. Twenty-seven Mapillary snow + clear pairs across Northern Sweden and Finland — twenty-seven different physical locations. The video extension is built on this foundation; the static path stays runnable in the same repo.</p>
+  <h4>Static-stills precursor</h4>
+  <h2>27 pairs across northern Sweden &amp; Finland</h2>
 
   <div class="stills-grid">
     <a href="_assets/v1_heroes/gallivare_se__1113124103239974__202392698419785__panel.jpg"><img src="_assets/v1_heroes/gallivare_se__1113124103239974__202392698419785__panel.jpg" alt="Gällivare residential street with red houses — snow / clear+mask / overlay / naive panels." /></a>
@@ -192,16 +135,52 @@
     <a href="_assets/v1_heroes/lulea_se__1235981388376274__771512076886521__panel.jpg"><img src="_assets/v1_heroes/lulea_se__1235981388376274__771512076886521__panel.jpg" alt="Luleå street — snow / clear+mask / overlay / naive panels." /></a>
   </div>
 
-  <pre><code>make stills</code></pre>
+  <p>The earlier version of the work (<code>make stills</code>) demonstrated the principle on individual snow / clear-season image pairs across twenty-seven different physical locations &mdash; the foundation the video extension was built on.</p>
+</section>
 
-  <p>Produces the per-pair 4-panel figures (snow / clear+mask / overlay / naive) under <code>outputs/heroes/</code> plus a 27-row contact sheet at <code>outputs/audit/contact_sheet.png</code>.</p>
+<!-- ─── KNOWN LIMITATIONS ──────────────────────────────────────────────── -->
+
+<section class="container">
+  <h4>Known limitations</h4>
+  <h2>What didn&rsquo;t work, and where the system ends</h2>
+
+  <ul>
+    <li><strong>Synthetic priors from past snow frames</strong> &mdash; 3-7&times; more correspondences than snow&rarr;summer, but in motion each frame&rsquo;s slightly-too-large mask seeded the next frame&rsquo;s prior. The road overlay drifted outward into vegetation. Positive feedback loop. Rejected.</li>
+    <li><strong>Optical-flow propagation</strong> &mdash; vanishing-point flow on a forward-driving camera stretches the previous mask outward at every step. Same shape, different mechanism. Rejected.</li>
+    <li><strong>Inlier count is not a reliable predictor of overlay quality.</strong> Matches concentrated on building façades can warp the road mask onto buildings even when there are many of them. The system needs a human in the loop on input and output.</li>
+    <li><strong>Not real-time on CPU.</strong> Matcher-bottlenecked at ~16 s per frame; canonical clip&rsquo;s cache builds in roughly an hour. A deployment-engineering choice, not a research question; first item in next-steps.</li>
+  </ul>
+
+  <p class="note">Failure modes that look better in stills and worse in motion are themselves evidence of mechanism. The discipline that emerged: do not call a video result a win from sampled stills.</p>
+</section>
+
+<!-- ─── WHERE THIS COULD GO ────────────────────────────────────────────── -->
+
+<section class="container">
+  <h4>Where this could go</h4>
+  <h2>The constants-bridge as an appliance</h2>
+
+  <p class="lead">The next phase is not &ldquo;improve the snowplough&rdquo; &mdash; it is to build the general image-banking-and-transfer appliance, of which the snowplough is one consumer.</p>
+
+  <blockquote>Live frame + location signal &rarr; register against a banked clear-conditions image &rarr; transfer any pre-computed annotation into the live frame.</blockquote>
+
+  <p><strong>Consumers, beyond snow:</strong> fog / dust / smoke / heavy rain / night driving (bank is the clear-conditions capture of the same place); seeing round corners (bank is earlier captures of the upcoming intersection &mdash; from this drive or from V2V partners); heads-up display navigation; construction-zone delta detection; industrial inspection in obscured environments (mining, post-fire, decommissioning); agricultural autonomy and drone localisation in featureless terrain (bank is aerial / satellite).</p>
+
+  <p><strong>Five v3 items the prize money funds:</strong></p>
+  <ol>
+    <li><strong>Real-time matcher</strong> &mdash; DISK + LightGlue (or RoMa / LoFTR) on GPU; ~16 s &rarr; ~30 ms per frame, required for live operation.</li>
+    <li><strong>Visual place recognition front-end</strong> &mdash; replace the GPS-pose lookup so the appliance works in GPS-denied environments.</li>
+    <li><strong>Multi-source bank</strong> &mdash; revive the substrate-pluggable layer (archived after our v3 substrate experiment) with a denser cross-domain matcher so amateur Mapillary uploads can substitute for operator captures.</li>
+    <li><strong>Hardware prototype</strong> &mdash; battery-powered Jetson-class device with HUD output, demonstrating snow / fog / night-driving consumers end-to-end.</li>
+    <li><strong>Two more constants-bridge instances</strong> for proof of generality &mdash; agricultural autonomy and industrial inspection in obscured environments.</li>
+  </ol>
 </section>
 
 <!-- ─── MINIMAL-SHOT INTEGRITY ─────────────────────────────────────────── -->
 
 <section class="container">
   <h4>Minimal-shot integrity</h4>
-  <h2>The guarantee, audited</h2>
+  <h2>The audit</h2>
 
   <table class="integrity-table">
     <tbody>
@@ -213,31 +192,25 @@
     </tbody>
   </table>
 
-  <blockquote>The only handle we offered the model on the snow regime was the clear prior of the same place.</blockquote>
+  <blockquote>The only handle the system has on the snow regime is the clear-season prior of the same place.</blockquote>
 </section>
 
-<!-- ─── HONEST LIMITS ──────────────────────────────────────────────────── -->
+<!-- ─── GENERALISING ──────────────────────────────────────────────────── -->
 
 <section class="container">
-  <h4>The contribution</h4>
-  <h2>Not a snowplough — a primitive</h2>
+  <h4>Generalising</h4>
+  <h2>The shape repeats</h2>
 
-  <p class="lead"><strong>The contribution is not a snowplough. It is a primitive: <em>the constants-bridge</em>.</strong> A composition that takes a model trained on regime A, an inference target in regime B, and a known invariant between A and B, and uses the invariant to transfer the model into B without retraining. The invariant in this work is geometric — the road sits where it sat last July — but the shape is more general. Anything that stays constant between two regimes is a candidate bridge: anatomy across imaging modalities, terrain across illumination, scene geometry across weather, orbital schedule across polar darkness.</p>
-
-  <p>The snow plough is one consumer of this primitive. The road-overlay channel is what the constants-bridge looks like when consumed for buried-road perception; it is not a replacement for the perception stack. The plough's other channels (lidar, depth, obstacle detection) keep doing their work; this primitive frees them from also having to solve the road-position problem on a buried road. <em>The contribution we are demonstrating is the primitive — not its first application.</em></p>
-</section>
-
-<section class="container">
-  <h4>Honest limits</h4>
-  <h2>What we do not claim</h2>
-
-  <p>The output answers <em>where the road should be</em>, not <em>where to drive</em>. A snow-covered car parked on the road would still sit inside the green overlay — the system has no notion of obstacles, drivable surface, or 3D geometry. That is not a bug; it is the scope. Within that scope:</p>
-
-  <ul>
-    <li><strong>This is not real-time.</strong> The matching pass dominates per-frame compute on Mac CPU; the canonical 15 s clip's cache builds in roughly an hour. The cache layer makes that cost amortise across renders, but real-time would require a substantially faster correspondence model (a learned component, ideally trained on synthetic snow + clear pairs to preserve the no-snow-in-training guarantee).</li>
-    <li><strong>The homography assumes a near-planar scene.</strong> When correspondences concentrate on building façades rather than the road plane, the warp can drift. Ground-plane bias mitigates but doesn't eliminate.</li>
-    <li><strong>Inlier count is not a reliable predictor of overlay quality.</strong> Many correspondences can still warp the mask onto the wrong region if they concentrate on building façades. The system needs a human in the loop on input and output, even after the matcher succeeds.</li>
-  </ul>
+  <table>
+    <thead>
+      <tr><th>Regime</th><th>Invariant</th><th>Why labelling fails</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Polar Earth observation</strong></td><td>Orbital geometry &mdash; same satellite, same coordinates, known cadence</td><td>Polar conditions are seasonally extreme + sparsely sampled</td></tr>
+      <tr><td><strong>Low-light medical imaging</strong></td><td>Patient anatomy across imaging conditions</td><td>Each new scope / sensor / contrast agent is its own regime</td></tr>
+      <tr><td><strong>Agricultural off-road</strong></td><td>Field geometry from a previous-season drone overflight</td><td>Every season &times; crop &times; region is a new long-tail entry</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <!-- ─── REPRODUCE ──────────────────────────────────────────────────────── -->
@@ -247,42 +220,22 @@
   <h2>From a clean clone</h2>
 
 <pre><code>git clone https://github.com/aturner22/snowseer; cd snowseer
-git checkout video
 uv sync --python 3.12
 make reproduce</code></pre>
 
-  <p>~6 GB download (Boreas snow + summer windows) plus roughly an hour of matching on Mac CPU. Produces <code>outputs/video/boreas_2021_01_26/overlay.mp4</code> — the canonical clip whose hero frame is embedded above.</p>
+  <p>~6 GB download (Boreas snow + summer windows) plus roughly an hour of matching on Mac CPU. Produces <code>outputs/video/boreas_2021_01_26/overlay.mp4</code> &mdash; the canonical clip whose hero frame is embedded above.</p>
 
-  <p>Other entry points: <code>make oracle TRACK=&lt;id&gt;</code> for the pre-flight gate before any new track; <code>make reproduce-track TRACK=boreas_2025_02_15</code> for the robustness alt; <code>make assets</code> for the full 6-layout asset bundle; <code>make stills</code> for the static-stills precursor; <code>make help</code> for the full list.</p>
+  <p><strong>Other entry points:</strong> <code>make oracle TRACK=&lt;id&gt;</code> for the pre-flight gate before any new track; <code>make track TRACK=boreas_2025_02_15</code> for the robustness alt; <code>make stills</code> for the static-stills precursor (needs <code>MAPILLARY_TOKEN</code>); <code>make notebook</code> to re-execute the analysis notebook in place; <code>make pdfs</code> to render <code>writeup.pdf</code> + <code>slides.pdf</code>.</p>
 
-  <p>Companion documents: <a href="writeup.md">writeup.md</a> (essay) · <a href="analysis.ipynb">analysis.ipynb</a> (the work shown with the work) · <a href="slides.md">slides.md</a> (Marp deck source).</p>
-</section>
-
-<!-- ─── GENERALISING ──────────────────────────────────────────────────── -->
-
-<section class="container">
-  <h4>Generalising</h4>
-  <h2>The shape repeats</h2>
-
-  <blockquote>A model trained on regime A. An inference target in regime B. A known invariant between the two. Transfer through the invariant.</blockquote>
-
-  <p>Snow on a road is one instantiation. The shape repeats across the long tail of underdata regimes that minimal-shot autonomy faces.</p>
-
-  <ul>
-    <li><strong>Polar Earth observation.</strong> The invariant is the orbital geometry: the same satellite passes over the same coordinates on a known cadence. A model trained on temperate land cover or feature detection transfers into the polar regime through the orbital correspondence — the unlabelled gap closes without polar labels.</li>
-    <li><strong>Low-light medical imaging.</strong> The invariant is the patient's anatomy across imaging conditions. The same vessel runs in the same place; a previous well-lit acquisition or anatomical atlas supplies the constant. The well-lit-trained classifier reaches the low-light regime through registration to the known anatomy.</li>
-    <li><strong>Off-Earth manipulation</strong> (or any environment with no in-distribution training data — deep ocean, decommissioning site, wildfire zone). The invariant is the rigid-body geometry of task and tools; a known robot pose constrains where the wrench has to be. Earth-trained perception transfers into the foreign regime through the geometry the robot already knows it has.</li>
-  </ul>
-
-  <p>In each case there is a regime where data is rich, a regime where data is sparse (sometimes structurally so), and <em>something</em> — a geometric correspondence, an orbital schedule, an anatomical atlas, a robot kinematic chain — connecting the two without needing data from both sides. <strong>Find what stays the same. Walk across.</strong></p>
+  <p><strong>Companion documents:</strong> <a href="writeup.md">writeup.md</a> · <a href="analysis.ipynb">analysis.ipynb</a> · <a href="slides.md">slides.md</a>.</p>
 </section>
 
 <!-- ─── FOOTER ─────────────────────────────────────────────────────────── -->
 
 <footer class="container">
-  <p><a href="https://github.com/aturner22/snowseer">Repository</a> · <a href="writeup.md">Writeup</a> · <a href="slides.md">Slide deck</a> · Submitted to <a href="https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy">SoTA Commission I — Minimal-Shot Autonomy</a>, May 2026. <em>(Render PDFs locally with <code>make pdfs</code>.)</em></p>
+  <p><a href="https://github.com/aturner22/snowseer">Repository</a> · <a href="writeup.md">Writeup</a> · <a href="slides.md">Slide deck</a> · Submitted to <a href="https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy">SoTA Commission I — Minimal-Shot Autonomy</a>, May 2026.</p>
 
-  <p>Boreas dataset: Burnett et al., <em>Boreas: A Multi-Season Autonomous Driving Dataset</em>, IJRR 2023, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Mapillary imagery (static-stills precursor) under the Mapillary open-data licence. Models pretrained by their respective authors and used frozen. Visual identity inspired by <a href="https://sotaletters.substack.com/">SOTA Letters</a>.</p>
+  <p>Boreas dataset: Burnett et al., <em>Boreas: A Multi-Season Autonomous Driving Dataset</em>, IJRR 2023, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Mapillary imagery (static-stills precursor) under the Mapillary open-data licence. Models pretrained by their respective authors and used frozen.</p>
 </footer>
 
 </body>
