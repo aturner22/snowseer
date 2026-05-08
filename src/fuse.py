@@ -1,10 +1,9 @@
-"""Mask-fusion strategies for the multi-prior pipeline.
+"""Mask-fusion utilities for the K-prior video pipeline.
 
-Given K warped road masks in snow image space (one per prior), each with an
-associated `valid_region` (the snow-space projection of the prior's frame —
-i.e., where the prior's data exists at all), fuse them into a single binary
-mask via three independent strategies. We expose all three so we can A/B them
-in the curator.
+Given K warped road masks in snow image space (one per prior), each with
+an associated `valid_region` (the snow-space projection of the prior's
+frame, i.e. where the prior's data exists at all), fuse them into a
+single binary mask.
 
 All masks are uint8 with values in {0, 1}.
 """
@@ -26,23 +25,6 @@ def edge_eroded(mask: np.ndarray, valid_region: np.ndarray, *, erosion_px: int =
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
     eroded_valid = cv2.erode(valid_region.astype(np.uint8), kernel)
     return (mask.astype(bool) & eroded_valid.astype(bool)).astype(np.uint8)
-
-
-def union_with_edge_erosion(
-    masks: list[np.ndarray],
-    valid_regions: list[np.ndarray],
-    *,
-    erosion_px: int = 20,
-) -> np.ndarray:
-    """Logical OR of K masks after each is edge-eroded against its own
-    `valid_region`. Recovers the most road area; rejects per-prior frame edges.
-    """
-    if not masks:
-        return np.zeros((1, 1), dtype=np.uint8)
-    out = np.zeros_like(masks[0])
-    for m, v in zip(masks, valid_regions):
-        out = out | edge_eroded(m, v, erosion_px=erosion_px)
-    return out.astype(np.uint8)
 
 
 def weighted_soft_average(
@@ -71,45 +53,17 @@ def weighted_soft_average(
         else:
             vr = np.ones_like(m)
         contrib = (m.astype(np.float32) > 0).astype(np.float32) * vr.astype(np.float32) * wt
-        # Den only counted where this prior was valid.
         den += vr.astype(np.float32) * wt
         num += contrib
     score = np.where(den > 0, num / np.maximum(den, 1e-9), 0.0)
     return (score >= threshold).astype(np.uint8)
 
 
-def majority_vote(
-    masks: list[np.ndarray],
-    valid_regions: list[np.ndarray] | None = None,
-    *,
-    erosion_px: int = 8,
-) -> np.ndarray:
-    """Per pixel road if ≥ ⌊K_valid/2⌋+1 priors that *cover* the pixel agree.
-    K_valid is the number of priors whose valid_region includes that pixel —
-    so corners of the snow image with sparse coverage still get a fair vote.
-    """
-    if not masks:
-        return np.zeros((1, 1), dtype=np.uint8)
-    h, w = masks[0].shape[:2]
-    votes = np.zeros((h, w), dtype=np.int16)
-    coverage = np.zeros((h, w), dtype=np.int16)
-    for i, m in enumerate(masks):
-        if valid_regions is not None:
-            vr = edge_eroded(np.ones_like(m), valid_regions[i], erosion_px=erosion_px)
-        else:
-            vr = np.ones_like(m)
-        votes += (m.astype(bool) & vr.astype(bool)).astype(np.int16)
-        coverage += vr.astype(np.int16)
-    needed = (coverage // 2) + 1
-    return ((votes >= needed) & (coverage > 0)).astype(np.uint8)
-
-
 def crop_foreground(mask: np.ndarray, *, foreground_y_frac: float = 0.45) -> np.ndarray:
-    """Drop mask pixels where y < `foreground_y_frac * H`. The user's
-    'crop the back of the overlay' requirement: priors typically extend
-    further into the distance than the snow camera should claim. Image y
-    correlates with depth (lower in frame = closer to camera) so we keep
-    only the immediate foreground.
+    """Drop mask pixels where y < `foreground_y_frac * H`. Image y
+    correlates with depth (lower in frame = closer to camera), so this
+    keeps only the immediate foreground and discards distant projections
+    a roof-mounted plough camera should not claim as drivable.
     """
     out = mask.copy()
     h = mask.shape[0]

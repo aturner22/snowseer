@@ -55,18 +55,6 @@ def test_video_runtime_imports() -> None:
     assert pv.ETA_EVERY == 10
 
 
-def test_pipeline_cli_max_priors_flag() -> None:
-    """`--max-priors` flag is exposed and defaults to single-prior."""
-    r = subprocess.run(
-        [sys.executable, "-m", "src.pipeline", "--help"],
-        capture_output=True, text=True, cwd=ROOT,
-    )
-    assert r.returncode == 0, f"--help failed: {r.stderr}"
-    assert "--max-priors" in r.stdout
-    # Default = 1 (single-prior, v1.x narrative)
-    assert "default 1" in r.stdout.lower()
-
-
 def test_video_render_cli_args() -> None:
     """The video render CLI exposes the canonical args (track / mode /
     cache-tag / temporal). Schema check, no execution."""

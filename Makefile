@@ -70,7 +70,7 @@ oracle:
 stills:
 	rm -f outputs/nordic_stills/*.png outputs/nordic_stills/*.jpg outputs/nordic_stills/summary.json
 	uv run python -m src.data.fetch_mapillary --curated-only
-	uv run python -m src.pipeline --max-priors 1
+	uv run python -m src.pipeline
 	uv run python -m src.audit
 
 # ─── Documentation ──────────────────────────────────────────────────────────
