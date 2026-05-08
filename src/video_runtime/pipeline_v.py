@@ -123,8 +123,6 @@ def run_track(
     seg_prob_threshold: float | None = None,
     seg_morph_radius: int = 0,
     min_spatial_diversity: float | None = None,
-    weight_strategy: str = "inliers",
-    outlier_drop: bool = False,
 ) -> list[FrameResult]:
     """Run the per-frame pipeline over the snow stream of `track_id`.
 
@@ -266,28 +264,10 @@ def run_track(
             if mask is not None:
                 masks.append(mask)
                 valids.append(valid)
-                # v3.P.2 — weight strategy chooses how each prior's mask
-                # influences the soft-average fusion. "inliers" matches v2
-                # (count of RANSAC inliers); "inliers_x_diversity" multiplies
-                # by the spatial-diversity score so a tightly-clustered fit is
-                # downweighted relative to a spread-out one with the same count.
-                if weight_strategy == "inliers_x_diversity":
-                    w = float(n_inliers) * max(float(diversity), 0.01)
-                else:  # "inliers" — v2 default
-                    w = float(n_inliers)
-                weights.append(w)
-                per_prior_records[-1]["weight"] = float(w)
+                weights.append(float(n_inliers))
 
         fused: np.ndarray | None = None
         if masks:
-            # v3.P.4 — drop a single outlier prior whose warped mask has
-            # IoU < 0.15 with the consensus of the others. Only fires when
-            # K >= 3 priors are present.
-            if outlier_drop:
-                from src.fuse import drop_outlier_priors
-                masks, valids, weights = drop_outlier_priors(
-                    masks, valids, weights, iou_threshold=0.15,
-                )
             fused_soft = weighted_soft_average(
                 masks, np.array(weights, dtype=np.float32), valids, threshold=0.4)
             fused_soft = keep_largest_component(fused_soft)
