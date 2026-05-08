@@ -30,7 +30,6 @@ def test_pipeline_imports() -> None:
     import src.overlay
     import src.pipeline
     import src.segmentation
-    import src.audit
 
     assert callable(src.pipeline.run_pair)
     assert callable(src.pipeline.run_all)
@@ -83,19 +82,11 @@ def test_demo_pairs_well_formed() -> None:
         assert ("snow_id" in p) or ("snow" in p)
 
 
-def test_audit_module_layout() -> None:
-    """audit.py keeps the contact-sheet entry point stable."""
-    import src.audit
-    assert callable(src.audit.main)
-    # Single-prior detection lives in _build_row.
-    assert callable(src.audit._build_row)
-
-
 def test_makefile_targets_exist() -> None:
     """Critical Make targets are listed in the Makefile."""
     mk = (ROOT / "Makefile").read_text()
     for target in [
-        "reproduce:", "track:", "stills:", "oracle:",
+        "reproduce:", "track:", "stills:",
         "pdfs:", "notebook:", "test:", "clean:",
     ]:
         assert target in mk, f"missing make target {target}"

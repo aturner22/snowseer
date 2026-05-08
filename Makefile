@@ -11,7 +11,7 @@
 # For ad-hoc single runs, use `make track TRACK=<id>` or `make stills`
 # directly.
 
-.PHONY: help reproduce track stills oracle pdfs notebook test clean
+.PHONY: help reproduce track stills pdfs notebook test clean
 
 CANONICAL_TRACK := boreas_2021_01_26
 ALT_TRACK       := boreas_2025_02_15
@@ -28,8 +28,6 @@ help:
 	@echo "  stills                      Static-prior demo on 18 Mapillary pairs"
 	@echo "                                (needs MAPILLARY_TOKEN)"
 	@echo ""
-	@echo "  oracle TRACK=<id>           Pre-flight gate before a new cache build"
-	@echo "                                [STRIDE=N to subsample]"
 	@echo "  pdfs                        Render docs/{slides,writeup}.pdf"
 	@echo "  notebook                    Re-execute docs/analysis.ipynb in place"
 	@echo "  test                        Smoke tests (no compute)"
@@ -59,19 +57,12 @@ track:
 	    --stride 1 --K 3 --ema-alpha 0.4
 	uv run python -m src.video_runtime.extract_assets --track $(TRACK)
 
-oracle:
-	@if [ -z "$(TRACK)" ]; then echo "usage: make oracle TRACK=<id> [STRIDE=N]"; exit 2; fi
-	uv run python -m src.video_runtime.window_oracle --track $(TRACK) \
-	    $(if $(STRIDE),--stride $(STRIDE)) \
-	    --out-json outputs/toronto_video/$(TRACK)/_oracle.json
-
 # ─── Static-stills demo ─────────────────────────────────────────────────────
 
 stills:
 	rm -f outputs/nordic_stills/*.png outputs/nordic_stills/*.jpg outputs/nordic_stills/summary.json
 	uv run python -m src.data.fetch_mapillary --curated-only
 	uv run python -m src.pipeline
-	uv run python -m src.audit
 
 # ─── Documentation ──────────────────────────────────────────────────────────
 
@@ -98,5 +89,5 @@ test:
 
 clean:
 	rm -rf outputs/nordic_stills/*.png outputs/nordic_stills/*.jpg outputs/nordic_stills/summary.json
-	rm -rf outputs/audit outputs/pipeline_run.log
+	rm -rf outputs/pipeline_run.log
 	rm -rf outputs/toronto_video/*/frames
