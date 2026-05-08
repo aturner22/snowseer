@@ -36,33 +36,48 @@ help:
 # ─── Full reproduction (sequential; never run two compute jobs in parallel) ─
 
 reproduce:
+	@echo ""
+	@echo "[$$(date +%H:%M:%S)] reproduce: step 1/3 — canonical clip ($(CANONICAL_TRACK))"
 	$(MAKE) track TRACK=$(CANONICAL_TRACK)
+	@echo ""
+	@echo "[$$(date +%H:%M:%S)] reproduce: step 2/3 — alt clip ($(ALT_TRACK))"
 	$(MAKE) track TRACK=$(ALT_TRACK)
+	@echo ""
+	@echo "[$$(date +%H:%M:%S)] reproduce: step 3/3 — 18-pair static-stills"
 	$(MAKE) stills
 	@echo ""
-	@echo "Reproduce complete. Canonical + alt clips under outputs/toronto_video/,"
-	@echo "static-stills panels under outputs/nordic_stills/."
+	@echo "[$$(date +%H:%M:%S)] reproduce: complete"
+	@echo "  canonical + alt clips under outputs/toronto_video/"
+	@echo "  static-stills under outputs/nordic_stills/"
 
 # ─── Single-track / single-demo ancillaries ────────────────────────────────
 
 track:
 	@if [ -z "$(TRACK)" ]; then echo "usage: make track TRACK=<id>"; exit 2; fi
+	@echo "[$$(date +%H:%M:%S)] track $(TRACK): fetch"
 	@if [ -f data/video/tracks/$(TRACK)/snow/camera_poses.csv ]; then \
 	    echo "[track] $(TRACK) already staged on disk; skipping fetch_track"; \
 	else \
 	    uv run python -m src.video_runtime.fetch_track --track $(TRACK); \
 	fi
+	@echo "[$$(date +%H:%M:%S)] track $(TRACK): matching cache + 5 layout renders"
 	uv run python -m src.video_runtime.render_all_layouts \
 	    --track $(TRACK) --cache-tag $(CANONICAL_TAG) \
 	    --stride 1 --K 3 --ema-alpha 0.4
+	@echo "[$$(date +%H:%M:%S)] track $(TRACK): extract stills"
 	uv run python -m src.video_runtime.extract_assets --track $(TRACK)
+	@echo "[$$(date +%H:%M:%S)] track $(TRACK): done"
 
 # ─── Static-stills demo ─────────────────────────────────────────────────────
 
 stills:
+	@echo "[$$(date +%H:%M:%S)] stills: clean previous outputs"
 	rm -f outputs/nordic_stills/*.png outputs/nordic_stills/*.jpg outputs/nordic_stills/summary.json
+	@echo "[$$(date +%H:%M:%S)] stills: fetch 18 pairs from Mapillary"
 	uv run python -m src.data.fetch_mapillary
+	@echo "[$$(date +%H:%M:%S)] stills: run pipeline"
 	uv run python -m src.pipeline
+	@echo "[$$(date +%H:%M:%S)] stills: done"
 
 # ─── Documentation ──────────────────────────────────────────────────────────
 
