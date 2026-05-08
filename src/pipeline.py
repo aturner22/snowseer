@@ -445,42 +445,12 @@ def run_all(
     return results
 
 
-def _run_one_off(snow_path: Path, prior_path: Path, out_dir: Path,
-                 *, max_dim: int = 1024) -> PairResult:
-    """Run the cross-season pipeline on an arbitrary (snow, prior) pair.
-
-    Synthesises a transient pair_dir under out_dir/_input/ with the two
-    images, then delegates to run_pair so the same code path handles
-    demo-manifest pairs and one-off pairs identically.
-    """
-    import shutil
-    import tempfile
-    pair_id = f"demo_{snow_path.stem}__{prior_path.stem}"
-    with tempfile.TemporaryDirectory(prefix="snow-demo-") as td:
-        pair_dir = Path(td) / pair_id
-        pair_dir.mkdir(parents=True)
-        shutil.copy(snow_path, pair_dir / "snow.jpg")
-        shutil.copy(prior_path, pair_dir / "clear.jpg")
-        matcher = Matcher()
-        segmenter = RoadSegmenter()
-        return run_pair(
-            pair_dir, matcher, segmenter,
-            out_dir=out_dir, max_dim=max_dim, max_priors=1,
-        )
-
-
 def _cli() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pairs-dir", default=str(DATA_PAIRS_DIR))
     parser.add_argument("--out-dir", default=str(OUT_DIR))
     parser.add_argument("--max-dim", type=int, default=1024)
     parser.add_argument("--pair-id", default=None, help="Run a single pair by directory name.")
-    parser.add_argument("--snow", default=None,
-                        help="Path to a snow query image. With --prior, runs the "
-                             "pipeline on this one (snow, prior) pair and writes "
-                             "all 15 layout outputs under --out-dir.")
-    parser.add_argument("--prior", default=None,
-                        help="Path to a clear-season prior image. Use with --snow.")
     parser.add_argument("--allow-uncurated", action="store_true",
                         help="Bypass the demo-manifest gate (default: required). "
                              "With this flag, run on every pair-directory on disk.")
@@ -494,25 +464,6 @@ def _cli() -> None:
     pairs_dir = Path(args.pairs_dir)
     out_dir = Path(args.out_dir)
     max_priors = None if args.max_priors == 0 else args.max_priors
-
-    if (args.snow is None) ^ (args.prior is None):
-        raise SystemExit("--snow and --prior must be provided together")
-
-    if args.snow is not None:
-        snow_path = Path(args.snow)
-        prior_path = Path(args.prior)
-        if not snow_path.exists():
-            raise SystemExit(f"snow image not found: {snow_path}")
-        if not prior_path.exists():
-            raise SystemExit(f"prior image not found: {prior_path}")
-        res = _run_one_off(snow_path, prior_path, out_dir, max_dim=args.max_dim)
-        print(json.dumps({
-            "pair_id": res.pair_id,
-            "n_matches": res.n_matches,
-            "n_inliers": res.n_inliers,
-            "out_dir": str(out_dir),
-        }, indent=2))
-        return
 
     if args.pair_id:
         single = pairs_dir / args.pair_id

@@ -15,11 +15,10 @@ git clone https://github.com/aturner22/snowseer; cd snowseer
 git checkout video
 uv sync --python 3.12
 make reproduce        # canonical 15 s clip; ~50 min cache + ~1 min render
-make demo SNOW=<jpg> PRIOR=<jpg>   # live: any (snow, prior) pair → 15 panels
 open docs/index.html               # static Pages site, no server needed
 ```
 
-**For judges**: `make help` lists every reproducible target. The canonical matching cache builds in ~50 min on Mac CPU; subsequent renders (6 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min. The interactive demo (`make demo SNOW=... PRIOR=...`) runs the full pipeline on any user-provided pair and emits 15 layout outputs in `outputs/demo/`. CI runs smoke tests on every push.
+**For judges**: `make help` lists every reproducible target. The canonical matching cache builds in ~50 min on Mac CPU; subsequent renders (6 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min. CI runs smoke tests on every push.
 
 ---
 
