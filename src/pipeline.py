@@ -283,7 +283,7 @@ def run_all(
     if not pair_dirs:
         raise SystemExit(
             f"No pairs under {pairs_dir}. "
-            f"Run `uv run python -m src.data.fetch_mapillary --curated-only` first."
+            f"Run `uv run python -m src.data.fetch_mapillary` first."
         )
 
     demo_ids = _load_demo_pair_ids()
@@ -291,7 +291,7 @@ def run_all(
         if not demo_ids:
             raise SystemExit(
                 f"No demo manifest found at {DEMO_PAIRS_PATH}. "
-                f"Run `uv run python -m src.data.fetch_mapillary --curated-only` to populate it."
+                f"Run `uv run python -m src.data.fetch_mapillary` to populate it."
             )
         before = len(pair_dirs)
         pair_dirs = [d for d in pair_dirs if d.name in demo_ids]

@@ -169,7 +169,7 @@ snowseer/
 │
 ├── data/
 │   ├── demo_pairs.json               # demo manifest: 18 Mapillary snow + clear pairs the fetcher pulls
-│   ├── fetch_mapillary.py            # Mapillary v4 fetcher (uses demo_pairs.json with --curated-only)
+│   ├── fetch_mapillary.py            # Mapillary v4 fetcher (reads demo_pairs.json)
 │   ├── pairs/                        # fetched pair downloads (gitignored)
 │   └── video/                        # (gitignored, auto-fetched by `make track`)
 │       └── tracks/<track_id>/        # per-track snow + summer windows
