@@ -89,13 +89,6 @@ def main() -> None:
                    help="When K>=3 priors are present, drop the single prior whose "
                         "warped mask has IoU<0.15 with the consensus of the "
                         "others. Off by default. v3 robustness improvement.")
-    p.add_argument("--min-frame-quality", type=float, default=None,
-                   help="Frame-level quality gate. If the best surviving prior's "
-                        "quality (n_inliers × spatial_diversity) is below this "
-                        "threshold, the frame is gated: fused_mask is set to None "
-                        "and the smoother propagates the previous mask. Prevents "
-                        "a single barely-passing prior from generating a "
-                        "wrong-region overlay. Off by default. v3.P.3.")
     p.add_argument("--debug-strip", action="store_true",
                    help="overlay mode: include the diagnostic strip "
                         "(frame index + priors_used). Off for final renders.")
@@ -129,7 +122,6 @@ def main() -> None:
         min_spatial_diversity=args.min_spatial_diversity,
         weight_strategy=args.weight_strategy,
         outlier_drop=args.outlier_drop,
-        min_frame_quality=args.min_frame_quality,
     )
 
     if args.mode == "cache-only":

@@ -55,8 +55,6 @@ def main() -> None:
                    help="see render.py --weight-strategy")
     p.add_argument("--outlier-drop", action="store_true",
                    help="see render.py --outlier-drop")
-    p.add_argument("--min-frame-quality", type=float, default=None,
-                   help="see render.py --min-frame-quality")
     args = p.parse_args()
 
     aug_path = ROOT / f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl"
@@ -74,8 +72,6 @@ def main() -> None:
         seg_args += ["--weight-strategy", args.weight_strategy]
     if args.outlier_drop:
         seg_args += ["--outlier-drop"]
-    if args.min_frame_quality is not None:
-        seg_args += ["--min-frame-quality", str(args.min_frame_quality)]
 
     if not cache_path.exists():
         print(f"[render-all] matching cache missing; building...")
