@@ -69,14 +69,6 @@ def main() -> None:
                    help="Open+close morphology radius applied to summer road masks "
                         "after thresholding. 0 = off. Suppresses one- or two-pixel "
                         "jaggies that warp into amplified jitter.")
-    p.add_argument("--min-spatial-diversity", type=float, default=None,
-                   help="Reject homographies whose RANSAC inliers cluster into a "
-                        "bbox covering less than this fraction of the snow image "
-                        "area. e.g. 0.05 = inlier bbox must span >= 5%% of frame. "
-                        "Catches the CADC failure mode where the matcher finds "
-                        "correspondences but they all lie on one corner feature, "
-                        "so the homography projects the road mask to the wrong "
-                        "image region. Off by default (v2 behaviour).")
     p.add_argument("--debug-strip", action="store_true",
                    help="overlay mode: include the diagnostic strip "
                         "(frame index + priors_used). Off for final renders.")
@@ -107,7 +99,6 @@ def main() -> None:
         synthetic_priors=args.synthetic_priors,
         seg_prob_threshold=args.seg_prob_threshold,
         seg_morph_radius=args.seg_morph_radius,
-        min_spatial_diversity=args.min_spatial_diversity,
     )
 
     if args.mode == "cache-only":

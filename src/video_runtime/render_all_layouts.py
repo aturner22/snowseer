@@ -47,9 +47,6 @@ def main() -> None:
                         "summer segmentation. Default = argmax.")
     p.add_argument("--seg-morph-radius", type=int, default=0,
                    help="optional morphology radius post-threshold. 0 = off.")
-    p.add_argument("--min-spatial-diversity", type=float, default=None,
-                   help="optional spatial-diversity inlier-bbox threshold; "
-                        "see render.py --min-spatial-diversity for details.")
     args = p.parse_args()
 
     aug_path = ROOT / f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl"
@@ -61,8 +58,6 @@ def main() -> None:
         seg_args += ["--seg-prob-threshold", str(args.seg_prob_threshold)]
     if args.seg_morph_radius > 0:
         seg_args += ["--seg-morph-radius", str(args.seg_morph_radius)]
-    if args.min_spatial_diversity is not None:
-        seg_args += ["--min-spatial-diversity", str(args.min_spatial_diversity)]
 
     if not cache_path.exists():
         print(f"[render-all] matching cache missing; building...")

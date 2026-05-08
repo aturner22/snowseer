@@ -28,7 +28,6 @@ class FrameMeta:
     northing: float
     heading: float
     path: Path                # absolute path to the PNG
-    substrate: str = "unknown"  # which summer-prior backend produced this row (v3+)
 
 
 def _load_camera_poses(p: Path) -> np.ndarray:
@@ -60,23 +59,14 @@ class Track:
     def _build_meta(self, half_dir: Path) -> list[FrameMeta]:
         window = json.loads((half_dir / "window.json").read_text())
         poses = _load_camera_poses(half_dir / "camera_poses.csv")
-        # genfromtxt returns dtype=None which yields a structured array; the
-        # `substrate` column (added in v3) is optional — older tracks won't
-        # have it, in which case we default to 'unknown'.
-        has_substrate = "substrate" in poses.dtype.names
         seq_indices = list(range(window["indices"][0], window["indices"][1]))
         out: list[FrameMeta] = []
         for local_idx, seq_idx in enumerate(seq_indices):
             ts = int(poses["GPSTime"][seq_idx])
             path = half_dir / "frames" / f"{ts}.png"
             if not path.exists():
+                # Frame may be missing if the download was capped. Skip it.
                 continue
-            substrate = "unknown"
-            if has_substrate:
-                raw = poses["substrate"][seq_idx]
-                if isinstance(raw, bytes):
-                    raw = raw.decode("utf-8", errors="ignore")
-                substrate = str(raw).strip() or "unknown"
             out.append(FrameMeta(
                 idx=local_idx,
                 seq_idx=seq_idx,
@@ -85,7 +75,6 @@ class Track:
                 northing=float(poses["northing"][seq_idx]),
                 heading=float(poses["heading"][seq_idx]),
                 path=path,
-                substrate=substrate,
             ))
         return out
 

@@ -22,31 +22,6 @@ class HomographyResult:
     inlier_mask: np.ndarray  # (N,) bool over the input MatchResult, True if used
     n_inliers: int
     used_ground_plane_restriction: bool
-    spatial_diversity_frac: float = 0.0  # inlier bbox area / image area, in img0 space
-
-
-def _compute_spatial_diversity(
-    kpts: np.ndarray, mask: np.ndarray, img_shape: tuple[int, int]
-) -> float:
-    """Bounding-box area of `kpts[mask]` divided by image area.
-
-    Spatially-clustered inliers (e.g. all on one tree, or all in one corner)
-    fit a homography that's accurate locally but distorts wildly elsewhere —
-    exactly the CADC failure mode where 35% of frames "matched" but produced
-    overlays in the wrong image region. This metric makes the cluster-vs-
-    spread distinction visible.
-
-    Returns 0.0 if there are <2 inliers (degenerate). Range: [0, 1].
-    """
-    if mask.sum() < 2:
-        return 0.0
-    pts = kpts[mask]
-    h, w = img_shape
-    if h <= 0 or w <= 0:
-        return 0.0
-    bbox_w = float(pts[:, 0].max() - pts[:, 0].min())
-    bbox_h = float(pts[:, 1].max() - pts[:, 1].min())
-    return max(0.0, min(1.0, (bbox_w * bbox_h) / (w * h)))
 
 
 def estimate(
@@ -59,7 +34,6 @@ def estimate(
     min_matches: int = 8,
     ransac_thresh_px: float = 3.0,
     confidence_thresh: float = 0.0,
-    min_spatial_diversity: float | None = None,
 ) -> HomographyResult:
     """Estimate H from img0 -> img1 using ground-plane matches when available.
 
@@ -68,12 +42,6 @@ def estimate(
     dashboard_y_frac: drop matches where y > frac * height (the bottom strip is
         the camera-vehicle's dashboard, not the road plane; Mapillary uploads
         from cars routinely have a 10-15% dashboard band that confuses RANSAC).
-    min_spatial_diversity: if set, reject homographies whose RANSAC inliers
-        cluster into a bbox covering less than this fraction of img0 area
-        (returns H=None but keeps the inlier mask for diagnostics). This
-        catches the CADC failure mode where matches are spatially clustered
-        on a corner feature and the resulting homography projects the road
-        mask to the wrong region of the snow frame.
     """
     n = len(matches.kpts0)
     full_mask = np.ones(n, dtype=bool)
@@ -118,22 +86,11 @@ def estimate(
     candidate_indices = np.where(candidate_mask)[0]
     final_mask[candidate_indices[ransac_mask]] = True
 
-    diversity = _compute_spatial_diversity(matches.kpts0, final_mask, img0_shape)
-    if min_spatial_diversity is not None and diversity < min_spatial_diversity:
-        return HomographyResult(
-            H=None,
-            inlier_mask=final_mask,
-            n_inliers=int(final_mask.sum()),
-            used_ground_plane_restriction=used_restriction,
-            spatial_diversity_frac=diversity,
-        )
-
     return HomographyResult(
         H=H,
         inlier_mask=final_mask,
         n_inliers=int(final_mask.sum()),
         used_ground_plane_restriction=used_restriction,
-        spatial_diversity_frac=diversity,
     )
 
 
@@ -147,7 +104,6 @@ def refine_iteratively(
     max_iters: int = 2,
     ransac_thresh_px: float = 3.0,
     min_matches: int = 8,
-    min_spatial_diversity: float | None = None,
 ) -> HomographyResult:
     """Refine the homography by re-fitting on matches whose snow keypoints
     fall inside the warped road region.
@@ -210,15 +166,7 @@ def refine_iteratively(
         H = H_new
         final_mask = new_full_mask
 
-    diversity = _compute_spatial_diversity(matches.kpts0, final_mask, img0_shape)
-    if min_spatial_diversity is not None and diversity < min_spatial_diversity:
-        return HomographyResult(
-            H=None, inlier_mask=final_mask, n_inliers=int(final_mask.sum()),
-            used_ground_plane_restriction=True,
-            spatial_diversity_frac=diversity,
-        )
     return HomographyResult(
         H=H, inlier_mask=final_mask, n_inliers=int(final_mask.sum()),
         used_ground_plane_restriction=True,  # we used the road *segmentation* — even tighter
-        spatial_diversity_frac=diversity,
     )
