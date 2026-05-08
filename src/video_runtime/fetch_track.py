@@ -1,15 +1,16 @@
-"""Phase K.1 — Boreas track fetcher.
+"""Boreas track fetcher.
 
-Pulls a small (~30s) snow + summer subset of a Boreas track using direct
-S3 REST. No AWS CLI required (bucket is public CC BY 4.0).
+Pulls only the snow + summer frames a registered track will render: the
+snow window registered for the track (and a GPS-aligned summer window
+covering the same UTM ground), so download size matches the demo length.
+Direct S3 REST. No AWS CLI required (bucket is public CC BY 4.0).
 
 Usage:
     uv run python -m src.video_runtime.fetch_track --track <track_id>
 
-For now the only supported track is `boreas_2021_01_26` which pairs
-`boreas-2021-01-26-11-22` (heavy snow) with `boreas-2021-07-27-14-43`
-(clear summer). Both traverse the same UTIAS-Toronto loop so a snow
-window can be GPS-aligned to a summer window via UTM (easting, northing).
+Each registered track pairs a snow capture with a summer capture that
+traverses the same UTIAS-Toronto loop, so a snow window can be GPS-aligned
+to a summer window via UTM (easting, northing).
 
 Output layout:
     data/video/tracks/<track_id>/
@@ -21,16 +22,12 @@ Output layout:
         summer/
             (same)
         track.json                   (top-level track config + license)
-
-Reuses the existing S3 listing pattern (REST + ?list-type=2).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -54,20 +51,20 @@ TRACKS = {
         "snow_seq": "boreas-2021-01-26-11-22",
         "summer_seq": "boreas-2021-07-27-14-43",
         # Heavy snow on a residential street near UTIAS in Toronto. Road
-        # buried, lane markings invisible. The canonical 15 s window picked
-        # by visual inspection.
-        "snow_window_seconds": (140.0, 175.0),
+        # buried, lane markings invisible. The canonical 14 s window
+        # (first second of the original visual-inspection pick trimmed to
+        # match the rendered demo).
+        "snow_window_seconds": (151.0, 165.0),
         "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
         "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
     },
     "boreas_2025_02_15": {
         "snow_seq": "boreas-2025-02-15-16-58",
         "summer_seq": "boreas-2021-07-27-14-43",
-        # Active snowfall, late afternoon, same Glen Shields loop as
-        # 2021_01_26 — different winter day. Window picked from the
-        # window-oracle pre-flight (oracle score 1.112 on the 350-frame
-        # slice 5000-5350; 100 % demo-able).
-        "snow_window_seconds": (500.0, 535.0),
+        # Active snowfall, late afternoon, residential Toronto (different
+        # drive from 2021_01_26). The 34 s alt-track window: the original
+        # window-oracle pick (500..535) with the first second trimmed.
+        "snow_window_seconds": (501.0, 535.0),
         "license": "CC BY 4.0 (Boreas, Burnett et al. UTIAS-ASRL, IJRR 2023)",
         "attribution": "Boreas dataset (UTIAS-ASRL). Cite Burnett et al. 2023; CC BY 4.0.",
     },

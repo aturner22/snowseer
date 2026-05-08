@@ -1,17 +1,17 @@
-"""CLI entry point for `make video-render`.
+"""Single-layout video renderer.
+
+Builds (or loads) a `_cache_<tag>.pkl` matching cache for the track, then
+renders one mp4 layout from it. Invoked as a subprocess by
+`render_all_layouts.py`; all modes share the same cache. Always processes
+every frame the fetcher pulled for the track.
 
 Usage:
-    uv run python -m src.video_runtime.render --track <id> --mode <overlay|sidebyside|quad> [--start N --end N --stride N]
-
-K.2 baseline only implements `overlay`. The other modes raise NotImplementedError
-with a pointer to K.5.
+    uv run python -m src.video_runtime.render --track <id> --mode <overlay|sidebyside|snow_naive_overlay|quad|matches|cache-only>
 """
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
 from pathlib import Path
 
 from src.video_runtime.pipeline_v import run_track
@@ -29,10 +29,8 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
     p.add_argument("--mode", choices=["overlay", "sidebyside", "snow_naive_overlay",
-                                       "snow_overlay_naive", "quad", "matches",
-                                       "cache-only"], default="overlay")
-    p.add_argument("--start", type=int, default=0)
-    p.add_argument("--end", type=int, default=None)
+                                       "quad", "matches", "cache-only"],
+                   default="overlay")
     p.add_argument("--stride", type=int, default=1)
     p.add_argument("--K", type=int, default=3, help="number of summer priors per snow frame")
     p.add_argument("--max-dim", type=int, default=1024)
@@ -54,8 +52,8 @@ def main() -> None:
                         "priors per current frame. 0 disables.")
     p.add_argument("--cache-tag", default="default",
                    help="Identifier for the matching cache. Renders that share "
-                        "(track, start, end, stride, K, max_dim, foreground_y_frac) "
-                        "but differ only in smoother should share the same tag. "
+                        "(track, stride, K, max_dim, foreground_y_frac) but "
+                        "differ only in smoother should share the same tag. "
                         "Synthetic-prior runs use a different tag because they "
                         "change the matching itself.")
     p.add_argument("--rebuild-cache", action="store_true",
@@ -83,14 +81,14 @@ def main() -> None:
     smoother = make_smoother(args.temporal, alpha=args.ema_alpha,
                              flow_weight=args.flow_weight)
 
-    cache_path = Path(f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl")
+    cache_path = Path(f"outputs/toronto_video/{args.track}/_cache_{args.cache_tag}.pkl")
 
     results = run_track(
         args.track,
         K=args.K,
         max_dim=args.max_dim,
-        start=args.start,
-        end=args.end,
+        start=0,
+        end=None,
         stride=args.stride,
         foreground_y_frac=args.foreground_y_frac,
         smoother=smoother,
@@ -123,7 +121,7 @@ def main() -> None:
         )
     elif args.mode == "matches":
         import pickle as _pickle
-        sidecar_path = Path(f"outputs/video/{args.track}/_matches_{args.cache_tag}.pkl")
+        sidecar_path = Path(f"outputs/toronto_video/{args.track}/_matches_{args.cache_tag}.pkl")
         if not sidecar_path.exists():
             raise SystemExit(
                 f"missing matches sidecar {sidecar_path}. "
@@ -139,9 +137,9 @@ def main() -> None:
             out_name=args.out_name,
             keep_frames=args.keep_frames,
         )
-    elif args.mode in ("snow_naive_overlay", "snow_overlay_naive", "quad"):
+    elif args.mode in ("snow_naive_overlay", "quad"):
         import pickle as _pickle
-        aug_path = Path(f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl")
+        aug_path = Path(f"outputs/toronto_video/{args.track}/_aug_{args.cache_tag}.pkl")
         if not aug_path.exists():
             raise SystemExit(
                 f"missing augmentation cache {aug_path}. "
@@ -164,7 +162,6 @@ def main() -> None:
             out = render_three_panel(
                 results, args.track,
                 naive_masks=aug["naive_masks"],
-                layout=args.mode,
                 fps=args.fps,
                 out_name=args.out_name,
                 keep_frames=args.keep_frames,

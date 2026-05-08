@@ -8,7 +8,7 @@ This module is what we run *during curation* to choose those windows.
 Two cheap modes:
 
   - **default** (cache-backed) — sub-second; reads
-    `outputs/video/<track>/_cache_<tag>.pkl` and derives per-frame
+    `outputs/toronto_video/<track>/_cache_<tag>.pkl` and derives per-frame
     quality from `FrameResult.n_priors_used`. Applies a hole-tolerant
     morphological closing on the OK signal so a single bad frame in
     the middle of a long run doesn't split the candidate window.
@@ -101,8 +101,6 @@ def _hole_tolerant_runs(ok_signal: list[bool], hole_tolerance: int) -> list[tupl
                 # Only fill internal gaps (bordered by True on both sides);
                 # leading and trailing False stretches stay False — the
                 # window selection should not blindly extend past the run.
-                bordered = (i > 0 and smoothed[i - 1]) and (j < n and j < n and smoothed[j] if j < n else False)
-                # Re-evaluate: smoothed is being mutated; check original ok_signal.
                 left_ok = i > 0 and smoothed[i - 1]
                 right_ok = j < n and smoothed[j]
                 if left_ok and right_ok and gap_len <= hole_tolerance:
@@ -174,7 +172,7 @@ def curate_from_cache(track_id: str, cache_tag: str = "canonical", *,
                       top_n: int = 5) -> tuple[list[FrameOracle], list[CandidateWindow]]:
     """Read the matching cache for a track + return per-frame quality
     + ranked candidate windows. Sub-second; no model loading."""
-    cache_path = ROOT / f"outputs/video/{track_id}/_cache_{cache_tag}.pkl"
+    cache_path = ROOT / f"outputs/toronto_video/{track_id}/_cache_{cache_tag}.pkl"
     if not cache_path.exists():
         raise SystemExit(
             f"No cache at {cache_path}. Run `make track TRACK={track_id}` "

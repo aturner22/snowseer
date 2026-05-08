@@ -27,7 +27,6 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import cv2
 import numpy as np
 
 from src.fuse import weighted_soft_average, crop_foreground

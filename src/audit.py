@@ -21,7 +21,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-HEROES = Path("outputs/heroes")
+HEROES = Path("outputs/nordic_stills")
 PAIRS = Path("data/pairs")
 OUT = Path("outputs/audit")
 

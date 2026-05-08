@@ -2,7 +2,7 @@
 submission video plan + slides + GitHub Pages.
 
 Run after the renders are produced (overlay.mp4, sidebyside.mp4, etc.).
-Writes JPEGs at preset timestamps to outputs/video/<track>/stills/.
+Writes JPEGs at preset timestamps to outputs/toronto_video/<track>/stills/.
 
 The extracted stills are the *visual asset list* referenced by
 docs/slides.md (the video script / storyboard).
@@ -19,7 +19,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "outputs/video"
+OUT = ROOT / "outputs/toronto_video"
 
 # Timestamps (seconds) at which to extract a still from each rendered mp4.
 # These fall on visually distinctive moments in the canonical 15 s clip:
@@ -45,7 +45,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
     p.add_argument("--clip-dir", default=None,
-                   help="directory containing rendered mp4s. Default: outputs/video/<track>/")
+                   help="directory containing rendered mp4s. Default: outputs/toronto_video/<track>/")
     p.add_argument("--timestamps", nargs="+", type=float, default=list(DEFAULT_TIMESTAMPS))
     args = p.parse_args()
 
@@ -63,7 +63,7 @@ def main() -> None:
                    if f.is_file() and f.suffix == ".mp4"])
     if not mp4s:
         raise SystemExit(f"no mp4s found in {clip_dir}; render first via "
-                         f"`make reproduce-all-layouts TRACK={args.track}`")
+                         f"`make track TRACK={args.track}`")
 
     print(f"[extract] writing {len(mp4s) * len(args.timestamps)} stills to {stills_dir}")
     for mp4 in mp4s:

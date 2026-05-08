@@ -5,7 +5,7 @@ where best_prior is the per-prior record with the highest inlier count.
 Save keypoints + inlier mask + prior image so the matches video / stills
 can be rendered without re-running matching.
 
-Sidecar path: outputs/video/<track>/_matches_<cache_tag>.pkl
+Sidecar path: outputs/toronto_video/<track>/_matches_<cache_tag>.pkl
 
 Schema:
     {
@@ -50,8 +50,8 @@ def main() -> None:
     p.add_argument("--max-dim", type=int, default=1024)
     args = p.parse_args()
 
-    cache_path = ROOT / f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl"
-    sidecar_path = ROOT / f"outputs/video/{args.track}/_matches_{args.cache_tag}.pkl"
+    cache_path = ROOT / f"outputs/toronto_video/{args.track}/_cache_{args.cache_tag}.pkl"
+    sidecar_path = ROOT / f"outputs/toronto_video/{args.track}/_matches_{args.cache_tag}.pkl"
 
     if not cache_path.exists():
         raise SystemExit(f"missing cache {cache_path}")

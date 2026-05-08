@@ -30,7 +30,6 @@ def test_pipeline_imports() -> None:
     import src.overlay
     import src.pipeline
     import src.segmentation
-    import src.snow_quality
     import src.audit
 
     assert callable(src.pipeline.run_pair)
@@ -108,9 +107,8 @@ def test_makefile_targets_exist() -> None:
     """Critical Make targets are listed in the Makefile."""
     mk = (ROOT / "Makefile").read_text()
     for target in [
-        "track:", "reproduce:", "reproduce-track:",
-        "stills:", "stills-multi:", "assets:", "extract-stills:",
-        "pages-assets:", "pdfs:",
+        "reproduce:", "track:", "stills:", "oracle:",
+        "pdfs:", "notebook:", "test:", "clean:",
     ]:
         assert target in mk, f"missing make target {target}"
 
@@ -118,7 +116,7 @@ def test_makefile_targets_exist() -> None:
 def test_gitignore_keeps_binaries_out() -> None:
     """The .gitignore enforces the no-large-binaries policy."""
     gi = (ROOT / ".gitignore").read_text()
-    for pattern in ["**/*.mp4", "**/*.pkl", "docs/*.pdf", "data/video/", "outputs/video/"]:
+    for pattern in ["**/*.mp4", "**/*.pkl", "docs/*.pdf", "data/video/", "outputs/toronto_video/"]:
         assert pattern in gi, f"missing gitignore pattern {pattern}"
 
 

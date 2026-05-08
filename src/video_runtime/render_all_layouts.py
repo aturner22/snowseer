@@ -1,14 +1,14 @@
-"""Build matching cache + augmentation + matches sidecar + render all six layouts.
+"""Build matching cache + augmentation + matches sidecar + render all five layouts.
 
 Usage:
     uv run python -m src.video_runtime.render_all_layouts \\
         --track <track_id> --cache-tag <tag> \\
         [--start N --end N --stride N --K K --ema-alpha A]
 
-Produces outputs/video/<track>/{
+Produces outputs/toronto_video/<track>/{
     _cache_<tag>.pkl, _aug_<tag>.pkl, _matches_<tag>.pkl,
     overlay.mp4, sidebyside.mp4, matches.mp4,
-    snow_naive_overlay.mp4, snow_overlay_naive.mp4, quad.mp4,
+    snow_naive_overlay.mp4, quad.mp4,
 }.
 
 Cache, aug pass, and matches sidecar are built automatically if missing.
@@ -35,8 +35,6 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--track", required=True)
     p.add_argument("--cache-tag", required=True)
-    p.add_argument("--start", type=int, default=0)
-    p.add_argument("--end", type=int, default=350)
     p.add_argument("--stride", type=int, default=1)
     p.add_argument("--K", type=int, default=3)
     p.add_argument("--ema-alpha", type=float, default=0.4)
@@ -49,9 +47,9 @@ def main() -> None:
                    help="optional morphology radius post-threshold. 0 = off.")
     args = p.parse_args()
 
-    aug_path = ROOT / f"outputs/video/{args.track}/_aug_{args.cache_tag}.pkl"
-    cache_path = ROOT / f"outputs/video/{args.track}/_cache_{args.cache_tag}.pkl"
-    matches_path = ROOT / f"outputs/video/{args.track}/_matches_{args.cache_tag}.pkl"
+    aug_path = ROOT / f"outputs/toronto_video/{args.track}/_aug_{args.cache_tag}.pkl"
+    cache_path = ROOT / f"outputs/toronto_video/{args.track}/_cache_{args.cache_tag}.pkl"
+    matches_path = ROOT / f"outputs/toronto_video/{args.track}/_matches_{args.cache_tag}.pkl"
 
     seg_args = []
     if args.seg_prob_threshold is not None:
@@ -59,12 +57,14 @@ def main() -> None:
     if args.seg_morph_radius > 0:
         seg_args += ["--seg-morph-radius", str(args.seg_morph_radius)]
 
+    range_args: list[str] = ["--stride", str(args.stride)]
+
     if not cache_path.exists():
         print(f"[render-all] matching cache missing; building...")
         _run([
             "uv", "run", "python", "-m", "src.video_runtime.render",
             "--track", args.track,
-            "--start", str(args.start), "--end", str(args.end), "--stride", str(args.stride),
+            *range_args,
             "--K", str(args.K), "--max-dim", str(args.max_dim),
             "--temporal", "none",
             "--cache-tag", args.cache_tag,
@@ -91,7 +91,7 @@ def main() -> None:
     common = [
         "uv", "run", "python", "-m", "src.video_runtime.render",
         "--track", args.track,
-        "--start", str(args.start), "--end", str(args.end), "--stride", str(args.stride),
+        *range_args,
         "--K", str(args.K),
         "--temporal", "ema", "--ema-alpha", str(args.ema_alpha),
         "--cache-tag", args.cache_tag,
@@ -99,20 +99,19 @@ def main() -> None:
     ]
 
     # Output names match the layout, no cache-tag suffix. Each track gets its
-    # own outputs/video/<track>/ directory so per-tag disambiguation isn't
+    # own outputs/toronto_video/<track>/ directory so per-tag disambiguation isn't
     # needed; the slide deck + GitHub Pages reference these stable names.
     layouts = [
         ("overlay", "overlay.mp4"),
         ("sidebyside", "sidebyside.mp4"),
         ("matches", "matches.mp4"),
         ("snow_naive_overlay", "snow_naive_overlay.mp4"),
-        ("snow_overlay_naive", "snow_overlay_naive.mp4"),
         ("quad", "quad.mp4"),
     ]
     for mode, out_name in layouts:
         _run(common + ["--mode", mode, "--out-name", out_name])
 
-    print(f"\n[render-all] done — wrote {len(layouts)} mp4s under outputs/video/{args.track}/")
+    print(f"\n[render-all] done; wrote {len(layouts)} mp4s under outputs/toronto_video/{args.track}/")
 
 
 if __name__ == "__main__":

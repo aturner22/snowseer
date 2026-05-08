@@ -20,8 +20,8 @@ from .fuse import (
     weighted_soft_average,
 )
 from .homography import HomographyResult, estimate, refine_iteratively
-from .matching import Matcher, MatchResult, draw_matches
-from .overlay import alpha_blend, keep_largest_component, panel_figure, warp_mask
+from .matching import Matcher, draw_matches
+from .overlay import alpha_blend, keep_largest_component, warp_mask
 from .segmentation import RoadSegmenter
 
 # When the initial homography has fewer than this many inliers, run a
@@ -31,7 +31,7 @@ from .segmentation import RoadSegmenter
 REFINEMENT_INLIER_TRIGGER = 25
 
 DATA_PAIRS_DIR = Path("data/pairs")
-OUT_DIR = Path("outputs/heroes")
+OUT_DIR = Path("outputs/nordic_stills")
 DEMO_PAIRS_PATH = Path(__file__).resolve().parent / "data" / "demo_pairs.json"
 
 
@@ -83,7 +83,6 @@ class PairResult:
     n_matches: int
     n_inliers: int
     used_ground_plane_restriction: bool
-    figure_path: Path | None
     snow_overlay_path: Path | None
     naive_baseline_path: Path | None
     H: np.ndarray | None
@@ -176,10 +175,12 @@ def run_pair(
     Modes:
     - **`max_priors=1` (default, the v1.x narrative)**: only the first prior
       is used. The fusion variants degenerate to a single mask, so they are
-      skipped — only the v1 outputs (`__matches.png`, `__naive_baseline.png`,
-      `__overlay.png`, `__panel.png`) are written.
+      skipped. Outputs per pair: `__snow.png`, `__clear.png`,
+      `__clear_with_mask.png`, `__overlay.png`, `__naive_baseline.png`,
+      `__matches.png`. The website and writeup compose these into a
+      2x2 grid in HTML / markdown rather than a baked composite.
     - **`max_priors=N>1` (multi-prior, the Phase J ablation)**: all priors
-      up to N are processed; the three fusion variants and a per-prior
+      up to N are processed. The three fusion variants and a per-prior
       strip are written in addition to the v1 outputs.
     - **`max_priors=None`**: use every prior in `meta.priors`.
 
@@ -221,7 +222,7 @@ def run_pair(
         return PairResult(
             pair_id=pair_id, snow_path=snow_path, clear_path=pair_dir / "clear.jpg",
             n_matches=0, n_inliers=0, used_ground_plane_restriction=False,
-            figure_path=None, snow_overlay_path=None, naive_baseline_path=None,
+            snow_overlay_path=None, naive_baseline_path=None,
             H=None,
         )
 
@@ -231,7 +232,7 @@ def run_pair(
     primary = per_prior[0]
     # Save matches.png from the highest-inlier prior (best diagnostic).
     best_for_matches = max(per_prior, key=lambda r: r["homo"].n_inliers)
-    matches_canvas = draw_matches(
+    draw_matches(
         snow, best_for_matches["prior"], best_for_matches["matches"],
         inlier_mask=best_for_matches["homo"].inlier_mask,
         out_path=out_dir / f"{pair_id}__matches.png",
@@ -263,7 +264,7 @@ def run_pair(
     # and the priors strip. The headline `__overlay.png` is still written.
     is_single_prior = len(per_prior) == 1
     # Default fusion in multi-prior mode: weighted soft-average (best on the
-    # 27-pair manifest by inspection; others are kept available for ablation).
+    # 18-pair manifest by inspection; others are kept available for ablation).
     chosen = "weighted"
     if not is_single_prior:
         # Save per-fusion snow overlays.
@@ -287,32 +288,19 @@ def run_pair(
     if not is_single_prior:
         _save_priors_strip(snow, per_prior, out_dir / f"{pair_id}__priors.png")
 
-    # Headline 2x2 panel uses the user-chosen fusion (or weighted default)
-    # + the canonical primary prior's clear+mask. (The clear+mask column
-    # shows what *one* prior says; the overlay column shows the fused
-    # multi-prior result.)
+    # Save raw constituent images. The website / writeup compose these
+    # into a 2x2 grid in HTML / markdown, instead of pre-rendering a
+    # single composite "panel" image at full resolution.
     primary_clear = primary["prior"]
     primary_road_mask_clear = primary["road_mask_clear"]
-    panel_overlay = alpha_blend(snow, fused[chosen], color=(46, 156, 86), alpha=0.50)
-    figure_path = out_dir / f"{pair_id}__panel.png"
-    title, subtitle = _display_strings(pair_id)
-    panel_figure(
-        snow, primary_clear, primary_road_mask_clear, panel_overlay,
-        snowy_naive=snow_naive,
-        title=title, subtitle=subtitle, out_path=figure_path,
-    )
-
-    from src.layouts import save_extra_layouts
-    save_extra_layouts(
-        snow=snow,
-        clear=primary_clear,
-        road_mask_clear=primary_road_mask_clear,
-        snow_naive=snow_naive,
-        snow_overlay=panel_overlay,
-        matches_canvas=matches_canvas,
-        out_dir=out_dir,
-        pair_id=pair_id,
-    )
+    clear_with_mask = alpha_blend(primary_clear, primary_road_mask_clear,
+                                  color=(46, 156, 86), alpha=0.50)
+    cv2.imwrite(str(out_dir / f"{pair_id}__snow.png"),
+                cv2.cvtColor(snow, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(str(out_dir / f"{pair_id}__clear.png"),
+                cv2.cvtColor(primary_clear, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(str(out_dir / f"{pair_id}__clear_with_mask.png"),
+                cv2.cvtColor(clear_with_mask, cv2.COLOR_RGB2BGR))
 
     # IoU metrics — measured against the chosen fusion (the one we ship).
     iou_naive = _iou(fused[chosen], road_mask_snow_naive)
@@ -331,7 +319,6 @@ def run_pair(
         n_matches=len(primary["matches"].kpts0),
         n_inliers=primary["homo"].n_inliers,
         used_ground_plane_restriction=primary["homo"].used_ground_plane_restriction,
-        figure_path=figure_path,
         snow_overlay_path=out_dir / f"{pair_id}__overlay.png",
         naive_baseline_path=naive_path,
         H=primary["homo"].H,
@@ -434,7 +421,6 @@ def run_all(
                     None if res.iou_overlay_vs_identity is None else round(res.iou_overlay_vs_identity, 4)
                 ),
                 "accept": bool(accept),
-                "figure": str(res.figure_path) if res.figure_path else None,
                 "naive_baseline": str(res.naive_baseline_path) if res.naive_baseline_path else None,
             }
         )

@@ -35,8 +35,8 @@ def _augment_one(snow_image: np.ndarray, segmenter) -> np.ndarray:
 
 
 def augment(track_id: str, cache_tag: str, *, K: int = 3, max_dim: int = 1024) -> Path:
-    cache_path = ROOT / f"outputs/video/{track_id}/_cache_{cache_tag}.pkl"
-    aug_path = ROOT / f"outputs/video/{track_id}/_aug_{cache_tag}.pkl"
+    cache_path = ROOT / f"outputs/toronto_video/{track_id}/_cache_{cache_tag}.pkl"
+    aug_path = ROOT / f"outputs/toronto_video/{track_id}/_aug_{cache_tag}.pkl"
     if not cache_path.exists():
         raise SystemExit(f"missing cache {cache_path}; run the matching pass first")
 

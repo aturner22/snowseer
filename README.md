@@ -1,10 +1,10 @@
-# snowseer
+# Snowseer
 
 > A snow plough's job is short: keep the road clear. While it's doing it, the road is invisible — buried, lane markings gone, curb-line erased. A self-driving stack trained on Cityscapes will report, with calibrated confidence, that the entire scene is sky.
 
 > The contribution this repository ships is *not* a snow plough. It is a primitive — **the constants-bridge** — a composition that takes a model trained on regime A, an inference target in regime B, and a known invariant between A and B, and uses the invariant to transfer the model into B without retraining. The snow plough is one consumer of this primitive, demonstrated in motion on a 15-second snow-buried Toronto street. *Generalisation, not memorisation.*
 
-A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy). Headline artefact: `outputs/video/boreas_2021_01_26/overlay.mp4`. Reproduce with `make reproduce`.
+A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy). Headline artefact: `outputs/toronto_video/boreas_2021_01_26/overlay.mp4`. Reproduce with `make reproduce`.
 
 **Documents**: [`docs/writeup.md`](docs/writeup.md) (the essay) · [`docs/analysis.ipynb`](docs/analysis.ipynb) (the work, shown with the work) · [`docs/index.html`](docs/index.html) (Pages site) · [`docs/slides.md`](docs/slides.md) (Marp deck).
 
@@ -14,11 +14,12 @@ A submission to [SoTA Commission I — Minimal-Shot Autonomy](https://sotaletter
 git clone https://github.com/aturner22/snowseer; cd snowseer
 git checkout video
 uv sync --python 3.12
-make reproduce        # canonical 15 s clip; ~50 min cache + ~1 min render
+export MAPILLARY_TOKEN=<token from https://www.mapillary.com/dashboard/developers>
+make reproduce                     # canonical clip + alt clip + 18-pair stills (~2 h on Mac CPU)
 open docs/index.html               # static Pages site, no server needed
 ```
 
-**For judges**: `make help` lists every reproducible target. The canonical matching cache builds in ~50 min on Mac CPU; subsequent renders (6 visual layouts + 4 timestamps × 4 stills) are under 30 min total. The static-stills precursor (`make stills`) needs a free [Mapillary token](https://www.mapillary.com/dashboard/developers) and adds ~10 min.
+**For judges**: `make help` lists every reproducible target. `make reproduce` runs the full sequential build (~2 h on Mac CPU): the canonical 15 s clip on `boreas_2021_01_26` (~50 min cache + ~1 min render), the alt-track robustness clip on `boreas_2025_02_15` (~50 min), and the 18-pair static-stills precursor (~10 min, needs `MAPILLARY_TOKEN`). For a faster look at just the headline, `make track TRACK=boreas_2021_01_26 TRACK_START=100 TRACK_END=250` produces only the canonical clip and skips the Mapillary step.
 
 ---
 
@@ -103,7 +104,7 @@ The composition is invariant. The same six steps run on every frame; what change
 | Reproducible from a clean clone with one command | ✓ |
 | Pretrained matcher · pretrained segmenter · classical RANSAC | ✓ |
 
-## Reproducing the canonical clip
+## Reproducing
 
 ```bash
 uv sync --python 3.12
@@ -111,17 +112,19 @@ export MAPILLARY_TOKEN=<token from https://www.mapillary.com/dashboard/developer
 make reproduce
 ```
 
-That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), builds the matching cache (~50 min on Mac CPU), and renders `outputs/video/boreas_2021_01_26/overlay.mp4` — a 15-second clip of the cross-season road overlay.
+`make reproduce` runs three steps sequentially (~2 hours total on Mac CPU): the canonical clip on `boreas_2021_01_26`, the alt-track robustness clip on `boreas_2025_02_15`, and the 18-pair static-stills precursor. Each step writes to its own output directory; the canonical clip lands at `outputs/toronto_video/boreas_2021_01_26/overlay.mp4` and is the headline artefact. The two video tracks pull their Boreas windows (~1.4 GB each) from the AWS Open Data registry; the stills step pulls Mapillary imagery, which is why `MAPILLARY_TOKEN` is required for a full reproduction.
 
-`MAPILLARY_TOKEN` is only required for the static-stills precursor (`make stills`); the canonical video pipeline runs entirely off Boreas, which is on the AWS Open Data registry and needs no signup.
+For ad-hoc runs, `make track TRACK=<id>` produces a single track's video bundle and `make stills` produces only the static-stills demo. Both are described under [Want to … below](#want-to).
+
+<a id="want-to"></a>
 
 | Want to … | Run |
 | --- | --- |
-| Reproduce the canonical clip | `make reproduce` |
+| Reproduce everything (canonical + alt + stills) | `make reproduce` |
 | Run the pipeline on any registered track (5 layouts + stills) | `make track TRACK=<id>` (e.g. `boreas_2025_02_15`) |
 | Pre-flight a track (verify priors-exist + summer-segmentation) | `make oracle TRACK=<id>` |
 | Run the static-stills precursor | `make stills` |
-| Render the writeup + slide PDFs (local only — gitignored) | `make pdfs` |
+| Render the writeup + slide PDFs (local only, gitignored) | `make pdfs` |
 | Re-execute the analysis notebook in place | `make notebook` |
 | Open the GitHub Pages site locally | `open docs/index.html` |
 | Smoke-test the import graph + CLI shape | `make test` |
@@ -132,8 +135,8 @@ That pulls the Boreas snow + summer windows for `boreas_2021_01_26` (~1.4 GB), b
 
 | Track ID | Snow capture | Role |
 | --- | --- | --- |
-| `boreas_2021_01_26` | Heavy snow, mid-morning | Canonical 15 s clip (`make reproduce`) |
-| `boreas_2025_02_15` | Active snowfall, late afternoon | Robustness clip — same intersection, different day (`make track TRACK=boreas_2025_02_15`) |
+| `boreas_2021_01_26` | Heavy snow, mid-morning | Canonical 15 s clip (built first by `make reproduce`; ad-hoc via `make track TRACK=boreas_2021_01_26 TRACK_START=100 TRACK_END=250`) |
+| `boreas_2025_02_15` | Active snowfall, late afternoon | Robustness clip on the same intersection, different day (`make track TRACK=boreas_2025_02_15`) |
 
 ## Repo layout
 
@@ -165,10 +168,10 @@ snowseer/
 │       └── render_all_layouts.py     # batch renderer (5 layouts)
 │
 ├── data/
-│   ├── demo_pairs.json               # demo manifest: 27 Mapillary snow + clear pairs the fetcher pulls
+│   ├── demo_pairs.json               # demo manifest: 18 Mapillary snow + clear pairs the fetcher pulls
 │   ├── fetch_mapillary.py            # Mapillary v4 fetcher (uses demo_pairs.json with --curated-only)
 │   ├── pairs/                        # fetched pair downloads (gitignored)
-│   └── video/                        # (gitignored — auto-fetched by `make track`)
+│   └── video/                        # (gitignored, auto-fetched by `make track`)
 │       └── tracks/<track_id>/        # per-track snow + summer windows
 │           ├── snow/{frames/, camera_poses.csv, calib/, window.json}
 │           └── summer/{frames/, camera_poses.csv, calib/, window.json}
