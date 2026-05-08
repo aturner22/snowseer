@@ -1,9 +1,9 @@
-"""Track loader for Phase K — yields aligned (snow_frame, gps_pose) tuples.
+"""Track loader: yields aligned (snow_frame, gps_pose) tuples.
 
 A 'track' is a directory of `data/video/tracks/<track_id>/{snow,summer}/`
-that's already been populated by `src.video_runtime.fetch_track`. The Track
-class indexes the on-disk frames + camera_poses.csv so the per-frame pipeline
-can iterate over the snow frames in capture order.
+populated by `src.video_runtime.fetch_track`. The Track class indexes
+the on-disk frames + camera_poses.csv so the per-frame pipeline can
+iterate over the snow frames in capture order.
 """
 
 from __future__ import annotations

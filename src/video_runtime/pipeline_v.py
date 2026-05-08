@@ -1,22 +1,22 @@
-"""Per-frame video pipeline — runs the static cross-season pipeline once
-per snow frame against K nearest summer priors, fuses the K warped masks,
-and emits a list of FrameResult that the renderer consumes.
+"""Per-frame video pipeline.
 
-Matching is the dominant cost. Two reliability features keep this practical:
+Runs the static cross-season pipeline once per snow frame against K
+nearest summer priors, fuses the K warped masks, and emits a list of
+FrameResult that the renderer consumes.
 
-1. **Cache** — once matching completes, persist the raw fused masks to
+Matching is the dominant cost. Two reliability features keep this
+practical:
+
+1. Cache: once matching completes, persist the raw fused masks to
    `_cache_<tag>.pkl`. Subsequent renders that change only the smoother
-   (`temporal=ema|flow|none`) load the cache and skip matching entirely.
-2. **Checkpoint resume** — every CHECKPOINT_EVERY frames, atomically write
+   (`temporal=ema|flow|none`) load the cache and skip matching.
+2. Checkpoint resume: every CHECKPOINT_EVERY frames, atomically write
    `_cache_<tag>.partial.pkl`. If the process is killed mid-run, restart
-   reads the partial and resumes from the next unprocessed frame. The user
-   can kill and restart at will without losing accumulated work.
+   reads the partial and resumes from the next unprocessed frame.
 
-All progress lines are flushed; a stuck or memory-thrashing run is visible
-immediately rather than after-the-fact. ETA is logged every ETA_EVERY frames.
-
-Memory-aware sequencing: do NOT run two of these in parallel on a Mac with
-≤ 16 GB RAM — each process holds ~9 GB resident. Run sequentially.
+All progress lines flush at write time. ETA is logged every
+ETA_EVERY frames. Each process holds ~9 GB resident, so on a 16 GB
+machine the pipeline must run sequentially, not in parallel.
 """
 
 from __future__ import annotations
@@ -41,9 +41,9 @@ ETA_EVERY = 10                   # log ETA line every N processed frames
 
 
 def _log(msg: str) -> None:
-    """Single-line flushed log. Writing to stdout under a `> file 2>&1`
-    redirect needs the explicit flush — Python defaults to block buffering
-    on non-tty stdout, which made multi-hour runs invisible to the user."""
+    """Single-line log with explicit flush so output appears in real time
+    even when stdout is redirected to a file (Python defaults to block
+    buffering on non-tty stdout)."""
     print(msg, flush=True)
 
 
@@ -160,10 +160,9 @@ def run_track(
 
     track = Track(track_id)
 
-    # Pre-flight pose-only sanity guard: cheap KD-tree query to confirm the
-    # snow track has summer poses in the neighbourhood. Catches structurally
-    # broken windows before we pay matcher compute. Dev-time error signal,
-    # not a curation tool — that lives in `window_oracle.curate_from_cache`.
+    # Pre-flight pose-only sanity guard: cheap KD-tree query to confirm
+    # the snow track has summer poses in the neighbourhood. Catches
+    # structurally broken windows before paying matcher compute.
     try:
         from scipy.spatial import cKDTree
         summer_xy = np.array([[m.easting, m.northing] for m in track.summer_meta],

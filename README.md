@@ -35,7 +35,7 @@ This project is one concrete instantiation of that idea, applied to autonomous s
 
 ## The video extension — and why it matters
 
-The earlier version of this work (v1.x, see the side branches and `make stills`) demonstrated the principle on individual snow / clear-season image pairs. It worked, on fourteen hand-curated locations. The thesis was already there.
+The static-stills precursor (`make stills`) demonstrates the principle on individual snow / clear-season image pairs across 18 hand-curated nordic locations. The video pipeline applies the same recipe per frame.
 
 But a snow plough does not see one frame; it drives. The interesting question is whether the principle survives motion. The video pipeline here answers that:
 
@@ -152,18 +152,16 @@ snowseer/
 │   ├── segmentation.py               # Mask2Former
 │   ├── overlay.py                    # warp + 4-panel figure
 │   ├── fuse.py                       # multi-prior fusion + foreground crop
-│   ├── snow_quality.py · audit.py    # snow pre-filter + contact sheet
 │   ├── pipeline.py                   # static-pair pipeline
-│   └── video_runtime/                # per-frame video pipeline (the canonical path)
+│   └── video_runtime/                # per-frame video pipeline
 │       ├── track.py                  # snow stream + summer stream loaders
 │       ├── prior_pool.py             # K-NN prior selection by UTM
 │       ├── pipeline_v.py             # run_track entry point + cache + checkpoint resume
-│       ├── window_oracle.py          # pre-flight: priors-exist + summer-segmentation check
-│       ├── temporal.py               # EMA / flow smoothers (EMA wins)
-│       ├── overlay_render.py         # render_overlay / sidebyside / 3-panel / quad
+│       ├── temporal.py               # EMA / flow smoothers
+│       ├── overlay_render.py         # overlay / sidebyside / 3-panel / quad renderers
 │       ├── augment.py                # naive baseline + summer panel cache
-│       ├── extract_assets.py         # extract preset stills (1.0/5.0/10.0/14.0 s) from mp4s
-│       ├── fetch_track.py            # Boreas S3 fetcher with retry + --snow-start-s/--snow-end-s overrides
+│       ├── extract_assets.py         # extract preset stills (1, 5, 10, 14 s) from mp4s
+│       ├── fetch_track.py            # Boreas S3 fetcher
 │       ├── render.py                 # CLI entry
 │       └── render_all_layouts.py     # batch renderer (5 layouts)
 │
@@ -192,7 +190,7 @@ snowseer/
     └── fonts/                        # EB Garamond · Inter · JetBrains Mono (OFL)
 ```
 
-`_archive/` (gitignored) holds legacy code kept on local disk for reference but not part of the canonical repo: the auto-rendered submission video composer (`compose_final.py`, audio, music — user composes externally now), multi-prior schema migrations from Phase J, the v1 walkthrough notebook, the Phase A audit notes, the deferred 02_video_walkthrough.ipynb (the writeup essay + Pages site replaced its narrative role).
+`_archive/` (gitignored) holds retired code retained on local disk for reference but not part of the canonical pipeline.
 
 ## The contribution
 

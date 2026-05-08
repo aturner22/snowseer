@@ -1,9 +1,9 @@
 """RANSAC homography with ground-plane bias.
 
-A single homography is exact only for a planar scene. Buildings and the road are
-not coplanar. By restricting RANSAC to correspondences in the lower portion of
-both images, we bias the fit toward the ground plane — which is what we need
-to correctly transfer the road mask.
+A single homography is exact only for a planar scene; buildings and the
+road are not coplanar. Restricting RANSAC to correspondences in the
+lower portion of both images biases the fit toward the ground plane, so
+the warped road mask lands on the road instead of an off-plane structure.
 """
 
 from __future__ import annotations
@@ -108,18 +108,14 @@ def refine_iteratively(
     """Refine the homography by re-fitting on matches whose snow keypoints
     fall inside the warped road region.
 
-    The initial homography (from `estimate(...)`) uses a generic lower-image-half
-    ground-plane restriction. When that restriction does not engage cleanly —
-    e.g. tunnel scenes where most of the lower half is wall, not road — the
-    fit drifts. This refinement uses the **road segmentation** itself to pick
-    matches that should be on the road, then re-fits.
+    The initial homography (from `estimate(...)`) uses a generic lower-
+    image-half ground-plane restriction. When that restriction does not
+    engage cleanly (tunnel scenes where most of the lower half is wall,
+    not road) the fit drifts. This refinement uses the road segmentation
+    itself to pick matches that should be on the road, then re-fits.
 
-    Mirrors the user-original-intuition: "wiggle the matches until features
-    line up", but with explicit semantic gating instead of iterative pixel-level
-    optimisation.
-
-    Returns a HomographyResult with the refined H and an inlier_mask over the
-    *original* matches (so callers can compare against the initial fit).
+    Returns a HomographyResult with the refined H and an inlier_mask over
+    the original matches so callers can compare against the initial fit.
     """
     n = len(matches.kpts0)
     if H_initial is None:
@@ -168,5 +164,5 @@ def refine_iteratively(
 
     return HomographyResult(
         H=H, inlier_mask=final_mask, n_inliers=int(final_mask.sum()),
-        used_ground_plane_restriction=True,  # we used the road *segmentation* — even tighter
+        used_ground_plane_restriction=True,
     )
