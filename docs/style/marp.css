@@ -12,23 +12,23 @@
 
 @font-face {
   font-family: "EB Garamond";
-  src: url("../_assets/fonts/EBGaramond-Regular.ttf") format("truetype");
+  src: url("../assets/fonts/EBGaramond-Regular.ttf") format("truetype");
   font-weight: 400;
 }
 @font-face {
   font-family: "EB Garamond";
-  src: url("../_assets/fonts/EBGaramond-Italic.ttf") format("truetype");
+  src: url("../assets/fonts/EBGaramond-Italic.ttf") format("truetype");
   font-style: italic;
   font-weight: 400;
 }
 @font-face {
   font-family: "Inter";
-  src: url("../_assets/fonts/Inter-Regular.ttf") format("truetype");
+  src: url("../assets/fonts/Inter-Regular.ttf") format("truetype");
   font-weight: 400;
 }
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("../_assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  src: url("../assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
   font-weight: 400;
 }
 

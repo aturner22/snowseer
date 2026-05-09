@@ -37,7 +37,7 @@ obvious examples.
 
 <!-- _class: image-right -->
 
-![bg right:55%](_assets/media/toronto_2021_snow_naive_overlay_t005.jpg)
+![bg right:55%](assets/media/toronto_2021_snow_naive_overlay_t005.jpg)
 
 ## A snow plough's job is simple
 
@@ -153,7 +153,7 @@ Snow appears only at inference, as the runtime input.
 
 <!-- _class: full-bleed -->
 
-![bg fit](_assets/media/toronto_2021_overlay_t005.jpg)
+![bg fit](assets/media/toronto_2021_overlay_t005.jpg)
 
 ---
 

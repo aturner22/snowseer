@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="style/site.css" />
-  <link rel="icon" type="image/svg+xml" href="_assets/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
 
   <meta property="og:title" content="Snowseer" />
   <meta property="og:description" content="Minimal-shot autonomy through structural constants across environments." />
@@ -24,8 +24,8 @@
   <h2>Achieving minimal-shot autonomy by recognising constants across environments.</h2>
 
   <figure class="hero-figure">
-    <video autoplay loop muted playsinline controls preload="metadata" poster="_assets/media/toronto_2021_overlay_t005.jpg">
-      <source src="_assets/media/toronto_2021_overlay.mp4" type="video/mp4" />
+    <video autoplay loop muted playsinline controls preload="metadata" poster="assets/media/toronto_2021_overlay_t005.jpg">
+      <source src="assets/media/toronto_2021_overlay.mp4" type="video/mp4" />
       Your browser doesn't support inline video.
     </video>
     <figcaption>Toronto, January 2021. The green overlay is the inferred position of the road under the snow, transferred from matched images of the same location in summer. Nothing in the processing pipeline has been trained in snowy conditions.</figcaption>
@@ -59,7 +59,7 @@
     <p>The constituent parts are not new. Geometric scene analysis, classical RANSAC, and pretrained feature matchers and segmenters have been combined in many ways across the computer-vision literature in the past. The contribution this submission makes is to identify the composition of the environment itself as a key feature to use, and to give an end-to-end working demonstration of the property the brief calls for: <em>generalisation through understanding, not memorisation</em>. The feature matcher in our pipeline is not generalising its recognition of "snow". It has not been trained on snow. The focus is generalisation via what stays the same.</p>
 
     <figure>
-      <img src="_assets/media/nordic_gallivare_matches.png" alt="Snow query (left) and its paired summer prior (right) with green correspondence lines drawn between matched features that survive the seasonal change." />
+      <img src="assets/media/nordic_gallivare_matches.png" alt="Snow query (left) and its paired summer prior (right) with green correspondence lines drawn between matched features that survive the seasonal change." />
       <figcaption>Matched correspondences between a snow-covered street in Gällivare, Sweden (left) and a summer image of the same location (right). The lines connect features that haven't changed across seasons. No correspondences land on the road surface itself. The matcher anchors on the consistent non-road features, and the homography fitted to those carries the road mask from the summer image into the snow frame.</figcaption>
     </figure>
   </div>
@@ -114,7 +114,7 @@
                   └──────────────────────┘</code></pre>
 
     <figure>
-      <img src="_assets/media/toronto_2021_quad_t005.jpg" alt="Four panels: snow input (top-left), naive Cityscapes baseline applied directly to snow (top-right, painting road class across snow and sky), summer prior with successful road segmentation (bottom-left), cross-season overlay produced by warping the prior's road mask through the homography (bottom-right)." />
+      <img src="assets/media/toronto_2021_quad_t005.jpg" alt="Four panels: snow input (top-left), naive Cityscapes baseline applied directly to snow (top-right, painting road class across snow and sky), summer prior with successful road segmentation (bottom-left), cross-season overlay produced by warping the prior's road mask through the homography (bottom-right)." />
       <figcaption>One frame from a clip of driving in Toronto. Top-left: the snowy input. Top-right: the naive road-segmented baseline. Bottom-left: the paired summer prior with <em>successful</em> road segmentation (because the road is visible). Bottom-right: the cross-season overlay produced by warping the prior's road mask through the homography into the snow frame.</figcaption>
     </figure>
 
@@ -152,15 +152,15 @@
 
     <div class="track-grid">
       <figure class="track">
-        <video autoplay loop muted playsinline controls preload="metadata" poster="_assets/media/toronto_2021_quad_t005.jpg">
-          <source src="_assets/media/toronto_2021_quad.mp4" type="video/mp4" />
+        <video autoplay loop muted playsinline controls preload="metadata" poster="assets/media/toronto_2021_quad_t005.jpg">
+          <source src="assets/media/toronto_2021_quad.mp4" type="video/mp4" />
         </video>
         <figcaption><strong>Toronto, January 2021.</strong> Four panels per frame: snow input (top-left), naive segmenter baseline applied directly to snow (top-right), paired summer prior with road segmentation (bottom-left), cross-season overlay onto the snow frame (bottom-right).</figcaption>
       </figure>
 
       <figure class="track">
         <video autoplay loop muted playsinline controls preload="metadata">
-          <source src="_assets/media/toronto_2025_quad.mp4" type="video/mp4" />
+          <source src="assets/media/toronto_2025_quad.mp4" type="video/mp4" />
         </video>
         <figcaption><strong>Toronto, February 2025.</strong> Four panels per frame: snow input (top-left), naive segmenter baseline applied directly to snow (top-right), paired summer prior with road segmentation (bottom-left), cross-season overlay onto the snow frame (bottom-right)..</figcaption>
       </figure>
@@ -173,30 +173,30 @@
     <div class="pairs-grid">
       <figure class="pair">
         <div class="quad">
-          <img src="_assets/media/nordic_gallivare_snow.jpg" alt="Snow query, Gällivare residential street with red houses." />
-          <img src="_assets/media/nordic_gallivare_naive.png" alt="Naive Cityscapes road segmentation applied directly to the snow frame, painting the class across snow and sky." />
-          <img src="_assets/media/nordic_gallivare_clear.jpg" alt="Paired summer prior of the same Gällivare scene." />
-          <img src="_assets/media/nordic_gallivare_overlay.png" alt="Cross-season overlay: green road mask transferred from the summer prior onto the snow frame." />
+          <img src="assets/media/nordic_gallivare_snow.jpg" alt="Snow query, Gällivare residential street with red houses." />
+          <img src="assets/media/nordic_gallivare_naive.png" alt="Naive Cityscapes road segmentation applied directly to the snow frame, painting the class across snow and sky." />
+          <img src="assets/media/nordic_gallivare_clear.jpg" alt="Paired summer prior of the same Gällivare scene." />
+          <img src="assets/media/nordic_gallivare_overlay.png" alt="Cross-season overlay: green road mask transferred from the summer prior onto the snow frame." />
         </div>
         <figcaption>Gällivare, Sweden.</figcaption>
       </figure>
 
       <figure class="pair">
         <div class="quad">
-          <img src="_assets/media/nordic_kiruna_snow.jpg" alt="Snow query, Kiruna residential street." />
-          <img src="_assets/media/nordic_kiruna_naive.png" alt="Naive Cityscapes road segmentation on the Kiruna snow frame." />
-          <img src="_assets/media/nordic_kiruna_clear.jpg" alt="Paired summer prior of the same Kiruna scene." />
-          <img src="_assets/media/nordic_kiruna_overlay.png" alt="Cross-season overlay: green road mask transferred onto the Kiruna snow frame." />
+          <img src="assets/media/nordic_kiruna_snow.jpg" alt="Snow query, Kiruna residential street." />
+          <img src="assets/media/nordic_kiruna_naive.png" alt="Naive Cityscapes road segmentation on the Kiruna snow frame." />
+          <img src="assets/media/nordic_kiruna_clear.jpg" alt="Paired summer prior of the same Kiruna scene." />
+          <img src="assets/media/nordic_kiruna_overlay.png" alt="Cross-season overlay: green road mask transferred onto the Kiruna snow frame." />
         </div>
         <figcaption>Kiruna, Sweden.</figcaption>
       </figure>
 
       <figure class="pair">
         <div class="quad">
-          <img src="_assets/media/nordic_lulea_snow.jpg" alt="Snow query, Luleå street." />
-          <img src="_assets/media/nordic_lulea_naive.png" alt="Naive Cityscapes road segmentation on the Luleå snow frame." />
-          <img src="_assets/media/nordic_lulea_clear.jpg" alt="Paired summer prior of the same Luleå scene." />
-          <img src="_assets/media/nordic_lulea_overlay.png" alt="Cross-season overlay: green road mask transferred onto the Luleå snow frame." />
+          <img src="assets/media/nordic_lulea_snow.jpg" alt="Snow query, Luleå street." />
+          <img src="assets/media/nordic_lulea_naive.png" alt="Naive Cityscapes road segmentation on the Luleå snow frame." />
+          <img src="assets/media/nordic_lulea_clear.jpg" alt="Paired summer prior of the same Luleå scene." />
+          <img src="assets/media/nordic_lulea_overlay.png" alt="Cross-season overlay: green road mask transferred onto the Luleå snow frame." />
         </div>
         <figcaption>Luleå, Sweden.</figcaption>
       </figure>

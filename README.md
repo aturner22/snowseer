@@ -109,7 +109,7 @@ snowseer/
 │   ├── index.html                     # GitHub Pages site
 │   ├── analysis.ipynb                 # interactive walkthrough
 │   ├── style/                         # site CSS
-│   └── _assets/                       # site media (stills, clips, fonts, favicon)
+│   └── assets/                        # site media (stills, clips, fonts, favicon)
 │
 ├── outputs/                           # regenerable, gitignored
 │   ├── nordic_stills/                 # static-stills pipeline outputs

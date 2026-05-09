@@ -33,13 +33,13 @@ The core of this project is a simple idea: a *constants-bridge*. This refers to 
 
 The constituent parts are not new. Geometric scene analysis, classical RANSAC, and pretrained feature matchers and segmenters have been combined in many ways across the computer-vision literature. The contribution this submission makes is to identify the composition of the environment itself as a key feature to leverage, and to give an end-to-end working demonstration showing the property the brief calls far — *generalisation through visual understanding, not memorisation*. The feature matcher in our pipeline is not generalising its recongition of "snow": it has not been trained on snow (in fact, snow scenes were explicitly excluded from testing scenarios). The focus is generalisation via what stays the same.
 
-![](_assets/media/toronto_2021_matches_t005.jpg)
+![](assets/media/toronto_2021_matches_t005.jpg)
 
 ## Snowseer
 
 A pre-trained feature matcher establishes correspondences between the live snow frame and a clear-season prior of the same coordinates. A homography (projection transformation) is fitted to those correspondences and geometrically connects the clear-season prior to the snow frame. A pre-trained segmenter produces a road mask on the *clear* prior and that mask is warped through the homography onto the winter image, producing an overlay of where the road is underneath the snow.
 
-![](_assets/media/nordic_gallivare_matches.png)
+![](assets/media/nordic_gallivare_matches.png)
 
 Per snow frame, there are six steps:
 
@@ -83,7 +83,7 @@ Per snow frame, there are six steps:
                   └──────────────────────┘
 ```
 
-![](_assets/media/toronto_2021_quad_t014.jpg)
+![](assets/media/toronto_2021_quad_t014.jpg)
 
 The video processing mode wraps a per-still-image-pair pipeline in three thin layers: a track loader indexing snow and summer streams by GPS pose, a prior pool returning the K = 3 nearest summer captures by distance for each snow frame, an exponential moving average ($\alpha = 0.4$) on the binary road mask to produce a smoother continuous render of the transferred road position. 
 
@@ -97,9 +97,9 @@ Components used unmodified and crucially *without any retraining*: DISK (Tyszkie
 The demo material are video clips from snow-covered rural and suburban streets in Toronto (Boreas January 2021 and February 2025). The pipeline produces a continuous green road-region overlay tracking the buried road frame by frame. A side-by-side naive baseline — the same Cityscapes segmenter applied directly to the snow frame — is included for contrast and to demonstrate the capability of this system: the naive overlay is sprawls across frames into clearly non-road territory. The road overlay tracks the buried road continuously through the examples on a pipeline whose learned components have never seen snow. The same pipeline was also verified to perform well on the same driving scene but during a different season, with different snowfall. As well as this, there are also 18-pair static-stills from different nordic regions, covering distinct snow scenes, road layouts and environments.
 
 
-![](_assets/media/nordic_gallivare_snow.jpg){width=48%} ![](_assets/media/nordic_gallivare_naive.png){width=48%}
+![](assets/media/nordic_gallivare_snow.jpg){width=48%} ![](assets/media/nordic_gallivare_naive.png){width=48%}
 
-![](_assets/media/nordic_gallivare_clear.jpg){width=48%} ![](_assets/media/nordic_gallivare_overlay.png){width=48%}
+![](assets/media/nordic_gallivare_clear.jpg){width=48%} ![](assets/media/nordic_gallivare_overlay.png){width=48%}
 
 The entire pipeline is reproducible from a clean clone with `make reproduce`. The only handle the system has on the snow regime is the clear-season prior of the same place.
 
