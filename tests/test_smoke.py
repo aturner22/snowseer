@@ -24,7 +24,6 @@ if str(ROOT) not in sys.path:
 
 def test_pipeline_imports() -> None:
     """The static-stills pipeline modules import cleanly."""
-    import src.fuse
     import src.homography
     import src.matching
     import src.overlay
@@ -40,7 +39,6 @@ def test_video_runtime_imports() -> None:
     """The video pipeline modules import cleanly."""
     import src.video_runtime.pipeline_v as pv
     import src.video_runtime.prior_pool
-    import src.video_runtime.temporal
     import src.video_runtime.track
     import src.video_runtime.overlay_render
     import src.video_runtime.augment

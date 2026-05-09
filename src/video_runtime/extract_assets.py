@@ -1,11 +1,7 @@
-"""Extract still frames from rendered overlay clips for use in the
-submission video plan + slides + GitHub Pages.
+"""Extract still frames from the rendered overlay clips.
 
 Run after the renders are produced (overlay.mp4, sidebyside.mp4, etc.).
 Writes JPEGs at preset timestamps to outputs/toronto_video/<track>/stills/.
-
-The extracted stills are the *visual asset list* referenced by
-docs/slides.md (the video script / storyboard).
 
 Usage:
     uv run python -m src.video_runtime.extract_assets --track <track_id>

@@ -1,8 +1,7 @@
 """DISK + LightGlue feature matching via kornia.
 
-DISK is pretrained on depth supervision over outdoor MegaDepth-style imagery.
-LightGlue is trained to match DISK features. Both are used **frozen**; no snowy
-imagery is involved in their training.
+DISK is pretrained on MegaDepth (outdoor scenes). LightGlue is trained
+to match DISK features. Both are used frozen.
 """
 
 from __future__ import annotations
@@ -92,18 +91,11 @@ def draw_matches(
     result: MatchResult,
     inlier_mask: np.ndarray | None = None,
     out_path: str | Path | None = None,
-    max_outliers: int = 15,
-    max_inliers: int = 45,
+    max_inliers: int = 10,
 ) -> np.ndarray:
-    """Side-by-side viz with lines between matched keypoints.
-
-    Outliers (rejected by RANSAC) are drawn first in faint, thin desaturated
-    red so they read as 'background noise'. Inliers (the correspondences that
-    actually fit the homography) are drawn on top in bold, saturated green so
-    they always dominate visually — even when raw outlier counts swamp them.
-
-    Outliers and inliers are subsampled independently so neither monopolises
-    the canvas.
+    """Side-by-side visualisation. Draws up to `max_inliers` correspondences
+    in green between the two images. Rejected (non-inlier) matches are not
+    drawn.
     """
     h_a, w_a = img_a.shape[:2]
     h_b, w_b = img_b.shape[:2]
@@ -119,24 +111,9 @@ def draw_matches(
 
     rng = np.random.RandomState(0)
     in_idx = np.where(inlier_mask)[0]
-    out_idx = np.where(~inlier_mask)[0]
     if len(in_idx) > max_inliers:
         in_idx = rng.choice(in_idx, size=max_inliers, replace=False)
-    if len(out_idx) > max_outliers:
-        out_idx = rng.choice(out_idx, size=max_outliers, replace=False)
 
-    # Outliers first (background), faded.
-    out_colour = (170, 110, 110)  # desaturated dusty red
-    for i in out_idx:
-        xa, ya = result.kpts0[i]
-        xb, yb = result.kpts1[i]
-        pa = (int(round(xa)), int(round(ya)))
-        pb = (int(round(xb)) + w_a, int(round(yb)))
-        cv2.line(canvas, pa, pb, out_colour, 1, lineType=cv2.LINE_AA)
-        cv2.circle(canvas, pa, 2, out_colour, -1, lineType=cv2.LINE_AA)
-        cv2.circle(canvas, pb, 2, out_colour, -1, lineType=cv2.LINE_AA)
-
-    # Inliers on top, bold and saturated.
     in_colour = (40, 200, 80)
     for i in in_idx:
         xa, ya = result.kpts0[i]

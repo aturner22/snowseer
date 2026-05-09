@@ -7,9 +7,6 @@ season images, writes them under `data/pairs/<pair_id>/`.
 Usage:
     export MAPILLARY_TOKEN=<token from https://www.mapillary.com/dashboard/developers>
     uv run python -m src.data.fetch_mapillary
-
-Snow appears only at inference time as the runtime input; no model
-weights are fine-tuned on snowy images anywhere in this codebase.
 """
 
 from __future__ import annotations

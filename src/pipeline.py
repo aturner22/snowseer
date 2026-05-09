@@ -2,8 +2,7 @@
 
 Loads a snow + clear-prior pair, runs DISK + LightGlue matching, fits a
 homography, segments the prior, warps the road mask onto the snow frame,
-and saves the raw constituent images. The website and writeup compose
-those into 2x2 grids at the HTML / markdown layer.
+and saves the per-pair raw constituent images.
 """
 
 from __future__ import annotations
@@ -17,10 +16,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .fuse import crop_foreground
 from .homography import HomographyResult, estimate, refine_iteratively
 from .matching import Matcher, draw_matches
-from .overlay import alpha_blend, keep_largest_component, warp_mask
+from .overlay import alpha_blend, crop_foreground, keep_largest_component, warp_mask
 from .segmentation import RoadSegmenter
 
 # When the initial homography has fewer than this many inliers, run a
@@ -51,14 +49,10 @@ ACCEPT_INLIER_MIN = 15
 @dataclass
 class PairResult:
     pair_id: str
-    snow_path: Path
-    clear_path: Path
     n_matches: int
     n_inliers: int
     used_ground_plane_restriction: bool
-    snow_overlay_path: Path | None
     naive_baseline_path: Path | None
-    H: np.ndarray | None
     iou_overlay_vs_naive: float | None = None
     iou_overlay_vs_identity: float | None = None
     refined: bool = False
@@ -166,17 +160,15 @@ def run_pair(
     if not prior_path.exists():
         print(f"  ! {pair_id}: prior {ps['file']} missing", flush=True)
         return PairResult(
-            pair_id=pair_id, snow_path=snow_path, clear_path=pair_dir / "clear.jpg",
-            n_matches=0, n_inliers=0, used_ground_plane_restriction=False,
-            snow_overlay_path=None, naive_baseline_path=None, H=None,
+            pair_id=pair_id, n_matches=0, n_inliers=0,
+            used_ground_plane_restriction=False, naive_baseline_path=None,
         )
     prior = _resize_to(_load_rgb(prior_path), max_dim)
     primary = _process_one_prior(snow, prior, matcher, segmenter)
     if primary is None:
         return PairResult(
-            pair_id=pair_id, snow_path=snow_path, clear_path=prior_path,
-            n_matches=0, n_inliers=0, used_ground_plane_restriction=False,
-            snow_overlay_path=None, naive_baseline_path=None, H=None,
+            pair_id=pair_id, n_matches=0, n_inliers=0,
+            used_ground_plane_restriction=False, naive_baseline_path=None,
         )
     primary["prior_id"] = ps.get("id", "")
     primary["prior_file"] = ps["file"]
@@ -230,14 +222,10 @@ def run_pair(
 
     return PairResult(
         pair_id=pair_id,
-        snow_path=snow_path,
-        clear_path=pair_dir / primary["prior_file"],
         n_matches=len(primary["matches"].kpts0),
         n_inliers=primary["homo"].n_inliers,
         used_ground_plane_restriction=primary["homo"].used_ground_plane_restriction,
-        snow_overlay_path=out_dir / f"{pair_id}__overlay.png",
         naive_baseline_path=naive_path,
-        H=primary["homo"].H,
         iou_overlay_vs_naive=iou_naive,
         iou_overlay_vs_identity=iou_identity,
         refined=primary["refined"],

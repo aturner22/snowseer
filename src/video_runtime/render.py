@@ -22,7 +22,7 @@ from src.video_runtime.overlay_render import (
     render_sidebyside,
     render_three_panel,
 )
-from src.video_runtime.temporal import make_smoother
+from src.video_runtime.pipeline_v import make_smoother
 
 
 def main() -> None:
@@ -41,15 +41,10 @@ def main() -> None:
     p.add_argument("--foreground-y-frac", type=float, default=0.30,
                    help="cut everything above this fraction of image height "
                         "(roof-mounted Boreas camera ≈ 0.30)")
-    p.add_argument("--temporal", choices=["none", "ema", "flow"], default="none",
-                   help="temporal smoothing strategy (K.4 ablation). Default 'none'.")
+    p.add_argument("--temporal", choices=["none", "ema"], default="none",
+                   help="temporal smoothing strategy. Default 'none'.")
     p.add_argument("--ema-alpha", type=float, default=0.5,
                    help="EMA weight on the current raw mask (0..1). Default 0.5.")
-    p.add_argument("--flow-weight", type=float, default=0.5,
-                   help="Flow propagation weight (0..1). Default 0.5.")
-    p.add_argument("--synthetic-priors", type=int, default=0,
-                   help="K.3 — number of past frames to surface as synthetic "
-                        "priors per current frame. 0 disables.")
     p.add_argument("--cache-tag", default="default",
                    help="Identifier for the matching cache. Renders that share "
                         "(track, stride, K, max_dim, foreground_y_frac) but "
@@ -78,8 +73,7 @@ def main() -> None:
     args = p.parse_args()
 
 
-    smoother = make_smoother(args.temporal, alpha=args.ema_alpha,
-                             flow_weight=args.flow_weight)
+    smoother = make_smoother(args.temporal, alpha=args.ema_alpha)
 
     cache_path = Path(f"outputs/toronto_video/{args.track}/_cache_{args.cache_tag}.pkl")
 
@@ -94,7 +88,6 @@ def main() -> None:
         smoother=smoother,
         cache_path=cache_path,
         rebuild_cache=args.rebuild_cache,
-        synthetic_priors=args.synthetic_priors,
         seg_prob_threshold=args.seg_prob_threshold,
         seg_morph_radius=args.seg_morph_radius,
     )

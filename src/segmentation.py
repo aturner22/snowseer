@@ -1,12 +1,8 @@
 """Road segmentation via Mask2Former-tiny pretrained on Cityscapes.
 
 Cityscapes has 19 semantic classes; class 0 is 'road'. The model is trained
-exclusively on clear-weather European street imagery — no snow. Used frozen
-as the road-prior generator on clear reference frames.
-
-Mask2Former-tiny replaced Segformer-B0 in v0.3 because Segformer-B0 over-
-predicted road class on tunnel walls and under-predicted on shadowed asphalt.
-Mask2Former is the standard Cityscapes upgrade — sharper, less hallucinated.
+exclusively on clear-weather European street imagery (no snow) and used
+frozen as the road-prior generator on clear reference frames.
 """
 
 from __future__ import annotations

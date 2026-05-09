@@ -5,7 +5,7 @@ Outputs: per-frame PNG under `outputs/toronto_video/<track_id>/frames/<idx>.png`
 then a single mp4 stitched with ffmpeg.
 
 Modes:
-  - `overlay`     : alpha-blend of fused mask onto snow (the headline).
+  - `overlay`     : alpha-blend of fused mask onto snow.
   - `sidebyside`  : snow input | overlay output, two panels lockstepped.
   - `quad`        : 2x2 — snow query / naive (red) / summer + road / overlay.
   - `matches`     : snow + best summer prior with a small subset of
@@ -293,15 +293,14 @@ def render_matches(
     out_name: str = "matches.mp4",
     fps: float = 10.0,
     keep_frames: bool = False,
-    max_inliers: int = 25,
-    max_outliers: int = 0,
+    max_inliers: int = 10,
 ) -> Path:
     """Snow | best-prior side-by-side with a subset of match lines drawn.
 
     `matches_frames[i]` is the per-frame entry from `_matches_<tag>.pkl`
     (kpts0, kpts1, inlier_mask, prior_image) or None if matching failed
-    on that frame. Outliers default off and inliers are capped at
-    `max_inliers` for visual clarity in motion.
+    on that frame. Up to `max_inliers` correspondences are drawn per
+    frame.
     """
     from src.matching import MatchResult, draw_matches
 
@@ -327,7 +326,6 @@ def render_matches(
                 r.snow_image, m["prior_image"], mr,
                 inlier_mask=m["inlier_mask"],
                 max_inliers=max_inliers,
-                max_outliers=max_outliers,
             )
             last_canvas = canvas
         cv2.imwrite(str(frame_dir / f"f{i:04d}.png"),

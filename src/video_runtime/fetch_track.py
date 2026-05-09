@@ -135,8 +135,8 @@ def _align_summer_window(
     s_start = int(summer_idx_for_snow.min())
     s_end = int(summer_idx_for_snow.max() + 1)
 
-    # Sanity check: was the alignment monotonic? (If not, snow loop crossed
-    # summer's path or we're nowhere near.)
+    # Sanity check: was the alignment monotonic? Non-monotonic indicates
+    # the snow loop crossed the summer path or never ran near it.
     monotonic = bool(np.all(np.diff(summer_idx_for_snow) >= -3))  # tolerate small wobble
     return s_start, s_end, monotonic
 
@@ -258,8 +258,7 @@ def main() -> None:
     print(f"  summer window: indices [{sm_start}, {sm_end}) = {len(summer_indices)} frames")
     print(f"  alignment monotonic: {monotonic}")
     if not monotonic:
-        print("  WARNING: summer alignment was not monotonic — snow loop may not match summer at all.")
-        print("  Investigate before proceeding to K.2.")
+        print("  WARNING: summer alignment was not monotonic. The snow loop may not match the summer loop. Investigate before continuing.")
 
     # 4. Sanity print: snow start (x, y) vs summer start (x, y).
     print(f"  snow start UTM:   ({snow_poses['easting'][s_start]:+.2f}, {snow_poses['northing'][s_start]:+.2f})")

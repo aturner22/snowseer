@@ -60,7 +60,7 @@ def main() -> None:
     range_args: list[str] = ["--stride", str(args.stride)]
 
     if not cache_path.exists():
-        print(f"[render-all] matching cache missing; building...")
+        print("[render-all] matching cache missing; building...")
         _run([
             "uv", "run", "python", "-m", "src.video_runtime.render",
             "--track", args.track,
@@ -73,7 +73,7 @@ def main() -> None:
         ])
 
     if not aug_path.exists():
-        print(f"[render-all] augmentation cache missing; building...")
+        print("[render-all] augmentation cache missing; building...")
         _run([
             "uv", "run", "python", "-m", "src.video_runtime.augment",
             "--track", args.track, "--cache-tag", args.cache_tag,
@@ -81,7 +81,7 @@ def main() -> None:
         ])
 
     if not matches_path.exists():
-        print(f"[render-all] matches sidecar missing; building...")
+        print("[render-all] matches sidecar missing; building...")
         _run([
             "uv", "run", "python", "-m", "src.video_runtime.matches_pass",
             "--track", args.track, "--cache-tag", args.cache_tag,
@@ -98,9 +98,9 @@ def main() -> None:
         "--max-dim", str(args.max_dim), "--fps", str(args.fps),
     ]
 
-    # Output names match the layout, no cache-tag suffix. Each track gets its
-    # own outputs/toronto_video/<track>/ directory so per-tag disambiguation isn't
-    # needed; the slide deck + GitHub Pages reference these stable names.
+    # Output names match the layout, no cache-tag suffix. Each track gets
+    # its own outputs/toronto_video/<track>/ directory so per-tag
+    # disambiguation isn't needed.
     layouts = [
         ("overlay", "overlay.mp4"),
         ("sidebyside", "sidebyside.mp4"),

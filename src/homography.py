@@ -1,4 +1,4 @@
-"""RANSAC homography with ground-plane bias.
+"""RANSAC homography.
 
 A single homography is exact only for a planar scene; buildings and the
 road are not coplanar. Restricting RANSAC to correspondences in the

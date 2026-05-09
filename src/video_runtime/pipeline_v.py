@@ -9,7 +9,7 @@ practical:
 
 1. Cache: once matching completes, persist the raw fused masks to
    `_cache_<tag>.pkl`. Subsequent renders that change only the smoother
-   (`temporal=ema|flow|none`) load the cache and skip matching.
+   (`temporal=ema|none`) load the cache and skip matching.
 2. Checkpoint resume: every CHECKPOINT_EVERY frames, atomically write
    `_cache_<tag>.partial.pkl`. If the process is killed mid-run, restart
    reads the partial and resumes from the next unprocessed frame.
@@ -29,11 +29,11 @@ from pathlib import Path
 
 import numpy as np
 
-from src.fuse import weighted_soft_average, crop_foreground
+from typing import Protocol
+
 from src.homography import estimate
-from src.overlay import keep_largest_component, warp_mask
-from src.video_runtime.prior_pool import PriorPool, PriorEntry, SyntheticPriorQueue
-from src.video_runtime.temporal import Smoother
+from src.overlay import crop_foreground, keep_largest_component, warp_mask, weighted_soft_average
+from src.video_runtime.prior_pool import PriorPool, PriorEntry
 from src.video_runtime.track import Track, FrameMeta
 
 CHECKPOINT_EVERY = 50           # write partial cache every N processed frames
@@ -47,6 +47,61 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
+class Smoother(Protocol):
+    """A temporal smoother takes the raw per-frame mask plus the snow
+    image and returns a smoothed binary mask in snow-image space."""
+
+    def smooth(self, raw_mask: np.ndarray | None, snow_image: np.ndarray) -> np.ndarray | None:
+        ...
+
+    def reset(self) -> None:
+        ...
+
+
+@dataclass
+class EMASmoother:
+    """Exponential moving average on the binary mask, treated as float [0, 1].
+
+        smooth_t = alpha * raw_t + (1 - alpha) * smooth_{t-1}
+
+    `alpha=0.5` weights past and present equally; `alpha=0.7` favours
+    present (less sticky); `alpha=0.3` favours past (very sticky, can
+    lag the camera). Default 0.5.
+
+    On a missing raw_mask (matcher failure for one frame), return the
+    last smoothed mask unchanged so the road doesn't disappear when one
+    frame fails.
+
+    Threshold at 0.5 to get the binary output.
+    """
+    alpha: float = 0.5
+    _state: np.ndarray | None = field(default=None, init=False)
+
+    def reset(self) -> None:
+        self._state = None
+
+    def smooth(self, raw_mask: np.ndarray | None, snow_image: np.ndarray) -> np.ndarray | None:
+        if raw_mask is None:
+            if self._state is None:
+                return None
+            return (self._state >= 0.5).astype(np.uint8)
+        raw_f = (raw_mask > 0).astype(np.float32)
+        if self._state is None or self._state.shape != raw_f.shape:
+            self._state = raw_f.copy()
+        else:
+            self._state = self.alpha * raw_f + (1.0 - self.alpha) * self._state
+        return (self._state >= 0.5).astype(np.uint8)
+
+
+def make_smoother(name: str | None, **kwargs) -> Smoother | None:
+    """Factory for the CLI: `--temporal {none,ema}`."""
+    if name in (None, "none", "off"):
+        return None
+    if name == "ema":
+        return EMASmoother(alpha=kwargs.get("alpha", 0.5))
+    raise ValueError(f"Unknown temporal smoother: {name!r}. Try 'none' or 'ema'.")
+
+
 @dataclass
 class FrameResult:
     snow_meta: FrameMeta
@@ -54,7 +109,6 @@ class FrameResult:
     fused_mask: np.ndarray | None       # in snow-image space, uint8 0/1
     per_prior: list[dict] = field(default_factory=list)   # diagnostic per-prior info
     n_priors_used: int = 0
-    elapsed_s: float = 0.0
 
 
 def _process_one_prior(
@@ -114,7 +168,6 @@ def run_track(
     smoother: "Smoother | None" = None,
     cache_path: Path | None = None,
     rebuild_cache: bool = False,
-    synthetic_priors: int = 0,
     seg_prob_threshold: float | None = None,
     seg_morph_radius: int = 0,
 ) -> list[FrameResult]:
@@ -187,13 +240,11 @@ def run_track(
         seg_prob_threshold=seg_prob_threshold,
         seg_morph_radius=seg_morph_radius,
     )
-    synthetic = SyntheticPriorQueue(max_size=synthetic_priors) if synthetic_priors > 0 else None
 
     n_avail = track.snow_frame_count()
     end = min(end, n_avail) if end is not None else n_avail
     start = min(max(start, 0), n_avail)
     indices = list(range(start, end, stride))
-    syn_label = f", synth_priors={synthetic_priors}" if synthetic_priors > 0 else ""
 
     # Resume from partial checkpoint if one exists for this cache_path.
     results: list[FrameResult] = []
@@ -218,7 +269,7 @@ def run_track(
             _log(f"[{track_id}] partial cache unreadable ({e}); starting over")
 
     _log(f"[{track_id}] processing {len(indices)} snow frames from index {resume_from} "
-         f"(K={K} priors each, max_dim={max_dim}{syn_label})")
+         f"(K={K} priors each, max_dim={max_dim})")
 
     matcher = pool.matcher()  # warm load
 
@@ -230,8 +281,6 @@ def run_track(
         snow_image = track.load_frame(snow_meta, max_dim=max_dim)
 
         priors = pool.select(snow_meta)
-        if synthetic is not None:
-            priors = priors + synthetic.entries()
         per_prior_records: list[dict] = []
         masks: list[np.ndarray] = []
         valids: list[np.ndarray] = []
@@ -240,8 +289,7 @@ def run_track(
         for prior in priors:
             mask, n_inliers, valid = _process_one_prior(snow_image, prior, matcher)
             per_prior_records.append({
-                "kind": prior.kind,
-                "prior_idx": int(prior.meta.idx) if prior.meta is not None else -1,
+                "prior_idx": int(prior.meta.idx),
                 "distance_m": float(prior.distance_m),
                 "n_inliers": int(n_inliers),
                 "ok": mask is not None,
@@ -262,11 +310,8 @@ def run_track(
         elapsed = time.time() - frame_t0
         results.append(FrameResult(
             snow_meta=snow_meta, snow_image=snow_image, fused_mask=fused,
-            per_prior=per_prior_records, n_priors_used=len(masks), elapsed_s=elapsed,
+            per_prior=per_prior_records, n_priors_used=len(masks),
         ))
-
-        if synthetic is not None:
-            synthetic.push(snow_image, fused)
 
         ok_inliers = [r["n_inliers"] for r in per_prior_records if r["ok"]]
         ok_summary = ",".join(map(str, ok_inliers)) if ok_inliers else "—"

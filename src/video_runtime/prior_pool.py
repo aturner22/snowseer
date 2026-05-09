@@ -1,19 +1,13 @@
-"""Prior pool — selects K nearest summer priors for a snow frame, plus an
-optional sliding window of past-frame synthetic priors (K.3 — past snow
-frames acting as same-domain priors for the current frame).
+"""K-NN prior selector for the video pipeline.
 
-Caches the expensive summer-side artefacts (loaded image + Mask2Former road
-mask) so they're computed once per summer frame, not once per (snow, summer)
+Picks the K summer priors closest in UTM (easting, northing) to a given
+snow pose. Caches the per-summer-frame image and Mask2Former road mask
+so they're computed once per summer frame, not once per (snow, summer)
 pair.
-
-Keypoint caching is deferred — the existing Matcher.match() always re-extracts
-DISK keypoints on both sides. We pay that cost; profiling can add a cached
-path later.
 """
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -25,30 +19,26 @@ if TYPE_CHECKING:
 
 @dataclass
 class PriorEntry:
-    """One prior picked for a snow frame.
-
-    Same shape for a summer prior and a synthetic (past-snow) prior. The
-    `kind` field lets the renderer / fusion treat them differently if needed.
-    """
-    meta: "FrameMeta | None"    # None for synthetic priors (no static FrameMeta)
+    """One summer prior picked for a snow frame."""
+    meta: "FrameMeta"
     distance_m: float           # UTM Euclidean distance from snow pose
     image: np.ndarray           # full RGB at processing resolution
     road_mask: np.ndarray       # full-resolution road mask (uint8, 0/255)
-    kind: str = "summer"        # 'summer' or 'synthetic'
 
 
 class PriorPool:
     """Cache + K-NN selector for summer priors.
 
-    Initialised once per Track. On each call to `select(snow_meta)`, it picks
-    K summer priors closest in (easting, northing) and returns them with
-    cached image + segmentation already attached.
+    Initialised once per Track. On each call to `select(snow_meta)`, it
+    picks K summer priors closest in (easting, northing) and returns
+    them with cached image + segmentation already attached.
 
-    The summer-side segmentation can be tightened with `seg_prob_threshold`
-    (keep road only where road class score exceeds this; default None =
-    argmax) and `seg_morph_radius` (post-threshold open/close cleanup).
-    Tighter settings suppress mask leakage onto sidewalks / parking lots
-    on tracks where the segmenter over-claims road class.
+    The summer-side segmentation can be tightened with
+    `seg_prob_threshold` (keep road only where the road class score
+    exceeds this; default None = argmax) and `seg_morph_radius` (post-
+    threshold open/close cleanup). Tighter settings suppress mask
+    leakage onto sidewalks / parking lots when the segmenter
+    over-claims road class.
     """
 
     def __init__(
@@ -72,10 +62,8 @@ class PriorPool:
             dtype=np.float64,
         )
         self._tree = cKDTree(self._summer_xy)
-        # Caches keyed by summer FrameMeta.idx (local index in the window).
         self._image_cache: dict[int, np.ndarray] = {}
         self._mask_cache: dict[int, np.ndarray] = {}
-        # Lazy models — shared across snow frames.
         self._matcher = None
         self._segmenter = None
 
@@ -121,56 +109,6 @@ class PriorPool:
             mask = self._summer_mask(m, img)
             out.append(PriorEntry(
                 meta=m, distance_m=float(di),
-                image=img, road_mask=mask, kind="summer",
-            ))
-        return out
-
-
-@dataclass
-class SyntheticPriorQueue:
-    """Sliding window of past (snow_image, fused_mask) tuples used as
-    same-domain priors for the current frame (K.3).
-
-    The matcher loves these — snow→snow gives many more inliers than
-    snow→summer, because lighting / texture / lens conditions are identical.
-    We trade a sliver of memory + an extra match call per frame for big
-    gains in temporal coherence and overall match confidence.
-
-    Caveat: a bad fused mask in frame t-1 propagates to frame t. EMA on the
-    smoothed display mask helps; the synthetic queue here stores the *raw*
-    pre-EMA fused mask so the smoothing remains a display concern, not a
-    feedback loop on the matcher.
-
-    `max_size`: how many past frames to retain (3 is a good default —
-    one back, one further, one furthest, captures both immediate and
-    medium-distance evidence without quadratic cost growth).
-    """
-    max_size: int = 3
-    _q: "deque[tuple[np.ndarray, np.ndarray]]" = None  # type: ignore
-
-    def __post_init__(self):
-        self._q = deque(maxlen=self.max_size)
-
-    def reset(self) -> None:
-        self._q.clear()
-
-    def push(self, snow_image: np.ndarray, fused_mask: np.ndarray | None) -> None:
-        """After processing a frame, register its (image, mask) for future frames.
-        Skip frames whose fused mask is empty or None."""
-        if fused_mask is None or int(fused_mask.sum()) == 0:
-            return
-        self._q.append((snow_image.copy(), fused_mask.copy()))
-
-    def entries(self) -> list[PriorEntry]:
-        """Return all current entries as PriorEntry list (in chronological
-        order: oldest first). Empty if no past frames yet."""
-        out: list[PriorEntry] = []
-        # Iterate newest → oldest so when fusion uses inlier-count weighting,
-        # the most recent (typically best-matched) gets reported first in
-        # diagnostics. Fusion treats them all the same regardless of order.
-        for img, mask in reversed(self._q):
-            out.append(PriorEntry(
-                meta=None, distance_m=0.0,
-                image=img, road_mask=mask, kind="synthetic",
+                image=img, road_mask=mask,
             ))
         return out
