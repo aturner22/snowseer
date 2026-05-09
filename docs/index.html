@@ -202,7 +202,7 @@
       </figure>
     </div>
 
-    <p>The entire pipeline is reproducible from a clean repository clone with <code>make reproduce</code>. The only handle the system has on the snow regime is the clear-season prior of the same place.</p>
+    <p>The entire pipeline is reproducible from a clean repository clone with the command <code>make reproduce</code>.</p>
   </div>
 </section>
 
@@ -210,11 +210,11 @@
   <div class="container">
     <h2>Limitations</h2>
 
-    <p><strong>Some artefacts in the overlay are inherited from the summer prior.</strong><br />Where the front of the summer capture vehicle is visible in the prior, the warped road mask begins a short distance ahead of the snow camera rather than directly under it. Where a parked car or other obstacle sits on the road in the prior, the segmenter routes the road class around the obstacle and the overlay carries that cutout forward into the snow frame. Neither artefact is a property of the constants-bridge principle. Both are tractable with reasonable engineering, for example by extrapolating the road below the visible mask boundary, or by fusing several priors of the same scene so that any one prior's foreground occlusions are filled in by the others.</p>
+    <p><strong>Some artefacts in the overlay are inherited from the summer prior.</strong><br />Where the front of the summer capture vehicle is visible in the prior, the warped road mask begins a short distance ahead of the snow camera rather than directly under it. Where a parked car or other obstacle sits on the road in the prior, the segmenter selects the road around the obstacle and the overlay carries that cutout forward into the snow frame. Artefacts of this kind are not a property of the constants-bridge principle, rather an implementation challenge. Both are tractable with reasonable engineering, for example by extrapolating the road below the visible mask boundary, or by fusing several priors of the same scene so that any single prior's occlusions are filled in by the others.</p>
 
-    <p><strong>The pipeline is not, currently, real-time.</strong><br />Partly due to lack of access to a snow plough and vast amounts of snow, but perhaps also due to computational constraints, the road overlay pipeline currently runs asynchronously to when images are taken. This is a barrier to deployment, but is an implementation task which is certainly surmountable if this project were to take a more operational form. There is nothing in the principle that stops a knowledge-transfer system running live. The matching pass dominates per-frame compute, taking around 16 s per frame on Mac CPU. Demo clips build end-to-end in roughly an hour. Real-time operation needs a substantially faster matcher and segmenter, which is a deployment-engineering problem rather than a research question, and is the first item in the next-steps section.</p>
+    <p><strong>The pipeline is not real-time.</strong><br />Partly due to lack of access to a snow plough and vast amounts of snow, but perhaps also due to computational constraints, the road overlay pipeline currently runs asynchronously to when images are taken. This is a barrier to deployment, but is an implementation task which is certainly surmountable if this project were to take a more operational form. There is nothing in the principle that stops a knowledge-transfer system running live. The matching pass dominates per-frame compute, taking around 16 s per frame on Mac CPU. Demo clips build end-to-end in roughly an hour. Real-time operation needs a substantially faster matcher and segmenter, which is a deployment-engineering problem rather than a research question, and is the first item in the next-steps section.</p>
 
-    <p><strong>The system is not, currently, able to be deployed arbitrarily.</strong><br />The design of the present iteration of the pipeline is contingent on a certain format of high-quality clear-road imagery. Generalising the system to operate on any given road with Google Street View (or a comparable source) available is feasible (the pipeline is substrate-agnostic in principle), but the current code does not support this and is geared toward producing the specific material in this demonstration. Integrating a wider source corpus is a natural next step.</p>
+    <p><strong>The system is not, currently, able to be deployed on arbitrary data.</strong><br />The design of the present iteration of the pipeline is contingent on a certain format of high-quality clear-road imagery. Generalising the system to operate on any given road with Google Street View (or a comparable source) available is feasible (the pipeline is substrate-agnostic in principle), but the current code does not support this and is geared toward producing the specific material in this demonstration. Integrating a wider source corpus is a natural next step.</p>
   </div>
 </section>
 
@@ -222,9 +222,9 @@
   <div class="container">
     <h2>Next steps</h2>
 
-    <p>The key contribution of this project is not to revolutionise the snow ploughing process, rather to present the concept of <em>constants as a bridge</em> as a foundation for general information transfer across environments. Other projects of a similar nature, possessing similar structural characteristics, should certainly be explored.</p>
+    <p>The key contribution of this project is not to revolutionise the snow ploughing process, rather to present the concept of <em>constants as a bridge</em> to form a principle for general information transfer across environments. Other projects of a similar nature, possessing similar structural characteristics, should certainly be explored.</p>
 
-    <p>To get the snowplough-specific project to the operational level, the next steps are to upgrade the following components:</p>
+    <p>To get Snowseer to the operational level, the next steps are to upgrade its constituent components:</p>
 
     <ul>
       <li><strong>Input</strong>: a live camera feed and a location signal (GPS or a learned visual place recognition step).</li>
@@ -235,10 +235,10 @@
 
     <p>The snowplough's road-position channel is one consumer of this appliance. The same appliance, with the same recipe, could power fog, dust, smoke, heavy-rain and night driving, as well as heads-up display navigation, seeing around corners, and many more use cases.</p>
 
-    <h3>Actionable development ideas the prize money could fund</h3>
+    <h3>Specific development ideas the prize money could fund</h3>
 
     <ol>
-      <li><strong>Real-time matcher</strong>: use the efficiency of a GPU to bring per-frame matching from around 16 s on Mac CPU to under 1 s on a deployment-class device. Required for live operation.</li>
+      <li><strong>Real-time matcher</strong>: use the efficiency of a GPU to bring per-frame matching from around 15 s on Mac CPU to under 1 s on a deployment-class device. Required for live operation.</li>
       <li><strong>Visual place recognition front-end</strong>: replace the GPS-pose lookup with a learned recognition step so the appliance works in GPS-denied environments and without prior pose.</li>
       <li><strong>Multi-source clear-season image bank</strong>: curate and integrate a wider source corpus (Mapillary global, Street View, operator captures) so any covered road can be a deployment target.</li>
       <li><strong>Hardware prototype</strong>: a battery-powered processing unit running the live appliance with a simple HUD-esque output, demonstrating the snow, fog and night-driving consumer scenarios end-to-end.</li>
@@ -255,7 +255,7 @@ uv sync --python 3.12
 export MAPILLARY_TOKEN=&lt;token&gt;
 make reproduce</code></pre>
 
-    <p><code>make reproduce</code> runs three steps sequentially (~3 hours on Mac CPU): the January 2021 canonical clip, the February 2025 robustness clip, and the 18-pair static-stills precursor. <code>make track TRACK=&lt;id&gt;</code> runs a single track ad-hoc. <code>make stills</code> runs only the static-stills demo (<code>MAPILLARY_TOKEN</code> required). <code>make notebook</code> re-executes the analysis notebook in place.</p>
+    <p><code>make reproduce</code> runs three steps sequentially (~3 hours on Mac CPU): the January 2021 clip, the February 2025 clip, and the 18-pair static-stills precursor. <code>make track TRACK=&lt;id&gt;</code> runs a single track ad-hoc. <code>make stills</code> runs only the static-stills demo (<code>MAPILLARY_TOKEN</code> required).</p>
 
     <p><strong>Companion notebook</strong>: <a href="analysis.ipynb">analysis.ipynb</a>.</p>
   </div>

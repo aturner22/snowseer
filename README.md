@@ -64,7 +64,6 @@ Every learned component is frozen. Snowy imagery enters the system only at infer
 | `make reproduce` | January 2021 clip + February 2025 clip + 18-pair stills, sequentially |
 | `make track TRACK=<id>` | Full pipeline on one registered track |
 | `make stills` | Static-stills demo on 18 Mapillary pairs (`MAPILLARY_TOKEN` required) |
-| `make notebook` | Re-execute `docs/analysis.ipynb` in place |
 | `make test` | Smoke tests, no compute |
 | `make clean` | Wipe regenerable outputs |
 | `make help` | List all targets |

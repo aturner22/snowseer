@@ -11,7 +11,7 @@
 # For ad-hoc single runs, use `make track TRACK=<id>` or `make stills`
 # directly.
 
-.PHONY: help reproduce track stills pdfs notebook test clean
+.PHONY: help reproduce track stills pdfs test clean
 
 CANONICAL_TRACK := boreas_2021_01_26
 ALT_TRACK       := boreas_2025_02_15
@@ -29,7 +29,6 @@ help:
 	@echo "                                (needs MAPILLARY_TOKEN)"
 	@echo ""
 	@echo "  pdfs                        Render docs/{slides,writeup}.pdf"
-	@echo "  notebook                    Re-execute docs/analysis.ipynb in place"
 	@echo "  test                        Smoke tests (no compute)"
 	@echo "  clean                       Wipe generated outputs"
 
@@ -90,12 +89,6 @@ pdfs:
 	    --variable=mainfont:"EB Garamond" \
 	    --variable=sansfont:"Inter" \
 	    --variable=monofont:"JetBrains Mono"
-
-notebook:
-	uv run jupyter nbconvert \
-	    --to notebook --execute --inplace \
-	    --ExecutePreprocessor.timeout=600 \
-	    docs/analysis.ipynb
 
 # ─── Tests + cleanup ────────────────────────────────────────────────────────
 
