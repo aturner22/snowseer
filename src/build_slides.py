@@ -214,20 +214,26 @@ def slide_image(prs, title: str, image_path: Path, caption: str, *,
     add_chrome(slide, page, total)
     body_y = add_title_block(slide, title)
 
-    img_max_w = Inches(10.5)
-    img_max_h = Inches(3.9)
+    from PIL import Image as PILImage
+    with PILImage.open(image_path) as src:
+        src_w, src_h = src.size
+
+    img_max_w = Inches(11.5)
+    img_max_h = Inches(4.4)
+    aspect = src_w / src_h
+    fit_h = int(img_max_w / aspect)
+    if fit_h <= img_max_h:
+        width, height = img_max_w, fit_h
+    else:
+        width = int(img_max_h * aspect)
+        height = img_max_h
     pic = slide.shapes.add_picture(
         str(image_path),
-        int((SLIDE_W - img_max_w) // 2), body_y + Inches(0.1),
-        width=img_max_w,
+        int((SLIDE_W - width) // 2), body_y + Inches(0.1),
+        width=width, height=height,
     )
-    if pic.height > img_max_h:
-        ratio = img_max_h / pic.height
-        pic.height = int(pic.height * ratio)
-        pic.width = int(pic.width * ratio)
-        pic.left = int((SLIDE_W - pic.width) // 2)
 
-    caption_y = pic.top + pic.height + Inches(0.2)
+    caption_y = pic.top + pic.height + Inches(0.25)
     caption_h = max(Inches(0.4), Inches(7.1) - caption_y)
     add_text(
         slide, MARGIN_X, caption_y, CONTENT_W, caption_h,
@@ -518,55 +524,59 @@ def build() -> Path:
     builders.append(("content",
         "Minimal-shot autonomy",
         [
-            ["Minimal-shot autonomy concerns how a system survives in ",
-             ("unfamiliar environments", {"bold": True}), "."],
-            ["The commonly accepted response is to collect more data and retrain. It does not scale across the long tail of conditions a deployed vehicle, robot, or drone meets in the real world. Snow, dust, smoke, washouts and variable human infrastructure are obvious examples."],
+            ["How does a system survive in ",
+             ("unfamiliar environments", {"bold": True}), "?"],
+            ["The default answer: collect more data and retrain."],
+            ["It does not scale. Snow, dust, smoke, washouts, construction. The long tail."],
         ],
-        "A perception system that depends on having been trained on each new condition will lag every condition it has not yet encountered."))
+        "A perception system trained per-condition will lag every condition it has not yet been trained on."))
 
     builders.append(("content",
         "A snow plough's job is simple",
         [
             [("Sweep the road clear.", {"bold": True})],
-            ["The catch is that while the plough is doing it, the road is necessarily invisible. Curbs are buried, lane markings are gone, the boundary between tarmac and verge is no longer defined."],
-            ["A self-driving stack trained on traditional road conditions, applied directly to the plough's camera, will report with calibrated confidence that the entire scene is road and should be cleared."],
+            ["While it does, the road is invisible. Curbs buried, lane markings gone."],
+            ["A self-driving stack trained on tarmac will report, with calibrated confidence, that the entire scene is road."],
         ],
         None))
 
     builders.append(("content",
         "A second move",
         [
-            ["For almost every operating environment where autonomy fails for lack of data, an adjacent regime exists, temporally or seasonally or geographically, where data is plentiful and rich, and whose key components remain the same across environments."],
-            ["The road that needs to be ploughed this winter is the same road it was in the summer."],
-            ["Its appearance has changed. Its position in space and relative to local landmarks has not."],
+            ["For almost every regime where autonomy fails for lack of data, an ",
+             ("adjacent regime", {"bold": True}),
+             " exists where data is plentiful and the relevant components are the same."],
+            ["The road this winter is the same road as last summer."],
+            ["Its appearance has changed. Its position has not."],
         ],
-        "Snowseer is one demonstration of leveraging structural constants across regimes to achieve minimal-shot autonomy."))
+        "Snowseer demonstrates this principle for the snow-buried road."))
 
     builders.append(("content",
         "The constants-bridge",
         [
-            ["A composition that takes a model trained on regime A, an inference target in regime B, and a known invariant linking the two, and uses the invariant to transfer the model into regime B ",
+            ["A composition: a model trained on regime A, an inference target in regime B, and an invariant linking the two."],
+            ["Use the invariant to transfer the model into B ",
              ("without retraining", {"bold": True}), "."],
-            ["The invariant in this work is geometric. The road sits where it sat last summer, in the same place relative to other landmarks. The shape is general: anatomy across imaging conditions, terrain across illumination, scene structure across weather."],
+            ["Geometric here. The shape is general: anatomy across imaging, terrain across illumination, scene structure across weather."],
         ],
         None))
 
     builders.append(("image",
-        "Constants in this work, made visible",
+        "Constants, made visible",
         MEDIA / "nordic_gallivare_matches.png",
-        "Snow query (left) and the paired summer prior (right). Green correspondences mark the features that survive the season: gateposts, fence wires, masonry corners, distant roof edges. None land on the road surface itself. The homography fitted to those carries the prior's road mask into the snow frame."))
+        "Snow query (left) and summer prior (right). Green lines connect features that survive the season: gateposts, fence wires, masonry corners. None land on the road. The homography fitted to those carries the prior's road mask into the snow frame."))
 
     builders.append(("recipe",
-        "How the system works (per snow frame)",
+        "Per snow frame",
         [
-            [("Pull the live snowy frame", {"bold": True}), " from the plough's camera."],
-            [("Pull a clear-season prior", {"bold": True}), " of approximately the same coordinates."],
+            [("Pull", {"bold": True}), " the live snowy frame."],
+            [("Pull", {"bold": True}), " a clear-season prior of the same coordinates."],
             [("Match", {"bold": True}), " the two with DISK + LightGlue."],
-            ["Estimate a ", ("homography", {"bold": True}), " via USAC-MAGSAC RANSAC."],
-            ["Run a Mask2Former segmenter on the ", ("clear prior only", {"italic": True}), "."],
-            [("Warp", {"bold": True}), " the road mask into the snow frame and overlay."],
+            [("Fit", {"bold": True}), " a homography via USAC-MAGSAC."],
+            [("Segment", {"bold": True}), " the road on the ", ("clear prior", {"italic": True}), " only (Mask2Former)."],
+            [("Warp", {"bold": True}), " the road mask into the snow frame."],
         ],
-        "The plough now knows where the road is. No model in the pipeline has been trained on snow."))
+        "No model has been trained on snow. The plough now knows where the road is."))
 
     builders.append(("table",
         "Components",
@@ -590,12 +600,12 @@ def build() -> Path:
         "Every learned component is frozen. Snow appears only at inference, as the runtime input."))
 
     builders.append(("diagram", "The dataflow",
-        "A track loader, a prior pool of K=3 nearest summer captures by UTM, and an EMA on the binary mask (alpha = 0.4) wrap the per-still pipeline for the video case."))
+        "Video wraps the per-still pipeline with a track loader, a K=3 prior pool by UTM, and an EMA on the binary mask (alpha = 0.4)."))
 
     builders.append(("image",
         "One frame, end-to-end",
         MEDIA / "toronto_2021_quad_t005.jpg",
-        "Top-left: snow input. Top-right: naive Cityscapes baseline applied directly to snow, painting the road class across snow and sky. Bottom-left: paired summer prior with successful road segmentation. Bottom-right: cross-season overlay produced by warping the prior's road mask through the homography into the snow frame."))
+        "Top-left: snow input. Top-right: naive segmenter applied directly to snow. Bottom-left: paired summer prior + road. Bottom-right: cross-season overlay onto the snow frame."))
 
     builders.append(("demo",
         "Demo: Toronto, January 2021",
@@ -610,36 +620,31 @@ def build() -> Path:
     builders.append(("image",
         "Nordic stills precursor",
         MEDIA / "nordic_3up.jpg",
-        "Three representative pairs from an 18-pair static-stills sweep. Left to right: Gällivare, Kiruna, Luleå. Cross-season overlays in green. Distinct snow scenes, road layouts, lighting and environments, all on a pipeline whose components have never seen snow."))
+        "Three of 18 nordic pairs. Left to right: Gällivare, Kiruna, Luleå. Cross-season overlay in green. Same code, different snow."))
 
     builders.append(("content",
         "Limitations",
         [
-            [("Some artefacts in the overlay are inherited from the summer prior. ", {"bold": True}),
-             "Where the front of the summer capture vehicle is visible, the warped road mask begins a short distance ahead of the snow camera. Where a parked car or other obstacle sits on the road in the prior, the segmenter routes the road class around it and the overlay carries the cutout forward."],
-            [("The pipeline is not, currently, real-time. ", {"bold": True}),
-             "The matching pass dominates per-frame compute, around 16 s per frame on Mac CPU. Real-time operation needs a substantially faster matcher and segmenter."],
-            [("The system is not, currently, deployable arbitrarily. ", {"bold": True}),
-             "The current code is geared toward the specific Toronto and nordic demo material. Generalising to any road with Google Street View or a comparable source is feasible (the pipeline is substrate-agnostic in principle), but is a future integration step."],
+            [("Artefacts inherited from the summer prior. ", {"bold": True}),
+             "Capture-vehicle bonnet pushes the overlay forward. Parked cars cut holes."],
+            [("Not real-time. ", {"bold": True}),
+             "Around 16 s per frame on Mac CPU. Live operation needs a faster matcher."],
+            [("Not yet deployable arbitrarily. ", {"bold": True}),
+             "Tied to the demo data. Generalising to Street View or operator captures is a future step."],
         ],
         None))
 
     builders.append(("recipe",
         "Next steps",
         [
-            [("Real-time matcher.", {"bold": True}), " Bring per-frame matching from around 16 s on Mac CPU to under 1 s on a deployment-class device."],
-            [("Visual place recognition front-end.", {"bold": True}), " Replace GPS-pose lookup with a learned recognition step so the appliance works in GPS-denied environments."],
-            [("Multi-source clear-season image bank.", {"bold": True}), " Integrate Mapillary global, Street View, and operator captures so any covered road can be a deployment target."],
-            [("Hardware prototype.", {"bold": True}), " A battery-powered processing unit running the live appliance with a simple HUD-style output."],
+            [("Real-time matcher.", {"bold": True}), " From 16 s per frame on Mac CPU to under 1 s on deployment hardware."],
+            [("Visual place recognition.", {"bold": True}), " Replace GPS-pose lookup with a learned step. Works in GPS-denied environments."],
+            [("Multi-source image bank.", {"bold": True}), " Mapillary global, Street View, operator captures. Any road becomes deployable."],
+            [("Hardware prototype.", {"bold": True}), " Battery-powered unit running the live appliance with a HUD-style output."],
         ],
-        "The snow plough's road-position channel is one consumer of this appliance. The same recipe could power fog, dust, smoke, heavy rain and night driving."))
+        "Same recipe could also power fog, dust, smoke, heavy rain, and night driving."))
 
     builders.append(("reproduce",))
-
-    builders.append(("title",
-        "Constants as the bridge",
-        "Find what stays the same. Walk across.",
-        "Snowseer  ·  SoTA Commission I  ·  May 2026"))
 
     total = len(builders)
     for i, spec in enumerate(builders, start=1):
