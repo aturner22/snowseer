@@ -154,14 +154,11 @@ Every learned component is **frozen.** Snow appears only at inference, as the ru
 
 ## Nordic stills precursor
 
-The same pipeline verified across 18 hand-picked nordic snow / summer pairs from Mapillary. Three representative examples:
+The same pipeline verified across 18 hand-picked nordic snow / summer pairs from Mapillary. Three representative examples (cross-season overlay in green): Gällivare, Kiruna, Luleå.
 
-|   |   |   |
-|---|---|---|
-| ![](assets/media/nordic_gallivare_overlay.png) | ![](assets/media/nordic_kiruna_overlay.png) | ![](assets/media/nordic_lulea_overlay.png) |
-| Gällivare, Sweden | Kiruna, Sweden | Luleå, Sweden |
+![](assets/media/nordic_3up.jpg)
 
-###### Cross-season overlays in green. Distinct snow scenes, road layouts, lighting and environments, all on a pipeline whose components have never seen snow.
+###### Distinct snow scenes, road layouts, lighting and environments, all on a pipeline whose components have never seen snow.
 
 ---
 
