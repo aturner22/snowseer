@@ -1,6 +1,6 @@
 """Boreas track fetcher.
 
-Pulls only the snow + summer frames a registered track will render: the
+Pulls the snow + summer frames a registered track will render: the
 snow window registered for the track (and a GPS-aligned summer window
 covering the same UTM ground), so download size matches the demo length.
 Direct S3 REST. No AWS CLI required (bucket is public CC BY 4.0).

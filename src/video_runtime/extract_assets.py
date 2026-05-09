@@ -16,13 +16,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "outputs/toronto_video"
-
-# Timestamps (seconds) at which to extract a still from each rendered mp4.
-# These fall on visually distinctive moments in the canonical 15 s clip:
-#   1.0  — early frame, vehicle still in transitional area
-#   5.0  — mid-clip, residential road with overlay clearly draped
-#   10.0 — past midpoint, road curve visible
-#   14.0 — late, near end of window
 DEFAULT_TIMESTAMPS = (1.0, 5.0, 10.0, 14.0)
 
 
