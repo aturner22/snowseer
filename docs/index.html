@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="style/site.css" />
+  <link rel="icon" type="image/svg+xml" href="_assets/favicon.svg" />
 
   <meta property="og:title" content="Snowseer" />
   <meta property="og:description" content="Minimal-shot autonomy through structural constants across environments." />
@@ -20,7 +21,7 @@
 
 <header class="hero">
   <h1>Snowseer</h1>
-  <h2>Achieving minimal-shot autonomy through structural constants across environments.</h2>
+  <h2>Achieving minimal-shot autonomy by recognising constants across environments.</h2>
 
   <figure class="hero-figure">
     <video autoplay loop muted playsinline controls preload="metadata" poster="_assets/media/toronto_2021_overlay_t005.jpg">
@@ -58,8 +59,8 @@
     <p>The constituent parts are not new. Geometric scene analysis, classical RANSAC, and pretrained feature matchers and segmenters have been combined in many ways across the computer-vision literature in the past. The contribution this submission makes is to identify the composition of the environment itself as a key feature to use, and to give an end-to-end working demonstration of the property the brief calls for: <em>generalisation through understanding, not memorisation</em>. The feature matcher in our pipeline is not generalising its recognition of "snow". It has not been trained on snow. The focus is generalisation via what stays the same.</p>
 
     <figure>
-      <img src="_assets/media/toronto_2021_matches_t005.jpg" alt="Snow query (left) and its paired summer prior (right) with cyan correspondence lines drawn between matched features that survive the seasonal change." />
-      <figcaption>Matched correspondences between a snow-buried Toronto frame (left) and its paired summer prior (right). The lines connect features that haven't changed across seasons. No correspondences land on the road surface itself. The matcher anchors on the consistent non-road features, and the homography fitted to those carries the road mask across into the snow frame.</figcaption>
+      <img src="_assets/media/nordic_gallivare_matches.png" alt="Snow query (left) and its paired summer prior (right) with green correspondence lines drawn between matched features that survive the seasonal change." />
+      <figcaption>Matched correspondences between a snow-covered street in Gällivare, Sweden (left) and a summer image of the same location (right). The lines connect features that haven't changed across seasons. No correspondences land on the road surface itself. The matcher anchors on the consistent non-road features, and the homography fitted to those carries the road mask from the summer image into the snow frame.</figcaption>
     </figure>
   </div>
 </section>
@@ -117,7 +118,7 @@
       <figcaption>One frame, four panels, from a canonical Toronto clip. Top-left: the snow input. Top-right: the naive baseline. A Cityscapes-trained segmenter applied directly to the snow frame paints the road class across snow and sky alike. Bottom-left: the paired summer prior with the road segmentation that <em>did</em> succeed (because the road is visible). Bottom-right: the cross-season overlay produced by warping the prior's road mask through the homography into the snow frame's pixel coordinates.</figcaption>
     </figure>
 
-    <p>The video processing mode wraps a per-still-image-pair pipeline in three thin layers: a track loader indexing snow and summer streams by GPS pose, a prior pool returning the K = 3 nearest summer captures by distance for each snow frame, and an exponential moving average (&alpha; = 0.4) on the binary road mask to produce a smoother continuous render of the transferred road position.</p>
+    <p>The video processor wraps a per-still-image-pair pipeline in three thin layers: a track loader indexing snow and summer streams by GPS pose, a prior pool returning the K = 3 nearest summer captures by distance for each snow frame, and an exponential moving average (&alpha; = 0.4) on the binary road mask to produce a smoother continuous render of the transferred road position.</p>
 
     <blockquote>The output of the Snowseer pipeline is restricted to presenting <strong>only where the road is expected to be</strong>, not where the snow should necessarily be cleared by the plough. A broader autonomous snow-clearing system would integrate Snowseer with other sensing and safety processes (lidar, depth, obstacle detection), each unburdened of the road-position problem on a buried road.</blockquote>
   </div>
@@ -253,15 +254,15 @@ uv sync --python 3.12
 export MAPILLARY_TOKEN=&lt;token&gt;
 make reproduce</code></pre>
 
-    <p><code>make reproduce</code> runs three steps sequentially (~3 hours on Mac CPU): the January 2021 canonical clip, the February 2025 robustness clip, and the 18-pair static-stills precursor. <code>make track TRACK=&lt;id&gt;</code> runs a single track ad-hoc. <code>make stills</code> runs only the static-stills demo (<code>MAPILLARY_TOKEN</code> required). <code>make notebook</code> re-executes the analysis notebook in place. <code>make pdfs</code> renders <code>writeup.pdf</code> and <code>slides.pdf</code>.</p>
+    <p><code>make reproduce</code> runs three steps sequentially (~3 hours on Mac CPU): the January 2021 canonical clip, the February 2025 robustness clip, and the 18-pair static-stills precursor. <code>make track TRACK=&lt;id&gt;</code> runs a single track ad-hoc. <code>make stills</code> runs only the static-stills demo (<code>MAPILLARY_TOKEN</code> required). <code>make notebook</code> re-executes the analysis notebook in place.</p>
 
-    <p><strong>Companion documents</strong>: <a href="writeup.md">writeup.md</a> &middot; <a href="analysis.ipynb">analysis.ipynb</a> &middot; <a href="slides.md">slides.md</a>.</p>
+    <p><strong>Companion notebook</strong>: <a href="analysis.ipynb">analysis.ipynb</a>.</p>
   </div>
 </section>
 
 <footer>
   <div class="container">
-    <p><a href="https://github.com/aturner22/snowseer">Repository</a> &middot; <a href="writeup.md">Writeup</a> &middot; <a href="slides.md">Slide deck</a> &middot; submitted to <a href="https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy">SoTA Commission I: Minimal-Shot Autonomy</a>, May 2026.</p>
+    <p><a href="https://github.com/aturner22/snowseer">Repository</a> &middot; submitted to <a href="https://sotaletters.substack.com/p/sota-commission-i-minimal-shot-autonomy">SoTA Commission I: Minimal-Shot Autonomy</a>, May 2026.</p>
 
     <p>Boreas dataset: Burnett et al., <em>Boreas: A Multi-Season Autonomous Driving Dataset</em>, IJRR 2023, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Mapillary imagery (static-stills precursor) under the Mapillary open-data licence. Models pretrained by their respective authors and used frozen.</p>
   </div>
