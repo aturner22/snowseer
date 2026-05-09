@@ -36,10 +36,8 @@ outputs/nordic_stills/summary.json
 outputs/cache/
 outputs/audit/
 outputs/_video_frames/
-outputs/pipeline_run.log
-outputs/fetch_v2.log
-outputs/fetch_*.log
-outputs/_*.log
+outputs/*.log
+outputs/*.pid
 
 # Phase K (video) — every render and intermediate cache is regenerable.
 outputs/toronto_video/

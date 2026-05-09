@@ -109,7 +109,7 @@ The entire pipeline is reproducible from a clean clone with `make reproduce`. Th
 
 Partly due to lack of access to a snow plough and vast amounts of snow, but perhaps also due to computational constraints, the road overlay pipeline currently runs asynchronously to when images are taken. Obviously, this is a barrier to deployment, but is an implementation task which is certainly surmountable if this project were to take a more operational form. There is nothing from stopping a system that transfers knowledge across regimes from operating in real time. 
 
-The matching pass dominates the per-frame compute burden and can certainly be streamlined. The demo clips build end-to-end in roughly an hour on Mac CPU.Real-time processing would require a substantially faster matcher and segmenter, which would constitute a deployment-engineering problem rather than a research question, and is the first item in the next-steps section.
+The matching pass dominates the per-frame compute burden and can certainly be streamlined. 15 s of demo footage builds end-to-end in under an hour on a Mac M3 CPU. Real-time processing would require a substantially faster matcher and segmenter, which would constitute a deployment-engineering problem rather than a research question, and is the first item in the next-steps section.
 
 
 *The system is not, currently, able to be deployed arbitrarily* 

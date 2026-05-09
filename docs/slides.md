@@ -176,7 +176,7 @@ predates the video extension.
 
 ## Known limitations
 
-*The pipeline is not, currently, real-time.* The matching pass dominates per-frame compute, taking around 16 s per frame on Mac CPU. Demo clips build end-to-end in roughly an hour. Real-time operation needs a substantially faster matcher and segmenter. That is a deployment-engineering problem, not a research one, and there is nothing in the principle that stops a knowledge-transfer system running live.
+*The pipeline is not, currently, real-time.* The matching pass dominates per-frame compute, taking around 16 s per frame on Mac CPU. 15 s of demo footage builds end-to-end in under an hour on a Mac M3 CPU. Real-time operation needs a substantially faster matcher and segmenter. That is a deployment-engineering problem, not a research one, and there is nothing in the principle that stops a knowledge-transfer system running live.
 
 *The system is not, currently, able to be deployed arbitrarily.* The current code is contingent on a specific format of high-quality clear-road imagery and is geared toward producing the demo material. Generalising to any road with Google Street View (or a comparable source) available is feasible (the pipeline is substrate-agnostic in principle), but integrating a wider source corpus is a natural next step.
 
@@ -234,7 +234,6 @@ make reproduce
 
 `make track TRACK=<id>`: full pipeline on any registered track.
 `make stills`: static-stills precursor (needs `MAPILLARY_TOKEN`).
-`make oracle TRACK=<id>`: pre-flight gate before a new cache build.
 `make notebook`: re-execute `docs/analysis.ipynb` in place.
 `make pdfs`: render `writeup.pdf` + `slides.pdf`.
 

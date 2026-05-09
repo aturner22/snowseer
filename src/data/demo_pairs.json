@@ -17,58 +17,7 @@
         "500635891254885",
         "296635468787118",
         "1390785621289283"
-      ],
-      "priors": [
-        {
-          "id": "892247655024233",
-          "lat": 67.13688569372,
-          "lng": 20.661917336232,
-          "heading": 126.4083649628,
-          "captured_at": 1623933480177,
-          "distance_m": 1.0,
-          "heading_delta_deg": 10.16
-        },
-        {
-          "id": "326157315556758",
-          "lat": 67.136917267736,
-          "lng": 20.661847474095,
-          "heading": 133.36798319409,
-          "captured_at": 1592315877525,
-          "distance_m": 5.33,
-          "heading_delta_deg": 3.2
-        },
-        {
-          "id": "500635891254885",
-          "lat": 67.13695015,
-          "lng": 20.6617125,
-          "heading": 131.95648971185,
-          "captured_at": 1623933479337,
-          "distance_m": 11.91,
-          "heading_delta_deg": 4.61
-        },
-        {
-          "id": "296635468787118",
-          "lat": 67.136826221868,
-          "lng": 20.662219762172,
-          "heading": 127.75018034365,
-          "captured_at": 1592315879349,
-          "distance_m": 14.34,
-          "heading_delta_deg": 8.81
-        },
-        {
-          "id": "1390785621289283",
-          "lat": 67.136826221868,
-          "lng": 20.662219762172,
-          "heading": 126.72452070391,
-          "captured_at": 1592315879777,
-          "distance_m": 14.34,
-          "heading_delta_deg": 9.84
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "snow-banked side road",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719062576
+      ]
     },
     {
       "pair_id": "gallivare_se__1113124103239974__202392698419785",
@@ -80,58 +29,7 @@
         "306920270965910",
         "4133245173388543",
         "630824044984104"
-      ],
-      "priors": [
-        {
-          "id": "202392698419785",
-          "lat": 67.137869687097,
-          "lng": 20.658327072581,
-          "heading": 30.947532443455,
-          "captured_at": 1623931053158,
-          "distance_m": 1.26,
-          "heading_delta_deg": 7.97
-        },
-        {
-          "id": "907954863110920",
-          "lat": 67.137862594911,
-          "lng": 20.65831266562,
-          "heading": 25.556808260944,
-          "captured_at": 1592315845893,
-          "distance_m": 1.64,
-          "heading_delta_deg": 13.36
-        },
-        {
-          "id": "306920270965910",
-          "lat": 67.13781014666,
-          "lng": 20.658329783065,
-          "heading": 12.852051294647,
-          "captured_at": 1592315845431,
-          "distance_m": 5.93,
-          "heading_delta_deg": 26.07
-        },
-        {
-          "id": "4133245173388543",
-          "lat": 67.137921512394,
-          "lng": 20.658349673071,
-          "heading": 39.225608078155,
-          "captured_at": 1592315846836,
-          "distance_m": 6.5,
-          "heading_delta_deg": 0.31
-        },
-        {
-          "id": "630824044984104",
-          "lat": 67.137772,
-          "lng": 20.658407,
-          "heading": 43.945126993687,
-          "captured_at": 1565182804000,
-          "distance_m": 10.38,
-          "heading_delta_deg": 5.03
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "snow-banked road, parking sign",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719020506
+      ]
     },
     {
       "pair_id": "gallivare_se__345189905208531__154885286595910",
@@ -143,58 +41,7 @@
         "331643445007966",
         "483576016052462",
         "810885736217738"
-      ],
-      "priors": [
-        {
-          "id": "154885286595910",
-          "lat": 67.138202265552,
-          "lng": 20.66042798779,
-          "heading": 186.34466204266,
-          "captured_at": 1592315863298,
-          "distance_m": 1.33,
-          "heading_delta_deg": 3.55
-        },
-        {
-          "id": "365090478320141",
-          "lat": 67.138233424065,
-          "lng": 20.660380582406,
-          "heading": 171.0226000292,
-          "captured_at": 1623933466244,
-          "distance_m": 3.43,
-          "heading_delta_deg": 11.77
-        },
-        {
-          "id": "331643445007966",
-          "lat": 67.138130183582,
-          "lng": 20.660428140299,
-          "heading": 172.22109062989,
-          "captured_at": 1623933467403,
-          "distance_m": 9.23,
-          "heading_delta_deg": 10.57
-        },
-        {
-          "id": "483576016052462",
-          "lat": 67.138319464935,
-          "lng": 20.660335974026,
-          "heading": 171.33186871906,
-          "captured_at": 1623933465168,
-          "distance_m": 12.63,
-          "heading_delta_deg": 11.46
-        },
-        {
-          "id": "810885736217738",
-          "lat": 67.138094515773,
-          "lng": 20.660450297156,
-          "heading": 186.88768249181,
-          "captured_at": 1592315864662,
-          "distance_m": 13.18,
-          "heading_delta_deg": 4.1
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "cleared lane between snow piles",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719043577
+      ]
     },
     {
       "pair_id": "gallivare_se__7240084582787704__332803601580326",
@@ -206,58 +53,7 @@
         "122159633395601",
         "1705067692996284",
         "380457219916335"
-      ],
-      "priors": [
-        {
-          "id": "332803601580326",
-          "lat": 67.137218633883,
-          "lng": 20.661099943769,
-          "heading": 145.39048721576,
-          "captured_at": 1623933476337,
-          "distance_m": 1.32,
-          "heading_delta_deg": 10.32
-        },
-        {
-          "id": "5364015050340293",
-          "lat": 67.137170586037,
-          "lng": 20.661199797779,
-          "heading": 151.44046136626,
-          "captured_at": 1592315873299,
-          "distance_m": 6.06,
-          "heading_delta_deg": 4.27
-        },
-        {
-          "id": "122159633395601",
-          "lat": 67.137139080162,
-          "lng": 20.66125595334,
-          "heading": 142.35402278611,
-          "captured_at": 1623933477181,
-          "distance_m": 10.25,
-          "heading_delta_deg": 13.36
-        },
-        {
-          "id": "1705067692996284",
-          "lat": 67.137315277337,
-          "lng": 20.660933353163,
-          "heading": 149.80813500748,
-          "captured_at": 1623933475311,
-          "distance_m": 13.9,
-          "heading_delta_deg": 5.9
-        },
-        {
-          "id": "380457219916335",
-          "lat": 67.137332293819,
-          "lng": 20.66092215813,
-          "heading": 155.5814483672,
-          "captured_at": 1592315872245,
-          "distance_m": 15.79,
-          "heading_delta_deg": 0.13
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "snow-covered residential turn",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719056625
+      ]
     },
     {
       "pair_id": "gallivare_se__724743419870843__1232870027145826",
@@ -269,58 +65,7 @@
         "4022376487879117",
         "1441151879563471",
         "1571740266349851"
-      ],
-      "priors": [
-        {
-          "id": "1232870027145826",
-          "lat": 67.136945894716,
-          "lng": 20.656866324327,
-          "heading": 33.802553256512,
-          "captured_at": 1623931042265,
-          "distance_m": 1.51,
-          "heading_delta_deg": 7.77
-        },
-        {
-          "id": "534773221215470",
-          "lat": 67.137041271138,
-          "lng": 20.657024991057,
-          "heading": 33.805263263889,
-          "captured_at": 1623931043322,
-          "distance_m": 12.62,
-          "heading_delta_deg": 7.77
-        },
-        {
-          "id": "4022376487879117",
-          "lat": 67.136851380531,
-          "lng": 20.656709576991,
-          "heading": 34.119484947696,
-          "captured_at": 1623931041196,
-          "distance_m": 12.65,
-          "heading_delta_deg": 7.45
-        },
-        {
-          "id": "1441151879563471",
-          "lat": 67.137065,
-          "lng": 20.657198,
-          "heading": 42.296742727879,
-          "captured_at": 1598796228000,
-          "distance_m": 19.08,
-          "heading_delta_deg": 0.73
-        },
-        {
-          "id": "1571740266349851",
-          "lat": 67.137086,
-          "lng": 20.657175,
-          "heading": 31.779836496482,
-          "captured_at": 1565182557000,
-          "distance_m": 20.25,
-          "heading_delta_deg": 9.79
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "front-of-camera buried road",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719006508
+      ]
     },
     {
       "pair_id": "kiruna_se__1661386470711759__471612343955040",
@@ -332,58 +77,7 @@
         "857298075133332",
         "4308411682526805",
         "296030355571298"
-      ],
-      "priors": [
-        {
-          "id": "471612343955040",
-          "lat": 67.859503965614,
-          "lng": 20.222858922112,
-          "heading": 308.86639529858,
-          "captured_at": 1536301844224,
-          "distance_m": 0.37,
-          "heading_delta_deg": 5.57
-        },
-        {
-          "id": "3487484591351061",
-          "lat": 67.859468862098,
-          "lng": 20.222989825804,
-          "heading": 316.67552807114,
-          "captured_at": 1592135641382,
-          "distance_m": 6.75,
-          "heading_delta_deg": 13.37
-        },
-        {
-          "id": "857298075133332",
-          "lat": 67.859457571334,
-          "lng": 20.223034099876,
-          "heading": 308.08270785407,
-          "captured_at": 1536301843220,
-          "distance_m": 8.99,
-          "heading_delta_deg": 4.78
-        },
-        {
-          "id": "4308411682526805",
-          "lat": 67.859555575145,
-          "lng": 20.22268457413,
-          "heading": 307.88657366808,
-          "captured_at": 1536301845216,
-          "distance_m": 9.28,
-          "heading_delta_deg": 4.59
-        },
-        {
-          "id": "296030355571298",
-          "lat": 67.859579268339,
-          "lng": 20.222604542968,
-          "heading": 317.31557467044,
-          "captured_at": 1592135643787,
-          "distance_m": 13.53,
-          "heading_delta_deg": 14.01
-        }
-      ],
-      "place": "Kiruna, Sweden",
-      "condition": "wide street, fully snow-covered",
-      "snow_captured": "March 2019",
-      "snow_captured_at": 1552995140161
+      ]
     },
     {
       "pair_id": "kiruna_se__173943764513956__2572648156371424",
@@ -395,58 +89,7 @@
         "340237120801069",
         "1818166751699641",
         "4552578704770731"
-      ],
-      "priors": [
-        {
-          "id": "2572648156371424",
-          "lat": 67.860613238843,
-          "lng": 20.2192610485,
-          "heading": 307.3736693058,
-          "captured_at": 1536301860261,
-          "distance_m": 0.21,
-          "heading_delta_deg": 4.33
-        },
-        {
-          "id": "158281362970241",
-          "lat": 67.860615584308,
-          "lng": 20.219211823884,
-          "heading": 317.6755092801,
-          "captured_at": 1592135658511,
-          "distance_m": 2.21,
-          "heading_delta_deg": 14.63
-        },
-        {
-          "id": "340237120801069",
-          "lat": 67.860561560495,
-          "lng": 20.219402216452,
-          "heading": 316.35053478864,
-          "captured_at": 1592135657297,
-          "distance_m": 8.23,
-          "heading_delta_deg": 13.3
-        },
-        {
-          "id": "1818166751699641",
-          "lat": 67.860537499179,
-          "lng": 20.219517097389,
-          "heading": 307.62820539172,
-          "captured_at": 1536301859218,
-          "distance_m": 13.59,
-          "heading_delta_deg": 4.58
-        },
-        {
-          "id": "4552578704770731",
-          "lat": 67.86069046091,
-          "lng": 20.219007123943,
-          "heading": 307.44827907726,
-          "captured_at": 1536301861229,
-          "distance_m": 13.68,
-          "heading_delta_deg": 4.4
-        }
-      ],
-      "place": "Kiruna, Sweden",
-      "condition": "red Falun-style houses, road buried",
-      "snow_captured": "March 2019",
-      "snow_captured_at": 1552995162183
+      ]
     },
     {
       "pair_id": "kiruna_se__245577317324651__633925574672091",
@@ -458,58 +101,7 @@
         "204671531464383",
         "487810935828537",
         "298275898498732"
-      ],
-      "priors": [
-        {
-          "id": "633925574672091",
-          "lat": 67.854007987757,
-          "lng": 20.223305088103,
-          "heading": 183.4479966918,
-          "captured_at": 1592213889621,
-          "distance_m": 0.32,
-          "heading_delta_deg": 11.79
-        },
-        {
-          "id": "495267074953478",
-          "lat": 67.853994045664,
-          "lng": 20.223392532396,
-          "heading": 177.26498155372,
-          "captured_at": 1592147439840,
-          "distance_m": 3.78,
-          "heading_delta_deg": 5.61
-        },
-        {
-          "id": "204671531464383",
-          "lat": 67.853947774871,
-          "lng": 20.22336488,
-          "heading": 187.69707050624,
-          "captured_at": 1504360488702,
-          "distance_m": 6.82,
-          "heading_delta_deg": 16.04
-        },
-        {
-          "id": "487810935828537",
-          "lat": 67.853930968136,
-          "lng": 20.223290670199,
-          "heading": 173.49349022174,
-          "captured_at": 1504368905493,
-          "distance_m": 8.27,
-          "heading_delta_deg": 1.83
-        },
-        {
-          "id": "298275898498732",
-          "lat": 67.854090239443,
-          "lng": 20.223345894568,
-          "heading": 175.95189617488,
-          "captured_at": 1592147438843,
-          "distance_m": 9.57,
-          "heading_delta_deg": 4.29
-        }
-      ],
-      "place": "Kiruna, Sweden",
-      "condition": "arctic suburb under snow",
-      "snow_captured": "March 2019",
-      "snow_captured_at": 1552987195176
+      ]
     },
     {
       "pair_id": "kiruna_se__4126780297420111__308352860669123",
@@ -521,58 +113,7 @@
         "912067022917161",
         "772887560282108",
         "371042644235547"
-      ],
-      "priors": [
-        {
-          "id": "308352860669123",
-          "lat": 67.855205789543,
-          "lng": 20.222604652794,
-          "heading": 354.54143313414,
-          "captured_at": 1592210877821,
-          "distance_m": 0.17,
-          "heading_delta_deg": 8.96
-        },
-        {
-          "id": "239005547955201",
-          "lat": 67.855207182339,
-          "lng": 20.222617053481,
-          "heading": 356.33581795415,
-          "captured_at": 1592148501393,
-          "distance_m": 0.45,
-          "heading_delta_deg": 10.76
-        },
-        {
-          "id": "912067022917161",
-          "lat": 67.855214645495,
-          "lng": 20.222601892686,
-          "heading": 354.01812834169,
-          "captured_at": 1592147215309,
-          "distance_m": 1.11,
-          "heading_delta_deg": 8.44
-        },
-        {
-          "id": "772887560282108",
-          "lat": 67.855184316523,
-          "lng": 20.222634139642,
-          "heading": 350.75287828078,
-          "captured_at": 1591984503818,
-          "distance_m": 2.54,
-          "heading_delta_deg": 5.18
-        },
-        {
-          "id": "371042644235547",
-          "lat": 67.85522641176,
-          "lng": 20.222657344671,
-          "heading": 357.02128274365,
-          "captured_at": 1536067298235,
-          "distance_m": 3.15,
-          "heading_delta_deg": 11.44
-        }
-      ],
-      "place": "Kiruna, Sweden",
-      "condition": "mining town street in winter",
-      "snow_captured": "March 2019",
-      "snow_captured_at": 1552914896191
+      ]
     },
     {
       "pair_id": "lulea_se__1235981388376274__771512076886521",
@@ -581,31 +122,7 @@
       "prior_ids": [
         "771512076886521",
         "751865392199011"
-      ],
-      "priors": [
-        {
-          "id": "771512076886521",
-          "lat": 65.586548,
-          "lng": 22.154787,
-          "heading": 255.30777985332,
-          "captured_at": 1595496744000,
-          "distance_m": 1.22,
-          "heading_delta_deg": 3.7
-        },
-        {
-          "id": "751865392199011",
-          "lat": 65.586539,
-          "lng": 22.155407,
-          "heading": 253.71235466238,
-          "captured_at": 1532906325000,
-          "distance_m": 27.25,
-          "heading_delta_deg": 5.3
-        }
-      ],
-      "place": "Lule\u00e5, Sweden",
-      "condition": "cleared residential road",
-      "snow_captured": "January 2026",
-      "snow_captured_at": 1767346080379
+      ]
     },
     {
       "pair_id": "gallivare_se__1074104257224613__317074743121442",
@@ -617,58 +134,7 @@
         "597757737833402",
         "627336418222347",
         "914109022489914"
-      ],
-      "priors": [
-        {
-          "id": "317074743121442",
-          "lat": 67.137753562313,
-          "lng": 20.660556837928,
-          "heading": 176.47200707233,
-          "captured_at": 1592315867824,
-          "distance_m": 1.45,
-          "heading_delta_deg": 6.82
-        },
-        {
-          "id": "501935674291103",
-          "lat": 67.137737364433,
-          "lng": 20.660558073196,
-          "heading": 172.0818726398,
-          "captured_at": 1623933471236,
-          "distance_m": 3.2,
-          "heading_delta_deg": 11.21
-        },
-        {
-          "id": "597757737833402",
-          "lat": 67.137850023715,
-          "lng": 20.660520566798,
-          "heading": 174.6385927026,
-          "captured_at": 1623933470171,
-          "distance_m": 9.53,
-          "heading_delta_deg": 8.65
-        },
-        {
-          "id": "627336418222347",
-          "lat": 67.137865407033,
-          "lng": 20.660514296323,
-          "heading": 182.61264006346,
-          "captured_at": 1592315866302,
-          "distance_m": 11.26,
-          "heading_delta_deg": 0.67
-        },
-        {
-          "id": "914109022489914",
-          "lat": 67.137640132345,
-          "lng": 20.660614230157,
-          "heading": 173.63708396386,
-          "captured_at": 1592315868556,
-          "distance_m": 14.12,
-          "heading_delta_deg": 9.65
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "small-town intersection in snow",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719049551
+      ]
     },
     {
       "pair_id": "gallivare_se__406156588778534__151656736926906",
@@ -680,58 +146,7 @@
         "399995314802675",
         "1581020765426936",
         "306046477676364"
-      ],
-      "priors": [
-        {
-          "id": "151656736926906",
-          "lat": 67.134664344893,
-          "lng": 20.653371655715,
-          "heading": 43.428974157118,
-          "captured_at": 1592305473194,
-          "distance_m": 1.08,
-          "heading_delta_deg": 4.86
-        },
-        {
-          "id": "162729665876095",
-          "lat": 67.134668957201,
-          "lng": 20.653265347667,
-          "heading": 30.014783890047,
-          "captured_at": 1623931001227,
-          "distance_m": 3.87,
-          "heading_delta_deg": 8.56
-        },
-        {
-          "id": "399995314802675",
-          "lat": 67.13472375954,
-          "lng": 20.653343742258,
-          "heading": 30.134645389504,
-          "captured_at": 1623931002292,
-          "distance_m": 5.82,
-          "heading_delta_deg": 8.44
-        },
-        {
-          "id": "1581020765426936",
-          "lat": 67.134638652528,
-          "lng": 20.653242093856,
-          "heading": 46.494713688457,
-          "captured_at": 1591954576802,
-          "distance_m": 6.08,
-          "heading_delta_deg": 7.92
-        },
-        {
-          "id": "306046477676364",
-          "lat": 67.134619173814,
-          "lng": 20.65329878438,
-          "heading": 42.60308141366,
-          "captured_at": 1592305471258,
-          "distance_m": 6.29,
-          "heading_delta_deg": 4.03
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "plough tracks across snow surface",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711718960524
+      ]
     },
     {
       "pair_id": "kiruna_se__5529843027088716__1189235864845198",
@@ -743,58 +158,7 @@
         "2928811884074628",
         "250292153539286",
         "845335922726970"
-      ],
-      "priors": [
-        {
-          "id": "1189235864845198",
-          "lat": 67.855730826993,
-          "lng": 20.222376601608,
-          "heading": 2.599180125015,
-          "captured_at": 1592148506831,
-          "distance_m": 0.5,
-          "heading_delta_deg": 17.02
-        },
-        {
-          "id": "250698650181209",
-          "lat": 67.855754939451,
-          "lng": 20.222416018496,
-          "heading": 345.12445476281,
-          "captured_at": 1536301792160,
-          "distance_m": 3.38,
-          "heading_delta_deg": 0.46
-        },
-        {
-          "id": "2928811884074628",
-          "lat": 67.855763883679,
-          "lng": 20.222370099129,
-          "heading": 0.091411879355576,
-          "captured_at": 1592147220307,
-          "distance_m": 3.61,
-          "heading_delta_deg": 14.51
-        },
-        {
-          "id": "250292153539286",
-          "lat": 67.855717693528,
-          "lng": 20.222460530154,
-          "heading": 332.81497200264,
-          "captured_at": 1536301790330,
-          "distance_m": 4.29,
-          "heading_delta_deg": 12.77
-        },
-        {
-          "id": "845335922726970",
-          "lat": 67.85568522151,
-          "lng": 20.22239163269,
-          "heading": 358.66418887218,
-          "captured_at": 1592210881375,
-          "distance_m": 5.25,
-          "heading_delta_deg": 13.08
-        }
-      ],
-      "place": "Kiruna, Sweden",
-      "condition": "long residential street, deep banks",
-      "snow_captured": "March 2019",
-      "snow_captured_at": 1552995073195
+      ]
     },
     {
       "pair_id": "rovaniemi_fi__856601484101706__474387813773207",
@@ -806,58 +170,7 @@
         "2245145762490457",
         "2924825747800556",
         "1414355165920719"
-      ],
-      "priors": [
-        {
-          "id": "474387813773207",
-          "lat": 66.5004035,
-          "lng": 25.7189228,
-          "heading": 226.10455465386,
-          "captured_at": 1601452526920,
-          "distance_m": 0.11,
-          "heading_delta_deg": 9.45
-        },
-        {
-          "id": "792159009469547",
-          "lat": 66.500383018735,
-          "lng": 25.718872868692,
-          "heading": 216.63048541535,
-          "captured_at": 1723058290601,
-          "distance_m": 3.25,
-          "heading_delta_deg": 0.02
-        },
-        {
-          "id": "2245145762490457",
-          "lat": 66.500377961012,
-          "lng": 25.718875905377,
-          "heading": 215.93856693463,
-          "captured_at": 1723630862551,
-          "distance_m": 3.6,
-          "heading_delta_deg": 0.71
-        },
-        {
-          "id": "2924825747800556",
-          "lat": 66.500373055556,
-          "lng": 25.719046388889,
-          "heading": 223.39427521609,
-          "captured_at": 1594827254000,
-          "distance_m": 6.49,
-          "heading_delta_deg": 6.74
-        },
-        {
-          "id": "1414355165920719",
-          "lat": 66.500500841555,
-          "lng": 25.719097439979,
-          "heading": 216.8322650165,
-          "captured_at": 1723058289554,
-          "distance_m": 13.19,
-          "heading_delta_deg": 0.18
-        }
-      ],
-      "place": "Rovaniemi, Finland",
-      "condition": "Lapland street, light cover",
-      "snow_captured": "March 2026",
-      "snow_captured_at": 1772436740500
+      ]
     },
     {
       "pair_id": "gallivare_se__432410789201829__1301469893584230",
@@ -869,58 +182,7 @@
         "301918481625008",
         "323716715962590",
         "1196951674062075"
-      ],
-      "priors": [
-        {
-          "id": "1301469893584230",
-          "lat": 67.1385247892,
-          "lng": 20.660085638,
-          "heading": 114.38595141394,
-          "captured_at": 1623931065253,
-          "distance_m": 1.59,
-          "heading_delta_deg": 8.51
-        },
-        {
-          "id": "317855256623299",
-          "lat": 67.1384912348,
-          "lng": 20.6602383451,
-          "heading": 131.55597346404,
-          "captured_at": 1623931066322,
-          "distance_m": 6.03,
-          "heading_delta_deg": 8.66
-        },
-        {
-          "id": "301918481625008",
-          "lat": 67.138554666542,
-          "lng": 20.659977475446,
-          "heading": 144.50236021253,
-          "captured_at": 1592315858631,
-          "distance_m": 7.3,
-          "heading_delta_deg": 21.6
-        },
-        {
-          "id": "323716715962590",
-          "lat": 67.138539752699,
-          "lng": 20.659914310697,
-          "heading": 96.198403637414,
-          "captured_at": 1623931064189,
-          "distance_m": 8.98,
-          "heading_delta_deg": 26.7
-        },
-        {
-          "id": "1196951674062075",
-          "lat": 67.138560119454,
-          "lng": 20.65986360747,
-          "heading": 118.38750397549,
-          "captured_at": 1592315857245,
-          "distance_m": 11.84,
-          "heading_delta_deg": 4.51
-        }
-      ],
-      "place": "G\u00e4llivare, Sweden",
-      "condition": "(review pool \u2014 not yet rated under multi-prior)",
-      "snow_captured": "March 2024",
-      "snow_captured_at": 1711719036354
+      ]
     },
     {
       "pair_id": "lulea_se__2293127254488678__227895282221380",
@@ -932,58 +194,7 @@
         "1862337297249747",
         "295801342187001",
         "816388799260193"
-      ],
-      "priors": [
-        {
-          "id": "227895282221380",
-          "lat": 65.587784095178,
-          "lng": 22.148812576953,
-          "heading": 330.5201072931,
-          "captured_at": 1623408030589,
-          "distance_m": 2.39,
-          "heading_delta_deg": 12.07
-        },
-        {
-          "id": "838090973480747",
-          "lat": 65.587802876124,
-          "lng": 22.148762783217,
-          "heading": 332.58448330501,
-          "captured_at": 1623340729903,
-          "distance_m": 4.62,
-          "heading_delta_deg": 10.01
-        },
-        {
-          "id": "1862337297249747",
-          "lat": 65.587707444499,
-          "lng": 22.148872308939,
-          "heading": 332.49422763991,
-          "captured_at": 1623340728833,
-          "distance_m": 9.47,
-          "heading_delta_deg": 10.1
-        },
-        {
-          "id": "295801342187001",
-          "lat": 65.587892862076,
-          "lng": 22.148658104192,
-          "heading": 332.47193688372,
-          "captured_at": 1623340730968,
-          "distance_m": 14.49,
-          "heading_delta_deg": 10.12
-        },
-        {
-          "id": "816388799260193",
-          "lat": 65.587908,
-          "lng": 22.148703,
-          "heading": 336.18709595656,
-          "captured_at": 1595496784000,
-          "distance_m": 14.7,
-          "heading_delta_deg": 6.4
-        }
-      ],
-      "place": "Lule\u00e5, Sweden",
-      "condition": "(review pool \u2014 not yet rated under multi-prior)",
-      "snow_captured": "January 2026",
-      "snow_captured_at": 1767346128312
+      ]
     },
     {
       "pair_id": "lulea_se__1416606716782053__100703328886972",
@@ -995,58 +206,7 @@
         "300664118383340",
         "848780649041676",
         "989850445088256"
-      ],
-      "priors": [
-        {
-          "id": "100703328886972",
-          "lat": 65.586247618332,
-          "lng": 22.150637528424,
-          "heading": 315.74085790753,
-          "captured_at": 1623408017789,
-          "distance_m": 3.18,
-          "heading_delta_deg": 9.58
-        },
-        {
-          "id": "295955645594615",
-          "lat": 65.586281882294,
-          "lng": 22.150545357948,
-          "heading": 315.63184016231,
-          "captured_at": 1623340714000,
-          "distance_m": 4.08,
-          "heading_delta_deg": 9.68
-        },
-        {
-          "id": "300664118383340",
-          "lat": 65.586305,
-          "lng": 22.150537,
-          "heading": 334.16579933955,
-          "captured_at": 1595496771000,
-          "distance_m": 5.45,
-          "heading_delta_deg": 8.85
-        },
-        {
-          "id": "848780649041676",
-          "lat": 65.586216292638,
-          "lng": 22.15066610107,
-          "heading": 320.19221827386,
-          "captured_at": 1500110754227,
-          "distance_m": 6.82,
-          "heading_delta_deg": 5.12
-        },
-        {
-          "id": "989850445088256",
-          "lat": 65.586216292638,
-          "lng": 22.15066610107,
-          "heading": 303.60603261304,
-          "captured_at": 1500110755129,
-          "distance_m": 6.82,
-          "heading_delta_deg": 21.71
-        }
-      ],
-      "place": "Lule\u00e5, Sweden",
-      "condition": "(review pool \u2014 not yet rated under multi-prior)",
-      "snow_captured": "January 2026",
-      "snow_captured_at": 1767346113579
+      ]
     },
     {
       "pair_id": "rovaniemi_fi__851945714561628__339321642482172",
@@ -1058,58 +218,7 @@
         "501003472332836",
         "1172595393185045",
         "3753220911442729"
-      ],
-      "priors": [
-        {
-          "id": "339321642482172",
-          "lat": 66.501354572621,
-          "lng": 25.720720058771,
-          "heading": 218.16061606632,
-          "captured_at": 1723630855631,
-          "distance_m": 0.66,
-          "heading_delta_deg": 0.28
-        },
-        {
-          "id": "536795577557864",
-          "lat": 66.501353737384,
-          "lng": 25.720728912873,
-          "heading": 220.98276355934,
-          "captured_at": 1629554409750,
-          "distance_m": 0.72,
-          "heading_delta_deg": 3.11
-        },
-        {
-          "id": "501003472332836",
-          "lat": 66.501376117905,
-          "lng": 25.720758107047,
-          "heading": 217.98761810321,
-          "captured_at": 1723058281637,
-          "distance_m": 3.51,
-          "heading_delta_deg": 0.11
-        },
-        {
-          "id": "1172595393185045",
-          "lat": 66.5014012,
-          "lng": 25.7208864,
-          "heading": 225.52523573854,
-          "captured_at": 1601452518791,
-          "distance_m": 9.44,
-          "heading_delta_deg": 7.65
-        },
-        {
-          "id": "3753220911442729",
-          "lat": 66.501274300003,
-          "lng": 25.7206075,
-          "heading": 225.59973727969,
-          "captured_at": 1601452519858,
-          "distance_m": 9.61,
-          "heading_delta_deg": 7.72
-        }
-      ],
-      "place": "Rovaniemi, Finland",
-      "condition": "(review pool \u2014 not yet rated under multi-prior)",
-      "snow_captured": "March 2026",
-      "snow_captured_at": 1772436732500
+      ]
     }
   ]
 }

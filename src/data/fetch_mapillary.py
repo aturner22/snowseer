@@ -1,4 +1,4 @@
-"""Fetch the curated snow + clear image pairs from Mapillary.
+"""Fetch the snow + clear image pairs from Mapillary.
 
 Reads `data/demo_pairs.json`, queries each entry's Mapillary image IDs
 fresh (URLs are signed and expire), downloads the snow + paired clear-
@@ -197,7 +197,7 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
         os.environ.setdefault(k, v)
 
 
-def _fetch_curated(token: str) -> int:
+def _fetch_selected(token: str) -> int:
     """Fetch every pair declared in `demo_pairs.json`. Idempotent: existing
     files are not re-downloaded.
     """
@@ -206,7 +206,7 @@ def _fetch_curated(token: str) -> int:
         return 1
     spec = json.loads(DEMO_PAIRS_PATH.read_text())
     pairs = spec.get("pairs", [])
-    print(f"[fetch] {len(pairs)} curated pairs", flush=True)
+    print(f"[fetch] {len(pairs)} selected pairs", flush=True)
     n_ok = 0
 
     for entry in tqdm(pairs, desc="pairs"):
@@ -250,7 +250,7 @@ def _fetch_curated(token: str) -> int:
 def main() -> None:
     import argparse
     argparse.ArgumentParser(
-        description="Fetch the curated snow + clear pairs declared in demo_pairs.json."
+        description="Fetch the selected snow + clear pairs declared in demo_pairs.json."
     ).parse_args()
 
     sys.stdout.reconfigure(line_buffering=True)
@@ -262,7 +262,7 @@ def main() -> None:
         sys.exit(2)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    sys.exit(_fetch_curated(token))
+    sys.exit(_fetch_selected(token))
 
 
 if __name__ == "__main__":

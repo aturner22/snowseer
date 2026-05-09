@@ -34,27 +34,6 @@ OUT_DIR = Path("outputs/nordic_stills")
 DEMO_PAIRS_PATH = Path(__file__).resolve().parent / "data" / "demo_pairs.json"
 
 
-def _display_strings(pair_id: str) -> tuple[str, str]:
-    """(title, subtitle) for a pair_id, sourced from data/demo_pairs.json.
-
-    Title:    'Place, Country, condition phrase'
-    Subtitle: 'Snow capture (month yyyy)  ↔  Clear capture (month yyyy)'
-    """
-    if not DEMO_PAIRS_PATH.exists():
-        return (pair_id.replace("__", "  ·  "), "")
-    spec = json.loads(DEMO_PAIRS_PATH.read_text())
-    entry = next((p for p in spec.get("pairs", []) if p.get("pair_id") == pair_id), None)
-    if entry is None:
-        return (pair_id.replace("__", "  ·  "), "")
-    place = entry.get("place") or entry.get("region", "")
-    condition = entry.get("condition") or ""
-    title = f"{place}, {condition}" if condition else place
-    snow_t = entry.get("snow_captured", "")
-    clear_t = entry.get("clear_captured", "")
-    subtitle = f"{snow_t}  ↔  {clear_t}" if snow_t and clear_t else ""
-    return (title, subtitle)
-
-
 def _load_demo_pair_ids() -> set[str]:
     """Pair IDs the demo manifest commits to. Empty set if the file is missing."""
     if not DEMO_PAIRS_PATH.exists():
