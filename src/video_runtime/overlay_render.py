@@ -32,21 +32,29 @@ RED = (220, 60, 60)
 
 
 def _label(canvas: np.ndarray, text: str, *, position: str = "tl") -> np.ndarray:
-    """Draw a small Inter-style label with a translucent dark bar behind it."""
+    """Draw a label with a dark bar behind it, sized for video legibility."""
     h, w = canvas.shape[:2]
+    font = cv2.FONT_HERSHEY_DUPLEX
+    scale = 1.1
+    thickness = 2
+    (tw, th), baseline = cv2.getTextSize(text, font, scale, thickness)
+    pad_x, pad_y = 10, 10
     if position == "tl":
-        x, y = 16, 36
+        x, y = 16 + pad_x, 16 + th + pad_y
     elif position == "tr":
-        x, y = w - 380, 36
+        x, y = w - tw - 16 - pad_x, 16 + th + pad_y
     elif position == "bl":
-        x, y = 16, h - 16
+        x, y = 16 + pad_x, h - 16 - pad_y
     else:
-        x, y = 16, 36
-    # Black band underlay for readability.
-    cv2.rectangle(canvas, (x - 6, y - 28), (x + len(text) * 13, y + 8),
-                  (0, 0, 0), -1)
-    cv2.putText(canvas, text, (x, y), cv2.FONT_HERSHEY_DUPLEX, 0.7,
-                (255, 255, 255), 1, cv2.LINE_AA)
+        x, y = 16 + pad_x, 16 + th + pad_y
+    cv2.rectangle(
+        canvas,
+        (x - pad_x, y - th - pad_y),
+        (x + tw + pad_x, y + baseline + pad_y),
+        (0, 0, 0), -1,
+    )
+    cv2.putText(canvas, text, (x, y), font, scale,
+                (255, 255, 255), thickness, cv2.LINE_AA)
     return canvas
 
 
@@ -90,7 +98,7 @@ def _compose_summer_panel(summer_image: np.ndarray, summer_mask: np.ndarray,
     if summer_mask is not None and int(summer_mask.sum()) > 0:
         canvas = alpha_blend(canvas, summer_mask, color=GREEN, alpha=0.45)
     if with_label:
-        canvas = _label(canvas, "summer prior + road (Cityscapes)")
+        canvas = _label(canvas, "summer prior + road")
     return canvas
 
 

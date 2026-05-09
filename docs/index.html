@@ -115,10 +115,10 @@
 
     <figure>
       <img src="_assets/media/toronto_2021_quad_t005.jpg" alt="Four panels: snow input (top-left), naive Cityscapes baseline applied directly to snow (top-right, painting road class across snow and sky), summer prior with successful road segmentation (bottom-left), cross-season overlay produced by warping the prior's road mask through the homography (bottom-right)." />
-      <figcaption>One frame, four panels, from a canonical Toronto clip. Top-left: the snow input. Top-right: the naive baseline. A Cityscapes-trained segmenter applied directly to the snow frame paints the road class across snow and sky alike. Bottom-left: the paired summer prior with the road segmentation that <em>did</em> succeed (because the road is visible). Bottom-right: the cross-season overlay produced by warping the prior's road mask through the homography into the snow frame's pixel coordinates.</figcaption>
+      <figcaption>One frame from a clip of driving in Toronto. Top-left: the snowy input. Top-right: the naive road-segmented baseline. Bottom-left: the paired summer prior with <em>successful</em> road segmentation (because the road is visible). Bottom-right: the cross-season overlay produced by warping the prior's road mask through the homography into the snow frame.</figcaption>
     </figure>
 
-    <p>The video processor wraps a per-still-image-pair pipeline in three thin layers: a track loader indexing snow and summer streams by GPS pose, a prior pool returning the K = 3 nearest summer captures by distance for each snow frame, and an exponential moving average (&alpha; = 0.4) on the binary road mask to produce a smoother continuous render of the transferred road position.</p>
+    <p>The video processor wraps a per-still-image-pair pipeline in three layers: a track loader indexing snow and summer streams by GPS pose, a prior pool returning the K = 3 nearest summer captures by distance for each snow frame, and an exponential moving average (&alpha; = 0.4) on the binary road mask to produce a smoother continuous render of the transferred road position.</p>
 
     <blockquote>The output of the Snowseer pipeline is restricted to presenting <strong>only where the road is expected to be</strong>, not where the snow should necessarily be cleared by the plough. A broader autonomous snow-clearing system would integrate Snowseer with other sensing and safety processes (lidar, depth, obstacle detection), each unburdened of the road-position problem on a buried road.</blockquote>
   </div>
@@ -130,18 +130,17 @@
 
     <table>
       <thead>
-        <tr><th>Component</th><th>Role</th><th>Pretrained on</th></tr>
+        <tr><th>Component</th><th>Role</th><th>Model</th><th>Dataset</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>DISK</strong> <em>(NeurIPS &lsquo;20)</em></td><td>Local feature detector + descriptor</td><td>MegaDepth · no snow</td></tr>
-        <tr><td><strong>LightGlue</strong> <em>(ICCV &lsquo;23)</em></td><td>Sparse feature matcher</td><td>MegaDepth · no snow</td></tr>
-        <tr><td><strong>USAC-MAGSAC</strong> <em>(CVPR &lsquo;20)</em></td><td>Robust homography</td><td>n/a</td></tr>
-        <tr><td><strong>Mask2Former</strong> <em>(CVPR &lsquo;22)</em></td><td>Road segmenter (on the clear prior only)</td><td>Cityscapes · no snow</td></tr>
-        <tr><td><strong>Boreas</strong> <em>(IJRR &lsquo;23)</em></td><td>Snow + paired summer driving captures (dataset)</td><td>n/a (CC BY 4.0)</td></tr>
+        <tr><td>Feature detector</td><td>Locate keypoints in each image</td><td><strong>DISK</strong><br /><em>(NeurIPS &lsquo;20)</em></td><td>MegaDepth</td></tr>
+        <tr><td>Feature matcher</td><td>Pair keypoints across the snow / summer images</td><td><strong>LightGlue</strong><br /><em>(ICCV &lsquo;23)</em></td><td>MegaDepth</td></tr>
+        <tr><td>Homography fit</td><td>Robust geometric registration of the pair</td><td><strong>USAC-MAGSAC</strong><br /><em>(CVPR &lsquo;20)</em></td><td>n/a</td></tr>
+        <tr><td>Road segmenter</td><td>Produce a road mask on the summer image</td><td><strong>Mask2Former</strong><br /><em>(CVPR &lsquo;22)</em></td><td>Cityscapes</td></tr>
       </tbody>
     </table>
 
-    <p>Components used unmodified and crucially <em>without any retraining</em>. None is fine-tuned on snow.</p>
+    <p>Components used crucially <em>without any retraining</em>: none are fine-tuned on snow.</p>
   </div>
 </section>
 
@@ -149,27 +148,27 @@
   <div class="container">
     <h2>Demo material</h2>
 
-    <p>The demo material is video clips from snow-covered streets in Toronto, captured in the Boreas dataset (January 2021 and February 2025). The pipeline produces a continuous green road-region overlay tracking the buried road frame by frame. A side-by-side naive baseline (the same Cityscapes segmenter applied directly to the snow frame) is included for contrast: the naive overlay sprawls across frames into clearly non-road territory, while the cross-season overlay tracks the buried road continuously through the clip on a pipeline whose learned components have never seen snow.</p>
+    <p>The demo material consists of video clips from snow-covered streets in Toronto (January 2021 and February 2025), obtained from the Boreas dataset. The pipeline produces a continuous green road-region overlay tracking the buried road frame by frame. A side-by-side naive baseline (the same segmenter applied directly to the snow frame) is included for contrast: the naive overlay sprawls across frames into clearly non-road territory, while the cross-season overlay tracks the buried road continuously through the clip on a pipeline whose components have never seen snow.</p>
 
     <div class="track-grid">
       <figure class="track">
-        <video autoplay loop muted playsinline controls preload="metadata" poster="_assets/media/toronto_2021_overlay_t005.jpg">
-          <source src="_assets/media/toronto_2021_sidebyside.mp4" type="video/mp4" />
+        <video autoplay loop muted playsinline controls preload="metadata" poster="_assets/media/toronto_2021_quad_t005.jpg">
+          <source src="_assets/media/toronto_2021_quad.mp4" type="video/mp4" />
         </video>
-        <figcaption><strong>Residential Toronto, January 2021.</strong> Heavy snow, mid-morning. Snow query (left) and cross-season overlay (right).</figcaption>
+        <figcaption><strong>Toronto, January 2021.</strong> Four panels per frame: snow input (top-left), naive segmenter baseline applied directly to snow (top-right), paired summer prior with road segmentation (bottom-left), cross-season overlay onto the snow frame (bottom-right).</figcaption>
       </figure>
 
       <figure class="track">
         <video autoplay loop muted playsinline controls preload="metadata">
-          <source src="_assets/media/toronto_2025_sidebyside.mp4" type="video/mp4" />
+          <source src="_assets/media/toronto_2025_quad.mp4" type="video/mp4" />
         </video>
-        <figcaption><strong>Toronto, February 2025.</strong> A different drive in active snowfall, late afternoon. Same code and parameters as the January clip.</figcaption>
+        <figcaption><strong>Toronto, February 2025.</strong> Four panels per frame: snow input (top-left), naive segmenter baseline applied directly to snow (top-right), paired summer prior with road segmentation (bottom-left), cross-season overlay onto the snow frame (bottom-right)..</figcaption>
       </figure>
     </div>
 
-    <p>The same pipeline was also verified across an 18-pair static-stills set from different nordic regions, covering distinct snow scenes, road layouts and environments. It was the foundation the video pipeline was built on.</p>
+    <p>The same pipeline was also verified across a set of 18 images from different nordic regions, covering distinct snow scenes, road layouts, lighting conditions and environments. They served as proof-of-concept testing early in development and represent the foundations the video pipeline was built on.</p>
 
-    <p class="note">Each pair below is a 2&times;2: snow query (top-left), naive Cityscapes baseline applied directly to snow with the road class in red (top-right), paired summer prior of the same scene (bottom-left), cross-season overlay with the road transferred onto the snow frame in green (bottom-right).</p>
+    <p class="note">Each pair below is a 2&times;2: snow query (top-left), naive segmenter baseline applied directly to snow with the road approximation in red (top-right), paired summer prior of the same scene (bottom-left), cross-season overlay with the road transferred onto the snow frame in green (bottom-right).</p>
 
     <div class="pairs-grid">
       <figure class="pair">
@@ -211,9 +210,11 @@
   <div class="container">
     <h2>Limitations</h2>
 
-    <p><em>The pipeline is not, currently, real-time.</em> Partly due to lack of access to a snow plough and vast amounts of snow, but perhaps also due to computational constraints, the road overlay pipeline currently runs asynchronously to when images are taken. This is a barrier to deployment, but is an implementation task which is certainly surmountable if this project were to take a more operational form. There is nothing in the principle that stops a knowledge-transfer system running live. The matching pass dominates per-frame compute, taking around 16 s per frame on Mac CPU. Demo clips build end-to-end in roughly an hour. Real-time operation needs a substantially faster matcher and segmenter, which is a deployment-engineering problem rather than a research question, and is the first item in the next-steps section.</p>
+    <p><strong><em>Some artefacts in the overlay are inherited from the summer prior.</em></strong><br />Where the front of the summer capture vehicle is visible in the prior, the warped road mask begins a short distance ahead of the snow camera rather than directly under it. Where a parked car or other obstacle sits on the road in the prior, the segmenter routes the road class around the obstacle and the overlay carries that cutout forward into the snow frame. Neither artefact is a property of the constants-bridge principle. Both are tractable with reasonable engineering, for example by extrapolating the road below the visible mask boundary, or by fusing several priors of the same scene so that any one prior's foreground occlusions are filled in by the others.</p>
 
-    <p><em>The system is not, currently, able to be deployed arbitrarily.</em> The design of the present iteration of the pipeline is contingent on a certain format of high-quality clear-road imagery. Generalising the system to operate on any given road with Google Street View (or a comparable source) available is feasible (the pipeline is substrate-agnostic in principle), but the current code does not support this and is geared toward producing the specific material in this demonstration. Integrating a wider source corpus is a natural next step.</p>
+    <p><strong><em>The pipeline is not, currently, real-time.</em></strong><br />Partly due to lack of access to a snow plough and vast amounts of snow, but perhaps also due to computational constraints, the road overlay pipeline currently runs asynchronously to when images are taken. This is a barrier to deployment, but is an implementation task which is certainly surmountable if this project were to take a more operational form. There is nothing in the principle that stops a knowledge-transfer system running live. The matching pass dominates per-frame compute, taking around 16 s per frame on Mac CPU. Demo clips build end-to-end in roughly an hour. Real-time operation needs a substantially faster matcher and segmenter, which is a deployment-engineering problem rather than a research question, and is the first item in the next-steps section.</p>
+
+    <p><strong><em>The system is not, currently, able to be deployed arbitrarily.</em></strong><br />The design of the present iteration of the pipeline is contingent on a certain format of high-quality clear-road imagery. Generalising the system to operate on any given road with Google Street View (or a comparable source) available is feasible (the pipeline is substrate-agnostic in principle), but the current code does not support this and is geared toward producing the specific material in this demonstration. Integrating a wider source corpus is a natural next step.</p>
   </div>
 </section>
 
