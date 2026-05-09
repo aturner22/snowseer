@@ -11,7 +11,7 @@
 # For ad-hoc single runs, use `make track TRACK=<id>` or `make stills`
 # directly.
 
-.PHONY: help reproduce track stills pdfs test clean
+.PHONY: help reproduce track stills slides test clean
 
 CANONICAL_TRACK := boreas_2021_01_26
 ALT_TRACK       := boreas_2025_02_15
@@ -28,7 +28,7 @@ help:
 	@echo "  stills                      Static-prior demo on 18 Mapillary pairs"
 	@echo "                                (needs MAPILLARY_TOKEN)"
 	@echo ""
-	@echo "  pdfs                        Render docs/{slides,writeup}.pdf"
+	@echo "  slides                      Build docs/slides.pptx for Google Slides"
 	@echo "  test                        Smoke tests (no compute)"
 	@echo "  clean                       Wipe generated outputs"
 
@@ -80,15 +80,8 @@ stills:
 
 # ─── Documentation ──────────────────────────────────────────────────────────
 
-pdfs:
-	npx -y --package=@marp-team/marp-cli@latest -- marp docs/slides.md \
-	    -o docs/slides.pdf --allow-local-files --theme-set docs/style/marp.css
-	pandoc docs/writeup.md -o docs/writeup.pdf -V geometry:margin=2cm \
-	    --resource-path=docs:. \
-	    --pdf-engine=xelatex \
-	    --variable=mainfont:"EB Garamond" \
-	    --variable=sansfont:"Inter" \
-	    --variable=monofont:"JetBrains Mono"
+slides:
+	uv run --with python-pptx python -m src.build_slides
 
 # ─── Tests + cleanup ────────────────────────────────────────────────────────
 

@@ -194,7 +194,7 @@ make reproduce
 
 `make track TRACK=<id>`: full pipeline on any registered track.
 `make stills`: static-stills precursor (needs `MAPILLARY_TOKEN`).
-`make pdfs`: render `slides.pdf`.
+`make slides`: build `docs/slides.pptx` for Google Slides.
 
 Site: [aturner22.github.io/snowseer](https://aturner22.github.io/snowseer/).
 
