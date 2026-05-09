@@ -126,7 +126,8 @@ def add_chrome(slide, page_num: int, total: int) -> None:
     add_text(
         slide, SLIDE_W - MARGIN_X - Inches(2), Inches(0.32),
         Inches(2), Inches(0.3),
-        [t(f"{page_num} / {total}", font=SANS, size=10, color=MUTE)],
+        [t(f"{page_num:02d}  ·  {total:02d}",
+           font=SANS, size=10, color=MUTE)],
         align=PP_ALIGN.RIGHT,
     )
 
@@ -157,16 +158,16 @@ def slide_title(prs, title: str, subtitle: str, footer: str):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_background(slide, BG)
     add_text(
-        slide, Inches(1), Inches(2.7), SLIDE_W - Inches(2), Inches(1.6),
+        slide, Inches(1), Inches(2.7), SLIDE_W - Inches(2), Inches(1.2),
         [t(title, font=SANS, size=84, color=TEXT, bold=True)],
-        align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE,
+        align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.TOP,
     )
     bar_x = int(SLIDE_W // 2) - Inches(0.4)
-    add_rect(slide, bar_x, Inches(4.45), Inches(0.8), Inches(0.05), fill=ACCENT)
+    add_rect(slide, bar_x, Inches(4.05), Inches(0.8), Inches(0.05), fill=ACCENT)
     add_text(
-        slide, Inches(1.5), Inches(4.7), SLIDE_W - Inches(3), Inches(1),
+        slide, Inches(1.5), Inches(4.3), SLIDE_W - Inches(3), Inches(1.6),
         [t(subtitle, font=SERIF, size=24, color=MUTE, italic=True)],
-        align=PP_ALIGN.CENTER, line_spacing=1.4,
+        align=PP_ALIGN.CENTER, line_spacing=1.45,
     )
     add_text(
         slide, Inches(1), Inches(6.85), SLIDE_W - Inches(2), Inches(0.4),
@@ -324,10 +325,10 @@ def slide_table(prs, title: str, headers, rows, *, page, total, footnote=None):
 
 def _style_cell(cell, content, *, font, size, color, bold=False,
                 border_top=None, border_bottom=None, border_other=None):
-    cell.margin_left = Inches(0.12)
-    cell.margin_right = Inches(0.12)
-    cell.margin_top = Inches(0.08)
-    cell.margin_bottom = Inches(0.08)
+    cell.margin_left = Inches(0.18)
+    cell.margin_right = Inches(0.18)
+    cell.margin_top = Inches(0.12)
+    cell.margin_bottom = Inches(0.12)
     cell.vertical_anchor = MSO_ANCHOR.MIDDLE
 
     tf = cell.text_frame
