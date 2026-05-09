@@ -85,7 +85,7 @@ def test_makefile_targets_exist() -> None:
     mk = (ROOT / "Makefile").read_text()
     for target in [
         "reproduce:", "track:", "stills:",
-        "slides:", "test:", "clean:",
+        "test:", "clean:",
     ]:
         assert target in mk, f"missing make target {target}"
 

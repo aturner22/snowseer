@@ -11,7 +11,7 @@
 # For ad-hoc single runs, use `make track TRACK=<id>` or `make stills`
 # directly.
 
-.PHONY: help reproduce track stills slides test clean
+.PHONY: help reproduce track stills test clean
 
 CANONICAL_TRACK := boreas_2021_01_26
 ALT_TRACK       := boreas_2025_02_15
@@ -28,7 +28,6 @@ help:
 	@echo "  stills                      Static-prior demo on 18 Mapillary pairs"
 	@echo "                                (needs MAPILLARY_TOKEN)"
 	@echo ""
-	@echo "  slides                      Build docs/slides.pptx for Google Slides"
 	@echo "  test                        Smoke tests (no compute)"
 	@echo "  clean                       Wipe generated outputs"
 
@@ -77,11 +76,6 @@ stills:
 	@echo "[$$(date +%H:%M:%S)] stills: run pipeline"
 	uv run python -m src.pipeline
 	@echo "[$$(date +%H:%M:%S)] stills: done"
-
-# ─── Documentation ──────────────────────────────────────────────────────────
-
-slides:
-	uv run --with python-pptx python -m src.build_slides
 
 # ─── Tests + cleanup ────────────────────────────────────────────────────────
 

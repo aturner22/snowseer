@@ -16,9 +16,8 @@ _archive/
 # aren't part of the submission.
 docs/dev/
 
-# --- generated documents (PDFs / pptx render from .md, never commit) ---
+# --- generated documents (PDFs render from .md, never commit) ---
 docs/*.pdf
-docs/*.pptx
 
 # --- generated data (the code generates this; GitHub is for code) ---
 # Whole repo-root data/ tree is gitignored. Source code + manifests live under
